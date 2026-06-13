@@ -1289,10 +1289,7 @@ var _acIdx = -1;
 var partLocs = {};
 
 // ── DEMO DATA ────────────────────────────────────────────────
-var DEMO_JOBS = [
-  {JobNo:'2569030606',CustomerName:'คัมปัส ยีส',SerialNos:'FO-02, FO-05',Location:'ภูเก็ต',OpenDate:'01/03/2569',Status:'OPEN'},
-  {JobNo:'2569030707',CustomerName:'บลูทรี ภูเก็ต',SerialNos:'FO-13',Location:'ภูเก็ต',OpenDate:'07/03/2569',Status:'OPEN'},
-];
+var DEMO_JOBS = [];
 // Demo part images (public domain for preview)
 var _DEMO_PART_IMGS = {
   '05-16U291':      'https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Deep_groove_ball_bearing.jpg/200px-Deep_groove_ball_bearing.jpg',
@@ -1311,26 +1308,8 @@ var _DEMO_PART_IMGS = {
 };
 (function(){ Object.assign(_partImages, _DEMO_PART_IMGS); })();
 
-var DEMO_ITEMS = [
-  // Qty=จำนวนขอเบิก, IssuedQty=จ่ายจริง, ReturnedQty=คืนกลับ
-  {PartNo:'01BPB000010396',  NameTH:'แบตเตอรี่ 6V',    NameEN:'BATTERY 6V TROJAN T105',     Qty:12,IssuedQty:12,ReturnedQty:0, Unit:'ก้อน',  SerialNo:'',Note:'48V System'},
-  {PartNo:'05-16U291',       NameTH:'ลูกปืน',          NameEN:'BEARING 6205',               Qty:4, IssuedQty:3, ReturnedQty:0, Unit:'ชิ้น',  SerialNo:'',Note:''},
-  {PartNo:'07-16290250',     NameTH:'ซีลเพลาล่าง',     NameEN:'SEAL LOWER SHAFT',           Qty:3, IssuedQty:3, ReturnedQty:1, Unit:'ชิ้น',  SerialNo:'',Note:''},
-  {PartNo:'02-23U700014',    NameTH:'ยางโอริง',         NameEN:'O-RING STEERING',            Qty:2, IssuedQty:2, ReturnedQty:0, Unit:'ชิ้น',  SerialNo:'',Note:''},
-  {PartNo:'03PGL0000010155836',NameTH:'บูชยูรีเทน',   NameEN:'BUSHING URETHANE 29mm',      Qty:6, IssuedQty:5, ReturnedQty:0, Unit:'ชิ้น',  SerialNo:'',Note:''},
-  {PartNo:'01PGC0000000007048',NameTH:'บูชสำริด',     NameEN:'BUSHING FLANGED BRONZE',     Qty:4, IssuedQty:4, ReturnedQty:2, Unit:'ชิ้น',  SerialNo:'',Note:''},
-  {PartNo:'03SPP0000000WS0022',NameTH:'น้ำกลั่น',     NameEN:'น้ำกลั่น แบบขวด',           Qty:8, IssuedQty:8, ReturnedQty:0, Unit:'ขวด',   SerialNo:'',Note:''},
-  {PartNo:'01PGC0001029562016',NameTH:'บูชยูรีเทนสั้น',NameEN:'BUSHING URETHANE SHORT',    Qty:3, IssuedQty:3, ReturnedQty:0, Unit:'ชิ้น',  SerialNo:'',Note:''},
-  {PartNo:'01PGC0000001012303',NameTH:'บูชเหล็ก',     NameEN:'BUSHING STEEL GAS CAR',     Qty:2, IssuedQty:2, ReturnedQty:0, Unit:'ชิ้น',  SerialNo:'',Note:''},
-  {PartNo:'03PGL0000001016346',NameTH:'บูชยูรีเทนน้ำเงิน',NameEN:'BUSHING URETHANE BLUE', Qty:5, IssuedQty:4, ReturnedQty:0, Unit:'ชิ้น',  SerialNo:'',Note:''},
-];
-var DEMO_REQS = [
-  {ReqID:'PKT-BR-2569-0001',JobNo:'2569030606',CustomerName:'คัมปัส ยีส',OpenDate:'16/04/2569',RequesterName:'กิตติศักดิ์',RequesterEmail:'tech@demo.local',CoWorkers:'',SerialNos:'FO-02',Purpose:'รถเช่า, เคลมไม่ได้',StatusApproval:'APPROVED',StatusStock:'CLEARED',SupervisorEmail:'artitry@beyond-green.co.th',SupervisorApprovedAt:'2026-04-16T10:30:00Z',SupervisorNote:'',ManagerEmail:'natthareeya@beyond-green.co.th',ManagerApprovedAt:'2026-04-16T11:00:00Z',ManagerNote:'',StockHandlerEmail:'Hathaichanok@beyond-green.co.th',StockAcknowledgedAt:'2026-04-16T11:30:00Z',ClosedAt:'2026-04-17T09:00:00Z',ClosedNote:'เรียบร้อย',IMNumber:'IM-2569-00099',CreatedAt:'2026-04-16T09:00:00Z',PickedUpAt:'2026-04-16T12:00:00Z'},
-  {ReqID:'PKT-BR-2569-0002',JobNo:'2569030707',CustomerName:'บลูทรี ภูเก็ต',OpenDate:'18/04/2569',RequesterName:'สมชาย',RequesterEmail:'tech2@demo.local',CoWorkers:'',SerialNos:'FO-13',Purpose:'WARRANTY ในระยะประกัน',StatusApproval:'PENDING_SUPERVISOR',StatusStock:'PENDING',SupervisorEmail:'',SupervisorApprovedAt:'',SupervisorNote:'',ManagerEmail:'',ManagerApprovedAt:'',ManagerNote:'',StockHandlerEmail:'',StockAcknowledgedAt:'',ClosedAt:'',ClosedNote:'',IMNumber:'',CreatedAt:'2026-04-18T09:00:00Z',PickedUpAt:''},
-  {ReqID:'PKT-BR-2569-0003',JobNo:'2569030606',CustomerName:'คัมปัส ยีส',OpenDate:'20/04/2569',RequesterName:'กิตติศักดิ์',RequesterEmail:'tech@demo.local',CoWorkers:'สมชาย',SerialNos:'FO-05',Purpose:'ประกอบใหม่',StatusApproval:'APPROVED',StatusStock:'ACKNOWLEDGED',SupervisorEmail:'artitry@beyond-green.co.th',SupervisorApprovedAt:'2026-04-20T10:00:00Z',SupervisorNote:'',ManagerEmail:'natthareeya@beyond-green.co.th',ManagerApprovedAt:'2026-04-20T11:00:00Z',ManagerNote:'',StockHandlerEmail:'anuwit@beyond-green.co.th',StockAcknowledgedAt:'2026-04-20T12:00:00Z',ClosedAt:'',ClosedNote:'',IMNumber:'',CreatedAt:'2026-04-20T09:00:00Z',PickedUpAt:''},
-  {ReqID:'PKT-BR-2569-0005',JobNo:'2569040101',CustomerName:'โรงแรม บลูทรี',OpenDate:'01/05/2569',RequesterName:'กิตติศักดิ์',RequesterEmail:'tech@demo.local',CoWorkers:'',SerialNos:'FO-07',Purpose:'ซ่อมรถลูกค้า',StatusApproval:'APPROVED',StatusStock:'ACKNOWLEDGED',SupervisorEmail:'artitry@beyond-green.co.th',SupervisorApprovedAt:'2026-05-01T10:00:00Z',SupervisorNote:'',ManagerEmail:'natthareeya@beyond-green.co.th',ManagerApprovedAt:'2026-05-01T11:00:00Z',ManagerNote:'',StockHandlerEmail:'anuwit@beyond-green.co.th',StockAcknowledgedAt:'2026-05-01T13:00:00Z',ClosedAt:'',ClosedNote:'',IMNumber:'',CreatedAt:'2026-05-01T09:00:00Z',PickedUpAt:'',DispatchedItems:[{partNo:'05-16U291',nameEN:'BEARING 6205',requestedQty:4,actualQty:3,shortQty:1,unit:'ชิ้น'},{partNo:'03PGL0000010155836',nameEN:'BUSHING URETHANE 29mm',requestedQty:6,actualQty:5,shortQty:1,unit:'ชิ้น'}]},
-  {ReqID:'PKT-BR-2569-0004',JobNo:'2569030606',CustomerName:'คัมปัส ยีส',OpenDate:'25/04/2569',RequesterName:'กิตติศักดิ์',RequesterEmail:'tech@demo.local',CoWorkers:'',SerialNos:'FO-09',Purpose:'ซ่อมรถลูกค้าชั่วคราว',StatusApproval:'APPROVED',StatusStock:'ACKNOWLEDGED',SupervisorEmail:'artitry@beyond-green.co.th',SupervisorApprovedAt:'2026-04-25T10:00:00Z',SupervisorNote:'',ManagerEmail:'natthareeya@beyond-green.co.th',ManagerApprovedAt:'2026-04-25T11:00:00Z',ManagerNote:'',StockHandlerEmail:'sittinan@beyond-green.co.th',StockAcknowledgedAt:'2026-04-25T12:00:00Z',ClosedAt:'',ClosedNote:'',IMNumber:'',CreatedAt:'2026-04-25T09:00:00Z',PickedUpAt:''},
-];
+var DEMO_ITEMS = [];
+var DEMO_REQS = [];
 var DEMO_LOCS = {'05-16U291':'A-01-02','07-16290250':'A-01-05','01BPB000010396':'D-01-02'};
 
 // ── GSI LOADER ───────────────────────────────────────────────
