@@ -6205,31 +6205,39 @@ function renderMovementReport(){
   var chartEl = document.getElementById('rptMovementChart');
   var tableEl = document.getElementById('rptMovementTable');
   if(!chartEl || !tableEl) return;
+  chartEl.innerHTML = '<div class="tc" style="padding:20px">⏳ กำลังโหลด...</div>';
+  // ดึงข้อมูลจริงจาก backend มาเก็บใน global แล้วเรียก render
+  callAPI('getReport',{}).then(function(res){
+    window._realReqs  = res.data  || [];
+    window._realItems = res.items || [];
+    _renderMovementReportOLD();
+  });
+}
 
-  // รวมข้อมูลจาก DEMO_REQS + DEMO_ITEMS
-  var reqs  = typeof DEMO_REQS  !== 'undefined' ? DEMO_REQS  : [];
-  var items = typeof DEMO_ITEMS !== 'undefined' ? DEMO_ITEMS : [];
-  var scDemo= window._scDemoEntries || [];
+function _renderMovementReportOLD(){
+  var chartEl = document.getElementById('rptMovementChart');
+  var tableEl = document.getElementById('rptMovementTable');
+  if(!chartEl || !tableEl) return;
+
+  // ใช้ข้อมูลจริงจาก backend (ไม่ใช่ DEMO)
+  var reqs  = window._realReqs  || [];
+  var items = window._realItems || [];
+  var scDemo= [];
 
   // สร้าง movement summary
   var typeMap = {};
 
-  // จาก DEMO_REQS — แต่ละใบเบิกจัด type ตาม purpose/job
+  // จากใบเบิกจริง — แต่ละใบจัด type ตาม purpose
   reqs.forEach(function(r){
     if(r.StatusApproval !== 'APPROVED' && r.StatusStock !== 'CLEARED') return;
-    // detect type จาก Purpose keyword
     var purpose = (r.Purpose||'').toLowerCase();
-    var type = 'OUT_RENTAL'; // demo default (ถ้าไม่ระบุ)
+    var type = 'OUT_RENTAL';
     if(purpose.indexOf('อุบัติ')>=0 || purpose.indexOf('accident')>=0 || purpose.indexOf('ชน')>=0) type='OUT_ACCIDENT';
     else if(purpose.indexOf('warranty')>=0 || purpose.indexOf('ประกัน')>=0 || purpose.indexOf('เคลม')>=0) type='OUT_WARRANTY';
     else if(purpose.indexOf('เช่า')>=0 || purpose.indexOf('rental')>=0) type='OUT_RENTAL';
     else if(purpose.indexOf('สัมปทาน')>=0 || purpose.indexOf('contract')>=0) type='OUT_CONTRACT';
-    else if(r.ReqID.indexOf('0001')>=0) type='OUT_RENTAL';
-    else if(r.ReqID.indexOf('0002')>=0) type='OUT_CONTRACT';
-    else if(r.ReqID.indexOf('0003')>=0) type='OUT_ACCIDENT';
-    else if(r.ReqID.indexOf('0004')>=0) type='OUT_WARRANTY';
 
-    items.forEach(function(item){
+    items.filter(function(it){ return it.ReqID===r.ReqID; }).forEach(function(item){
       var qty = typeof item.IssuedQty!=='undefined' ? (item.IssuedQty||0) : (item.Qty||0);
       if(qty <= 0) return;
       var pn = item.PartNo;
@@ -6241,23 +6249,7 @@ function renderMovementReport(){
     });
   });
 
-  // จาก Sales Orders (demo)
-  // demo: เพิ่ม mock ทุกประเภทให้มีข้อมูล
-  var mockData = [
-    {type:'OUT_SALE',     qty:5,  reqs:1, pn:'01BPB000010396', name:'BATTERY 6V TROJAN T105'},
-    {type:'OUT_ACCIDENT', qty:8,  reqs:2, pn:'05-16U291',       name:'BEARING 6205'},
-    {type:'OUT_WARRANTY', qty:3,  reqs:1, pn:'07-16290250',     name:'SEAL LOWER SHAFT'},
-    {type:'OUT_HQ',       qty:10, reqs:1, pn:'03PGL0000010155836', name:'BUSHING URETHANE 29mm'},
-    {type:'OUT_BRANCH',   qty:6,  reqs:2, pn:'02-23U700014',   name:'O-RING STEERING'},
-    {type:'OUT_OTHER',    qty:4,  reqs:1, pn:'03SPP0000000WS0022','name':'น้ำกลั่น'},
-  ];
-  mockData.forEach(function(m){
-    if(!typeMap[m.type]) typeMap[m.type]={type:m.type,totalQty:0,totalReqs:0,parts:{}};
-    typeMap[m.type].totalQty  += m.qty;
-    typeMap[m.type].totalReqs += m.reqs;
-    if(!typeMap[m.type].parts[m.pn]) typeMap[m.type].parts[m.pn]={qty:0,name:m.name};
-    typeMap[m.type].parts[m.pn].qty += m.qty;
-  });
+  // (ลบ mock data ออก — ใช้ข้อมูลจริงจาก Stock Card เท่านั้น)
 
   // จาก Stock Card entries (ถ้ามี)
   scDemo.forEach(function(e){
