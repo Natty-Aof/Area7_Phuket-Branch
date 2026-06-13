@@ -3338,8 +3338,8 @@ function loadReport() {
     if (rptEmpty) rptEmpty.classList.add('hidden');
     if (rptSummary) rptSummary.classList.remove('hidden');
 
-    var reqs  = res.data   || (typeof DEMO_REQS!=='undefined'  ? DEMO_REQS  : []);
-    var items = res.items  || (typeof DEMO_ITEMS!=='undefined' ? DEMO_ITEMS : []);
+    var reqs  = res.data   || [];
+    var items = res.items  || [];
     var s = res.summary || {};
 
     // Stats
