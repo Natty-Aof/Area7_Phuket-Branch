@@ -2125,7 +2125,7 @@ function loadStock(){
 
     var proms=list.map(function(r){
       return callAPI('getRequisitionDetail',{id:r.ReqID}).then(function(dr){
-        var items=dr.success?(dr.data.items||[]):[];
+        var items=dr.success?(dr.data.Items||dr.data.items||[]):[];
         var itRows='';
         items.forEach(function(it){
           var pn=it.PartNo||'';
@@ -2226,7 +2226,7 @@ function openStockAckModal(reqId){
   modal.classList.remove('hidden');
   modal.classList.add('open');
   callAPI('getRequisitionDetail',{id:reqId}).then(function(res){
-    _stockAckItems = res.data ? res.data.items||[] : [];
+    _stockAckItems = res.data ? (res.data.Items||res.data.items||[]) : [];
     var el = document.getElementById('stockAckBody');
     if(!el) return;
     el.innerHTML = '';
@@ -2396,7 +2396,7 @@ function loadCloseDetail(){
   if(!reqId){if(cd)cd.classList.add('hidden');return;}
   callAPI('getRequisitionDetail',{id:reqId}).then(function(res){
     if(!res.success) return;
-    var items=res.data.items||[];
+    var items=res.data.Items||res.data.items||[];
     var tbody=document.getElementById('clItemsBody');
     if(tbody) tbody.innerHTML=items.map(function(it,i){
       return '<tr>'
@@ -2421,7 +2421,7 @@ function submitClose(){
   var rl=document.getElementById('clIM').value.trim();
   if(!rl) return toast('กรุณากรอกเลขที่เอกสาร IM ก่อนปิดงานค่ะ','error');
   callAPI('getRequisitionDetail',{id:reqId}).then(function(res){
-    var items=res.data?res.data.items||[]:[];
+    var items=res.data?(res.data.Items||res.data.items||[]):[];
     var ret=items.map(function(it,i){
       return {partNo:it.PartNo,nameEN:it.NameEN,originalQty:it.Qty,usedQty:document.getElementById('cu_'+i)&&document.getElementById('cu_'+i).value||0,returnedQty:document.getElementById('cr_'+i)&&document.getElementById('cr_'+i).value||0,note:document.getElementById('cn_'+i)&&document.getElementById('cn_'+i).value||''};
     });
@@ -2515,7 +2515,7 @@ function openDetail(reqId){
     var d=res.data;
     var t=document.getElementById('moTitle');
     if(t) t.textContent='ใบเบิก '+d.ReqID;
-    var itRows=(d.items||[]).map(function(i){
+    var itRows=(d.Items||d.items||[]).map(function(i){
       var pImgD = partImgHtml(i.PartNo||'','sm',i.NameEN||i.NameTH||'');
       return '<tr><td style="vertical-align:middle"><div style="display:flex;align-items:center;gap:6px">'+pImgD+'<span>'+(i.PartNo||'-')+'</span></div></td><td>'+(i.NameTH||'-')+'</td><td>'+(i.NameEN||'-')+'</td><td style="text-align:center">'+i.Qty+' '+(i.Unit||'')+'</td><td>'+(i.SerialNo||'-')+'</td><td>'+(i.Note||'-')+'</td></tr>';
     }).join('');
@@ -2555,7 +2555,7 @@ function openDetail(reqId){
     var isMgr=['MANAGER','SUPERVISOR','STOCK','ADMIN'].indexOf(CU.role)>=0&&d.StatusApproval==='PENDING_MANAGER';
     if(isSup||isMgr) foot='<button class="btn bd" onclick="openNoteMo(\'reject\',\''+d.ReqID+'\');closeMo()">✕ ปฏิเสธ</button><button class="btn bp" onclick="openNoteMo(\'approve\',\''+d.ReqID+'\');closeMo()">✓ อนุมัติ</button>';
     var canAckRole = ['STOCK','MANAGER'].indexOf(CU.role)>=0;
-    if(canAckRole&&(d.StatusStock==='PENDING'||d.StatusStock==='STOCK_NOTIFIED')) foot='<button class="btn bgd" onclick="doStockAck(\''+d.ReqID+'\');closeMo()">📦 รับจัดของ</button>';
+    // (ลบปุ่ม "รับจัดของ" ออกจาก popup — ให้ไปจัดของที่หน้า "จัดอะไหล่" แทน)
     // เพิ่มปุ่มแก้ไข/ลบสำหรับ MANAGER เสมอ (ต่อจาก foot ปกติ)
     if(CU.role==='MANAGER'||CU.role==='ADMIN'){
       var managerBtns = '<button class="btn bd bsm" style="margin-left:auto" '
@@ -2674,7 +2674,7 @@ function buildPrintData(reqId){
       d.ManagerEmail?callAPI('getSignature',{email:d.ManagerEmail}):Promise.resolve({}),
     ]).then(function(sigs){
       return {reqId:d.ReqID,jobNo:d.JobNo,customer:d.CustomerName,date:d.OpenDate,technician:d.RequesterName,coWorkers:d.CoWorkers||'',serial:d.SerialNos||'',purpose:d.Purpose||'',
-        items:(d.items||[]).map(function(i){return {partNo:i.PartNo||'',desc:i.NameEN||i.NameTH||'',qty:i.Qty||'',issued:i.Qty||'',note:i.Note||''};}),
+        items:(d.Items||d.items||[]).map(function(i){return {partNo:i.PartNo||'',desc:i.NameEN||i.NameTH||'',qty:i.Qty||'',issued:i.Qty||'',note:i.Note||''};}),
         techSig:sigs[0].signatureBase64||'',techName:d.RequesterName||'',techDate:d.OpenDate||'',
         supSig:sigs[1].signatureBase64||'',supName:d.SupervisorEmail?'หัวหน้าช่าง':'',supDate:d.SupervisorApprovedAt?new Date(d.SupervisorApprovedAt).toLocaleDateString('th-TH'):'',
         mgrSig:sigs[2].signatureBase64||'',mgrName:d.ManagerEmail?'ณัฐรีญา':'',mgrDate:d.ManagerApprovedAt?new Date(d.ManagerApprovedAt).toLocaleDateString('th-TH'):'',
@@ -3099,7 +3099,7 @@ function loadPickupDetail(){
   callAPI('getRequisitionDetail',{id:reqId}).then(function(res){
     if(!res.success) return;
     var tbody = document.getElementById('pickupItemsBody');
-    if(tbody) tbody.innerHTML = (res.data.items||[]).map(function(it){
+    if(tbody) tbody.innerHTML = (res.data.Items||res.data.items||[]).map(function(it){
       return '<tr><td>'+it.PartNo+'</td><td>'+( it.NameTH||it.NameEN||'-')+'</td><td style="text-align:center">'+it.Qty+'</td><td>'+it.Unit+'</td></tr>';
     }).join('');
     pickupPhotoB64 = null;
