@@ -3409,39 +3409,6 @@ function exportExcel() {
 // เพิ่มใน mockAPI
 var _origMockAPI = mockAPI;
 mockAPI = function(action, data) {
-  if (action === 'getReport') {
-    return {
-      success: true,
-      summary: { total:3, approved:2, pending:1, rejected:0, cleared:1, totalItems:8 },
-      data: DEMO_REQS,
-      topParts: typeof PARTS_DB !== 'undefined' && PARTS_DB.length ?
-        PARTS_DB.filter(function(p){ return p.inStock > 0; })
-          .sort(function(a,b){ return b.inStock - a.inStock; })
-          .slice(0,10)
-          .map(function(p,i){ return {
-            partNo: p.partNo,
-            nameEN: p.nameEN || p.nameTH || '-',
-            nameTH: p.nameTH || '',
-            totalQty: p.inStock
-          }; }) :
-        [
-          { partNo:'01BPB000010396', nameEN:'BATTERY 6V TROJAN', nameTH:'แบตเตอรี่ 6V', totalQty:120 },
-          { partNo:'05-16U291', nameEN:'BEARING 6205', nameTH:'ลูกปืน', totalQty:6 },
-          { partNo:'07-16290250', nameEN:'SEAL LOWER SHAFT', nameTH:'ซีลเพลา', totalQty:4 },
-          { partNo:'03PGL0000010155836', nameEN:'BUSHING URETHANE', nameTH:'บูชยูรีเทน', totalQty:598 },
-          { partNo:'01PGC0000000007048', nameEN:'BUSHING FLANGED BRONZE', nameTH:'บูชสำริด', totalQty:517 },
-          { partNo:'01PGC0001029562016', nameEN:'BUSHING URETHANE SHORT', nameTH:'บูชยูรีเทนสั้น', totalQty:507 },
-          { partNo:'01PGC0000001012303', nameEN:'BUSHING STEEL GAS CAR', nameTH:'บูชเหล็ก', totalQty:492 },
-          { partNo:'03SPP0000000WS0022', nameEN:'น้ำกลั่น (Distilled Water)', nameTH:'น้ำกลั่น', totalQty:410 },
-          { partNo:'01PGC0000001012304', nameEN:'BELT DRIVE V-BELT', nameTH:'สายพาน', totalQty:380 },
-          { partNo:'02PGO0000000007049', nameEN:'CONTROLLER MOTOR', nameTH:'คอนโทรลเลอร์', totalQty:350 },
-        ],
-      byTechnician: [
-        { name:'กิตติศักดิ์', count:2, cleared:1 },
-        { name:'สมชาย', count:1, cleared:0 },
-      ],
-    };
-  }
   if(action==='getInventoryBalance'){
     // ใช้ PARTS_DB ที่โหลดจาก parts_data.js
     if(typeof PARTS_DB !== 'undefined' && PARTS_DB.length){
