@@ -242,7 +242,7 @@ textarea.fc{min-height:70px;resize:vertical;}
     <h2>ระบบใบเบิกอะไหล่</h2>
     <p>ระบบใบเบิกอะไหล่ - Phuket Branch</p>
     <div id="gBtn"></div>
-    <div id="demoArea" class="hidden">
+    <div id="demoArea" class="hidden" style="display:none!important">
       <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:8px 12px;font-size:12px;color:#795548;margin-bottom:10px">⚠️ Demo Mode — เลือก Role เพื่อทดสอบ</div>
       <div class="demo-btns">
         <button class="db" onclick="demoLogin('TECHNICIAN')"><span>🔧</span><span><strong>ช่าง / ผู้เบิก</strong></span></button>
@@ -1346,8 +1346,7 @@ var DEMO_LOCS = {'05-16U291':'A-01-02','07-16290250':'A-01-05','01BPB000010396':
 })();
 
 function showDemo(){
-  var el = document.getElementById('demoArea');
-  if(el) el.classList.remove('hidden');
+  // Demo mode disabled — production system
 }
 
 window._gsiReady = initGSI;
@@ -1431,7 +1430,7 @@ function demoLogin(role){
 
 // ── API ──────────────────────────────────────────────────────
 function callAPI(action, data, userEmail){
-  if(window._demo) return Promise.resolve(mockAPI(action, data));
+  // Demo mode disabled
   return fetch(SCRIPT_URL, {
     method:'POST',
     body:JSON.stringify({action:action, data:data||{}, userEmail:userEmail||CU.email})
