@@ -428,11 +428,13 @@ textarea.fc{min-height:70px;resize:vertical;}
           <div class="card">
             <div class="ct">📦 รายการอะไหล่ที่เบิกไป</div>
             <div class="tw"><table class="it" id="clItemsTbl">
-              <thead><tr><th>Part No.</th><th>ชื่ออะไหล่</th><th>เบิกไป</th><th>ใช้จริง</th><th>คืน</th><th>หมายเหตุ</th></tr></thead>
+              <thead><tr><th>Part No.</th><th>ชื่ออะไหล่</th><th>เบิกไป</th><th>ใช้จริง</th><th>คืนของดี</th><th>คืนของเสีย</th><th>หมายเหตุ</th></tr></thead>
               <tbody id="clItemsBody"></tbody>
             </table></div>
+            <div style="font-size:12px;color:var(--g400);padding:8px 4px">💡 ของดีที่คืน = บวกกลับเข้าสต็อก | ของเสีย = เข้าคลัง SCR (Part No. ขึ้นต้นด้วย SCR)</div>
           </div>
           <!-- ช่างกรอกรายการ + ถ่ายรูปของเก่า -->
+          <div id="techClearSection">
           <div class="card">
             <div class="ct">📷 ถ่ายรูปอะไหล่เสีย / ของที่คืน <span class="rq">*</span> <span style="font-size:12px;color:var(--red);font-weight:400">(บังคับ — ต้องถ่ายก่อนส่งเคลียร์)</span></div>
             <div class="pd" id="retPhoDrop" onclick="document.getElementById('retPhoIn').click()" style="border:2px dashed var(--red)">
@@ -448,19 +450,19 @@ textarea.fc{min-height:70px;resize:vertical;}
             </div>
           </div>
           <div style="display:flex;gap:12px;justify-content:flex-end;padding-bottom:8px">
-            <button class="btn bp" onclick="submitClearByTech()">📤 ส่งเคลียร์ให้ Admin ตรวจสอบ</button>
+            <button class="btn bp" onclick="submitClearByTech()">📤 ส่งเคลียร์ให้ Stock ตรวจสอบ</button>
+          </div>
           </div>
 
-          <!-- Admin ตรวจสอบ + ใส่เลข IM -->
+          <!-- Stock ตรวจสอบ + ใส่เลข SAP -->
           <div id="adminClearSection" class="hidden">
             <div class="card" style="border-color:var(--gm)">
-              <div class="ct">🔐 Admin: ตรวจสอบและปิดใบเบิก</div>
-              <div class="fg">
-                <label class="fl">เลขที่ใบเบิก (SAP)<span class="rq">*</span> <span style="font-size:11px;color:var(--g400)">เลขที่ใบเบิกจากระบบ SAP เช่น PKT-BR-2569-0001</span></label>
-                <input class="fc" id="clReqIdSAP" placeholder="เช่น PKT-BR-2569-0001">
+              <div class="ct">🔐 Stock: ตรวจสอบและปิดใบเบิก</div>
+              <div style="background:#e8f5e9;padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:13px;color:#2e5e1e">
+                ✅ ช่างส่งเคลียร์มาแล้ว — ตรวจของคืนด้านบน (ของดี/ของเสีย) แล้วกรอกเลขตัดอะไหล่ SAP เพื่อปิดงานค่ะ
               </div>
               <div class="fg">
-                <label class="fl">เลขที่เอกสาร IM (SAP)<span class="rq">*</span> <span style="font-size:11px;color:var(--g400)">เลขที่ได้จากระบบ SAP ตอนตัดอะไหล่จริง</span></label>
+                <label class="fl">เลขตัดอะไหล่ SAP <span class="rq">*</span> <span style="font-size:11px;color:var(--g400)">เลขที่ได้จากระบบ SAP ตอนตัดอะไหล่จริง</span></label>
                 <input class="fc" id="clIM" placeholder="เช่น IM-2569-00123">
               </div>
               <div style="display:flex;gap:12px;justify-content:flex-end">
@@ -2367,68 +2369,115 @@ function confirmStockAck(){
 }
 
 // ── CLOSE ─────────────────────────────────────────────────────
-function loadCloseSel(){
-  callAPI('getRequisitions',{}).then(function(res){
-    var open=(res.data||[]).filter(function(r){return r.StatusApproval==='APPROVED'&&r.StatusStock!=='CLEARED';});
-    var sel=document.getElementById('clSel');
-    if(!sel) return;
-    sel.innerHTML='<option value="">— เลือกใบเบิก —</option>';
-    open.forEach(function(r){
-      var o=document.createElement('option');
-      o.value=r.ReqID;
-      o.textContent=r.ReqID+' — Job '+r.JobNo+' — '+r.CustomerName;
-      sel.appendChild(o);
-    });
-    var cd=document.getElementById('clDetail');
-    if(cd) cd.classList.add('hidden');
-  });
-}
-
 function loadCloseDetail(){
-  // แสดง Admin section ถ้าเป็น Admin/Stock
-  var as = document.getElementById('adminClearSection');
-  if(as){
-    if(['STOCK','ADMIN','MANAGER'].indexOf(CU.role) >= 0) as.classList.remove('hidden');
-    else as.classList.add('hidden');
-  }
   var reqId=document.getElementById('clSel').value;
   var cd=document.getElementById('clDetail');
   if(!reqId){if(cd)cd.classList.add('hidden');return;}
   callAPI('getRequisitionDetail',{id:reqId}).then(function(res){
     if(!res.success) return;
-    var items=res.data.Items||res.data.items||[];
+    var d = res.data;
+    var items=d.Items||d.items||[];
+    var isStock = ['STOCK','ADMIN','MANAGER'].indexOf(CU.role) >= 0;
+    var isPendingClearance = d.StatusStock === 'PENDING_CLEARANCE';
+
+    // ── แสดง section ตาม role + สถานะ ──
+    // ช่าง (ยังไม่ส่งเคลียร์) → เห็นช่องกรอก + ปุ่มส่ง
+    // Stock (ช่างส่งแล้ว PENDING_CLEARANCE) → เห็นข้อมูลช่างกรอก + ช่อง SAP + ปุ่มปิด
+    var techSection = document.getElementById('techClearSection');
+    var as = document.getElementById('adminClearSection');
+
+    // ดึงข้อมูลที่ช่างกรอกไว้ (ถ้ามี)
+    var clearInfo = {};
+    if(isPendingClearance && d.ClosedNote){
+      try { clearInfo = JSON.parse(d.ClosedNote); } catch(e){ clearInfo = {}; }
+    }
+    var retMap = {}, defMap = {};
+    (clearInfo.returnedItems||[]).forEach(function(r){ retMap[r.partNo||r.PartNo] = r.returnedQty||r.ReturnedQty||0; });
+    (clearInfo.defectItems||[]).forEach(function(dd){ defMap[dd.partNo||dd.PartNo] = dd.defectQty||dd.DefectQty||0; });
+
+    var readonly = isPendingClearance ? 'readonly style="background:#f5f5f5;' : 'style="';
     var tbody=document.getElementById('clItemsBody');
     if(tbody) tbody.innerHTML=items.map(function(it,i){
+      var pn = it.PartNo;
+      var retVal = isPendingClearance ? (retMap[pn]||0) : 0;
+      var defVal = isPendingClearance ? (defMap[pn]||0) : 0;
       return '<tr>'
-        +'<td class="it td">'+( it.PartNo||'-')+'</td>'
+        +'<td class="it td">'+(pn||'-')+'</td>'
         +'<td class="it td">'+(it.NameTH||it.NameEN||'-')+'</td>'
         +'<td class="it td" style="text-align:center">'+it.Qty+' '+(it.Unit||'')+'</td>'
-        +'<td class="it td"><input class="fc" type="number" id="cu_'+i+'" value="'+it.Qty+'" min="0" style="width:70px;text-align:center"></td>'
-        +'<td class="it td"><input class="fc" type="number" id="cr_'+i+'" value="0" min="0" style="width:70px;text-align:center"></td>'
-        +'<td class="it td"><input class="fc" id="cn_'+i+'" placeholder="หมายเหตุ"></td>'
+        +'<td class="it td"><input class="fc" type="number" id="cu_'+i+'" value="'+it.Qty+'" min="0" '+readonly+'width:65px;text-align:center"></td>'
+        +'<td class="it td"><input class="fc" type="number" id="cr_'+i+'" value="'+retVal+'" min="0" '+readonly+'width:65px;text-align:center"></td>'
+        +'<td class="it td"><input class="fc" type="number" id="cdf_'+i+'" value="'+defVal+'" min="0" '+readonly+'width:65px;text-align:center;color:var(--red)"></td>'
+        +'<td class="it td"><input class="fc" id="cn_'+i+'" placeholder="หมายเหตุ" '+(isPendingClearance?'readonly':'')+'></td>'
         +'</tr>';
     }).join('');
+
+    // เก็บ items ไว้ใช้ตอน submit
+    window._clearItems = items;
+
+    // toggle sections
+    if(techSection) techSection.classList.toggle('hidden', isPendingClearance);
+    if(as){
+      // Stock เห็น section ปิดงาน เฉพาะตอนช่างส่งเคลียร์แล้ว
+      as.classList.toggle('hidden', !(isStock && isPendingClearance));
+    }
+
     var rl=document.getElementById('clIM'), cn=document.getElementById('clNote');
     if(rl) rl.value='';
-    if(cn) cn.value='';
+    if(cn) cn.value = isPendingClearance ? (clearInfo.techNote||'') : '';
     if(cd) cd.classList.remove('hidden');
   });
 }
 
+// ── ช่างส่งเคลียร์ → แจ้ง Stock ──
+function submitClearByTech(){
+  var reqId=document.getElementById('clSel').value;
+  if(!reqId) return toast('กรุณาเลือกใบเบิก','error');
+  if(!retPhotoB64) return toast('กรุณาถ่ายรูปของที่คืน/ของเสียก่อนค่ะ','error');
+  var items = window._clearItems||[];
+  var returnedItems=[], defectItems=[];
+  items.forEach(function(it,i){
+    var ret = Number((document.getElementById('cr_'+i)||{}).value)||0;
+    var def = Number((document.getElementById('cdf_'+i)||{}).value)||0;
+    var note= (document.getElementById('cn_'+i)||{}).value||'';
+    if(ret>0) returnedItems.push({partNo:it.PartNo,nameEN:it.NameEN,unit:it.Unit,returnedQty:ret,note:note});
+    if(def>0) defectItems.push({partNo:it.PartNo,nameEN:it.NameEN,unit:it.Unit,defectQty:def,note:note});
+  });
+  callAPI('submitClearance',{
+    id:reqId,
+    note:document.getElementById('clNote').value,
+    returnedItems:returnedItems,
+    defectItems:defectItems,
+    photoUrl:retPhotoB64,
+  }).then(function(res){
+    toast(res.message,res.success?'success':'error');
+    if(res.success){ retPhotoB64=null; setTimeout(function(){go('list');},600); }
+  });
+}
+
+// ── Stock ตรวจสอบ + บันทึก SAP → ปิดงาน ──
 function submitClose(){
   var reqId=document.getElementById('clSel').value;
   if(!reqId) return toast('กรุณาเลือกใบเบิก','error');
-  var rl=document.getElementById('clIM').value.trim();
-  if(!rl) return toast('กรุณากรอกเลขที่เอกสาร IM ก่อนปิดงานค่ะ','error');
-  callAPI('getRequisitionDetail',{id:reqId}).then(function(res){
-    var items=res.data?(res.data.Items||res.data.items||[]):[];
-    var ret=items.map(function(it,i){
-      return {partNo:it.PartNo,nameEN:it.NameEN,originalQty:it.Qty,usedQty:document.getElementById('cu_'+i)&&document.getElementById('cu_'+i).value||0,returnedQty:document.getElementById('cr_'+i)&&document.getElementById('cr_'+i).value||0,note:document.getElementById('cn_'+i)&&document.getElementById('cn_'+i).value||''};
-    });
-    return callAPI('closeRequisition',{reqId:reqId,imNumber:rl,note:document.getElementById('clNote').value,returnedItems:ret});
+  var sap=document.getElementById('clIM').value.trim();
+  if(!sap) return toast('กรุณากรอกเลขตัดอะไหล่ SAP ก่อนปิดงานค่ะ','error');
+  var items = window._clearItems||[];
+  var returnedItems=[], defectItems=[];
+  items.forEach(function(it,i){
+    var ret = Number((document.getElementById('cr_'+i)||{}).value)||0;
+    var def = Number((document.getElementById('cdf_'+i)||{}).value)||0;
+    if(ret>0) returnedItems.push({partNo:it.PartNo,nameEN:it.NameEN,unit:it.Unit,returnedQty:ret});
+    if(def>0) defectItems.push({partNo:it.PartNo,nameEN:it.NameEN,unit:it.Unit,defectQty:def});
+  });
+  callAPI('confirmCloseByStock',{
+    id:reqId,
+    imNumber:sap,
+    note:document.getElementById('clNote').value,
+    returnedItems:returnedItems,
+    defectItems:defectItems,
   }).then(function(res){
     toast(res.message,res.success?'success':'error');
-    if(res.success) go('list');
+    if(res.success){ syncStockBalance(); setTimeout(function(){go('list');},600); }
   });
 }
 
@@ -3136,19 +3185,23 @@ function submitPickup(){
   });
 }
 
-// ── CLOSE: ช่างเคลียร์ + Admin ตรวจสอบ + ใส่ IM ──────────────
+// ── CLOSE: ช่างเคลียร์ + Stock ตรวจสอบ + ใส่ SAP ──────────────
 var retPhotoB64 = null;
 
 function loadCloseSel(){
   callAPI('getRequisitions',{}).then(function(res){
     var list = (res.data||[]).filter(function(r){
-      // แสดงเฉพาะที่ยังไม่ปิดงาน
-      return (r.StatusStock === 'ACKNOWLEDGED' || r.StatusStock === 'PICKED_UP' || r.StatusApproval === 'APPROVED')
+      // แสดงใบที่รับของแล้ว (รอเคลียร์) หรือช่างส่งเคลียร์แล้ว (รอ Stock ปิด)
+      return (r.StatusStock === 'PICKED_UP' || r.StatusStock === 'PENDING_CLEARANCE')
              && r.StatusStock !== 'CLEARED';
     });
-    // ช่างเห็นเฉพาะของตัวเอง
+    // ช่างเห็นเฉพาะของตัวเอง + เฉพาะที่ยังไม่ส่งเคลียร์
     if(CU.role === 'TECHNICIAN'){
-      list = list.filter(function(r){ return r.RequesterEmail === CU.email; });
+      list = list.filter(function(r){ return r.RequesterEmail === CU.email && r.StatusStock==='PICKED_UP'; });
+    }
+    // Stock เห็นเฉพาะที่ช่างส่งเคลียร์มาแล้ว
+    if(['STOCK','ADMIN','MANAGER'].indexOf(CU.role)>=0){
+      // เห็นทั้งหมด (ทั้งรอเคลียร์ และรอปิด)
     }
     var sel = document.getElementById('clSel');
     if(!sel) return;
@@ -3156,7 +3209,8 @@ function loadCloseSel(){
     list.forEach(function(r){
       var o = document.createElement('option');
       o.value = r.ReqID;
-      o.textContent = r.ReqID+' — Job '+r.JobNo+' — '+r.CustomerName;
+      var tag = r.StatusStock==='PENDING_CLEARANCE' ? ' [รอ Stock ปิด]' : ' [รอเคลียร์]';
+      o.textContent = r.ReqID+' — '+r.CustomerName+tag;
       sel.appendChild(o);
     });
     var cd = document.getElementById('clDetail');
@@ -3176,76 +3230,12 @@ function onRetPhoto(e){
   reader.readAsDataURL(file);
 }
 
-function submitClearByTech(){
-  var reqId = document.getElementById('clSel').value;
-  if(!reqId) return toast('กรุณาเลือกใบเบิก','error');
-  // ── บังคับถ่ายรูปอะไหล่เก่าก่อนส่ง ──────────────────────
-  var preview = document.getElementById('retPhoPreview');
-  var photoDrop = document.getElementById('retPhoDrop');
-  if(!retPhotoB64 || !preview || preview.classList.contains('hidden')){
-    if(photoDrop) photoDrop.style.border='2px dashed var(--red)';
-    return toast('📷 กรุณาถ่ายรูปอะไหล่เก่า / ของที่คืนก่อนส่งเคลียร์ค่ะ','error');
-  }
-  var items = getClearItems();
-  callAPI('submitClearance',{
-    reqId: reqId,
-    note: document.getElementById('clNote').value,
-    returnedItems: items,
-    photoUrl: retPhotoB64||''
-  }).then(function(res){
-    toast(res.message, res.success?'success':'error');
-    if(res.success){
-      // แสดง Admin section
-      var as = document.getElementById('adminClearSection');
-      if(as && ['SUPERVISOR','MANAGER','STOCK','ADMIN'].indexOf(CU.role) >= 0){
-        as.classList.remove('hidden');
-      } else {
-        toast('ส่งให้ Admin ตรวจสอบแล้วค่ะ','success');
-        go('list');
-      }
-    }
-  });
-}
-
-function getClearItems(){
-  var tbody = document.getElementById('clItemsBody');
-  if(!tbody) return [];
-  return Array.from(tbody.querySelectorAll('tr')).map(function(tr, i){
-    return {
-      partNo: tr.cells[0].textContent,
-      originalQty: tr.cells[2].textContent,
-      usedQty: (document.getElementById('cu_'+i)||{}).value||0,
-      returnedQty: (document.getElementById('cr_'+i)||{}).value||0,
-      note: (document.getElementById('cn_'+i)||{}).value||''
-    };
-  });
-}
-
 function rejectClear(){
   var reqId = document.getElementById('clSel').value;
   if(!reqId) return;
-  callAPI('rejectClearance',{id:reqId,note:'Admin ส่งกลับให้แก้ไข'}).then(function(res){
+  callAPI('rejectClearance',{id:reqId,note:'Stock ส่งกลับให้แก้ไข'}).then(function(res){
     toast('ส่งกลับช่างแล้วค่ะ', 'info');
-    go('list');
-  });
-}
-
-function submitClose(){
-  var reqId = document.getElementById('clSel').value;
-  if(!reqId) return toast('กรุณาเลือกใบเบิก','error');
-  var sapReqId = (document.getElementById('clReqIdSAP')||{}).value||'';
-  var im = (document.getElementById('clIM')||{}).value||'';
-  if(!sapReqId.trim()) return toast('กรุณากรอกเลขที่ใบเบิก SAP ก่อนค่ะ','error');
-  if(!im.trim()) return toast('กรุณากรอกเลขที่เอกสาร IM จากระบบ SAP ค่ะ','error');
-  callAPI('closeRequisition',{
-    reqId: reqId,
-    sapReqId: sapReqId.trim(),
-    imNumber: im.trim(),
-    note: (document.getElementById('clNote')||{}).value||'',
-    returnedItems: getClearItems()
-  }).then(function(res){
-    toast(res.message, res.success?'success':'error');
-    if(res.success) go('list');
+    setTimeout(function(){go('list');},600);
   });
 }
 
