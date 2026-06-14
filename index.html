@@ -1774,7 +1774,7 @@ function go(page){
   if(t) t.textContent=pgTitles[page]||page;
   if(page==='dashboard') loadDashboard();
   if(page==='create'){initCreate();}
-  if(page==='list') {} // wait for search
+  if(page==='list') { loadList(); }  // โหลดรายการอัตโนมัติเมื่อเข้าหน้า
   if(page==='approval') loadApproval();
   if(page==='stock'){loadStock();}
   if(page==='stockcard'){loadStockCard();}
@@ -3128,7 +3128,11 @@ function submitPickup(){
   if(!pickupPhotoB64) return toast('กรุณาถ่ายรูปอะไหล่ก่อนยืนยันค่ะ','error');
   callAPI('confirmPickup',{id:reqId, photoUrl:pickupPhotoB64}).then(function(res){
     toast(res.message, res.success?'success':'error');
-    if(res.success) go('list');
+    if(res.success){
+      // รีเซ็ตรูป แล้วโหลดหน้า list ใหม่ (เผื่อ Sheet เพิ่งอัปเดต)
+      pickupPhotoB64 = null;
+      setTimeout(function(){ go('list'); refreshBadges(true); }, 600);
+    }
   });
 }
 
