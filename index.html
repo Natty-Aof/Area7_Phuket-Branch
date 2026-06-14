@@ -3332,6 +3332,8 @@ function loadReportPage(){
     now.setDate(now.getDate()-30);
     from.value = now.toISOString().split('T')[0];
   }
+  // โหลดรายงานอัตโนมัติเมื่อเข้าหน้า
+  if(typeof loadFullReport === 'function') loadFullReport();
 }
 
 function loadReport() {
@@ -5400,13 +5402,27 @@ function getPartName(partNo){
 }
 
 function loadFullReport(){
-  var reqs  = typeof DEMO_REQS  !== 'undefined' ? DEMO_REQS  : [];
-  var items = typeof DEMO_ITEMS !== 'undefined' ? DEMO_ITEMS : [];
+  // ดึงข้อมูลจริงจาก backend ก่อน แล้วค่อย render
+  callAPI('getReport',{}).then(function(res){
+    window._fullReqs  = res.data  || [];
+    window._fullItems = res.items || [];
+    _renderFullReport();
+  });
+}
+
+function _renderFullReport(){
+  var reqs  = window._fullReqs  || [];
+  var items = window._fullItems || [];
   var now   = new Date();
 
   // ── helpers ─────────────────────────────────────────────
   function ageDays(dateStr){
     if(!dateStr) return 0;
+    // รองรับ ISO (2026-06-13T...) และ DD/MM/YYYY
+    if(dateStr.indexOf('T')>=0 || dateStr.indexOf('-')>=0){
+      var d = new Date(dateStr);
+      if(!isNaN(d)) return Math.floor((now-d)/86400000);
+    }
     var p=dateStr.split('/'); if(p.length<3) return 0;
     var y=parseInt(p[2]); if(y>2500) y-=543;
     return Math.floor((now-new Date(y,parseInt(p[1])-1,parseInt(p[0])))/86400000);
