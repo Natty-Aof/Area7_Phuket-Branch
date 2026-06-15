@@ -3285,32 +3285,6 @@ submitPickup = function() {
     });
 };
 
-// แก้ submitClearByTech ให้ upload Drive ก่อน
-var _origClearTech = submitClearByTech;
-submitClearByTech = function() {
-  var reqId = document.getElementById('clSel').value;
-  if (!reqId) return toast('กรุณาเลือกใบเบิก', 'error');
-  var items = getClearItems();
-  var note = (document.getElementById('clNote') || {}).value || '';
-  toast('กำลังอัปโหลดรูป...', 'info');
-  uploadPhotoAndGetUrl(retPhotoB64, 'clearance-photos', 'clear_' + reqId + '_' + Date.now() + '.jpg')
-    .then(function(url) {
-      return callAPI('submitClearance', {
-        reqId: reqId, note: note, returnedItems: items, photoUrl: url
-      });
-    }).then(function(res) {
-      toast(res.message, res.success ? 'success' : 'error');
-      if (res.success) {
-        var as = document.getElementById('adminClearSection');
-        if (as && ['STOCK','ADMIN','MANAGER'].indexOf(CU.role) >= 0) {
-          as.classList.remove('hidden');
-        } else {
-          go('list');
-        }
-      }
-    });
-};
-
 // ── REPORT ────────────────────────────────────────────────────
 function loadReportPage(){
   // set default date range = 30 วันล่าสุด
