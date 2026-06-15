@@ -2416,10 +2416,13 @@ function loadCloseDetail(){
     (clearInfo.returnedItems||[]).forEach(function(r){ retMap[r.partNo||r.PartNo] = r.returnedQty||r.ReturnedQty||0; });
     (clearInfo.defectItems||[]).forEach(function(dd){ defMap[dd.partNo||dd.PartNo] = dd.defectQty||dd.DefectQty||0; });
 
+    var isTech = !isStock;  // ช่างเป็นคนกรอก (ไม่ใช่ Stock)
     var readonly = isPendingClearance ? 'readonly style="background:#f5f5f5;' : 'style="';
     var tbody=document.getElementById('clItemsBody');
     if(tbody) tbody.innerHTML=items.map(function(it,i){
       var pn = it.PartNo;
+      // ถ้าช่างส่งแล้ว (PENDING_CLEARANCE) → แสดงค่าที่กรอกไว้
+      // ถ้าช่างยังไม่ส่ง (PICKED_UP) → ช่องว่างให้กรอก (default 0)
       var retVal = isPendingClearance ? (retMap[pn]||0) : 0;
       var defVal = isPendingClearance ? (defMap[pn]||0) : 0;
       var issued = (typeof it.IssuedQty!=='undefined' && it.IssuedQty!=='') ? it.IssuedQty : it.Qty;
@@ -2428,8 +2431,8 @@ function loadCloseDetail(){
         +'<td class="it td">'+(it.NameTH||it.NameEN||'-')+'</td>'
         +'<td class="it td" style="text-align:center">'+it.Qty+' '+(it.Unit||'')+'</td>'
         +'<td class="it td"><input class="fc" type="number" id="cu_'+i+'" value="'+issued+'" min="0" '+readonly+'width:65px;text-align:center"></td>'
-        +'<td class="it td"><input class="fc" type="number" id="cr_'+i+'" value="'+retVal+'" min="0" '+readonly+'width:65px;text-align:center"></td>'
-        +'<td class="it td"><input class="fc" type="number" id="cdf_'+i+'" value="'+defVal+'" min="0" '+readonly+'width:65px;text-align:center;color:var(--red)"></td>'
+        +'<td class="it td"><input class="fc" type="number" id="cr_'+i+'" value="'+retVal+'" min="0" '+(isPendingClearance?'readonly style="background:#f5f5f5;':'style="')+'width:65px;text-align:center"></td>'
+        +'<td class="it td"><input class="fc" type="number" id="cdf_'+i+'" value="'+defVal+'" min="0" '+(isPendingClearance?'readonly style="background:#f5f5f5;':'style="')+'width:65px;text-align:center;color:var(--red)"></td>'
         +'<td class="it td"><input class="fc" id="cn_'+i+'" placeholder="หมายเหตุ" '+(isPendingClearance?'readonly':'')+'></td>'
         +'</tr>';
     }).join('');
@@ -2491,15 +2494,24 @@ function submitClearByTech(){
   var reqId=document.getElementById('clSel').value;
   if(!reqId) return toast('กรุณาเลือกใบเบิก','error');
   if(!retPhotoB64) return toast('กรุณาถ่ายรูปของที่คืน/ของเสียก่อนค่ะ','error');
+
+  // อ่านจาก DOM ตรงๆ (ไม่ผ่าน _clearItems เพื่อป้องกัน race condition)
+  var tbody = document.getElementById('clItemsBody');
+  var rows = tbody ? tbody.querySelectorAll('tr') : [];
   var items = window._clearItems||[];
   var returnedItems=[], defectItems=[];
-  items.forEach(function(it,i){
-    var ret = Number((document.getElementById('cr_'+i)||{}).value)||0;
-    var def = Number((document.getElementById('cdf_'+i)||{}).value)||0;
-    var note= (document.getElementById('cn_'+i)||{}).value||'';
-    if(ret>0) returnedItems.push({partNo:it.PartNo,nameEN:it.NameEN,unit:it.Unit,returnedQty:ret,note:note});
-    if(def>0) defectItems.push({partNo:it.PartNo,nameEN:it.NameEN,unit:it.Unit,defectQty:def,note:note});
+
+  rows.forEach(function(tr, i){
+    var partNo = items[i] ? items[i].PartNo : (tr.cells[0]?tr.cells[0].textContent.trim():'');
+    var nameEN = items[i] ? (items[i].NameEN||items[i].NameTH||'') : '';
+    var unit   = items[i] ? (items[i].Unit||'ชิ้น') : 'ชิ้น';
+    var ret  = Number((document.getElementById('cr_'+i)||{}).value)||0;
+    var def  = Number((document.getElementById('cdf_'+i)||{}).value)||0;
+    var note = (document.getElementById('cn_'+i)||{}).value||'';
+    if(ret>0) returnedItems.push({partNo:partNo, nameEN:nameEN, unit:unit, returnedQty:ret, note:note});
+    if(def>0) defectItems.push({partNo:partNo, nameEN:nameEN, unit:unit, defectQty:def, note:note});
   });
+
   toast('กำลังบันทึก...', 'info');
   callAPI('submitClearance',{
     id:reqId,
