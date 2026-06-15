@@ -2487,15 +2487,13 @@ function submitClearByTech(){
     if(ret>0) returnedItems.push({partNo:it.PartNo,nameEN:it.NameEN,unit:it.Unit,returnedQty:ret,note:note});
     if(def>0) defectItems.push({partNo:it.PartNo,nameEN:it.NameEN,unit:it.Unit,defectQty:def,note:note});
   });
-  toast('กำลังอัปโหลดรูป...', 'info');
-  uploadPhotoAndGetUrl(retPhotoB64, 'clearance-photos', 'clear_'+reqId+'_'+Date.now()+'.jpg').then(function(url){
-    return callAPI('submitClearance',{
-      id:reqId,
-      note:document.getElementById('clNote').value,
-      returnedItems:returnedItems,
-      defectItems:defectItems,
-      photoUrl:url,
-    });
+  toast('กำลังบันทึก...', 'info');
+  callAPI('submitClearance',{
+    id:reqId,
+    note:document.getElementById('clNote').value,
+    returnedItems:returnedItems,
+    defectItems:defectItems,
+    photoUrl:retPhotoB64,
   }).then(function(res){
     toast(res.message,res.success?'success':'error');
     if(res.success){ retPhotoB64=null; setTimeout(function(){go('list');},600); }
@@ -3316,17 +3314,15 @@ function uploadPhotoAndGetUrl(base64Data, folderType, fileName) {
   });
 }
 
-// แก้ submitPickup ให้ upload Drive ก่อน
+// submitPickup: ส่ง base64 ให้ backend อัป Drive เอง
 var _origSubmitPickup = submitPickup;
 submitPickup = function() {
   var reqId = document.getElementById('pickupSel').value;
   if (!reqId) return toast('กรุณาเลือกใบเบิก', 'error');
   if (!pickupPhotoB64) return toast('กรุณาถ่ายรูปอะไหล่ก่อนค่ะ', 'error');
-  toast('กำลังอัปโหลดรูป...', 'info');
-  uploadPhotoAndGetUrl(pickupPhotoB64, 'pickup-photos', 'pickup_' + reqId + '_' + Date.now() + '.jpg')
-    .then(function(url) {
-      return callAPI('confirmPickup', { id: reqId, photoUrl: url });
-    }).then(function(res) {
+  toast('กำลังบันทึก...', 'info');
+  callAPI('confirmPickup', { id: reqId, photoUrl: pickupPhotoB64 })
+    .then(function(res) {
       toast(res.message, res.success ? 'success' : 'error');
       if (res.success){ pickupPhotoB64=null; setTimeout(function(){go('list');refreshBadges(true);},600); }
     });
