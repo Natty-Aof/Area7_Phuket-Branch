@@ -2458,11 +2458,18 @@ function loadCloseDetail(){
         callAPI('getPhotos',{id:reqId}).then(function(pr){
           var photos = pr.data||[];
           if(!photos.length){ photoBox.innerHTML = '<div class="tc tm" style="padding:12px">ไม่มีรูปที่ช่างถ่ายมา</div>'; return; }
-          photoBox.innerHTML = '<div class="ct">📷 รูปที่ช่างถ่ายมา ('+photos.length+' รูป)</div>'
+          photoBox.innerHTML = '<div class="ct">📷 รูปอะไหล่ ('+photos.length+' รูป)</div>'
             + '<div style="font-size:12px;color:var(--g400);padding:0 8px 8px">💡 คลิกที่รูปเพื่อขยาย / บันทึก</div>'
-            + '<div style="display:flex;gap:10px;flex-wrap:wrap;padding:8px">'
+            + '<div style="display:flex;gap:14px;flex-wrap:wrap;padding:8px">'
             + photos.map(function(p,idx){
-                return '<img src="'+p.PhotoUrl+'" onclick="openImgLightbox(\''+encodeURIComponent(p.PhotoUrl)+'\')" style="width:140px;height:140px;object-fit:cover;border-radius:8px;border:1px solid var(--g200);cursor:pointer">';
+                var typeLabel = p.PhotoType==='pickup' ? '📥 ตอนรับอะไหล่'
+                              : p.PhotoType==='clearance' ? '↩️ ตอนคืน/เคลียร์'
+                              : '📷 รูปอะไหล่';
+                var typeColor = p.PhotoType==='pickup' ? 'var(--gm)' : (p.PhotoType==='clearance' ? '#e65100' : 'var(--g400)');
+                return '<div style="text-align:center">'
+                  + '<img src="'+p.PhotoUrl+'" onclick="openImgLightbox(\''+encodeURIComponent(p.PhotoUrl)+'\')" style="width:140px;height:140px;object-fit:cover;border-radius:8px;border:2px solid '+typeColor+';cursor:pointer">'
+                  + '<div style="font-size:12px;font-weight:600;color:'+typeColor+';margin-top:4px">'+typeLabel+'</div>'
+                  + '</div>';
               }).join('')
             + '</div>';
         });
@@ -5434,14 +5441,12 @@ function _renderFullReport(){
   var total     = reqs.length;
   var waitAppr  = reqs.filter(function(r){return r.StatusApproval==='PENDING_SUPERVISOR'||r.StatusApproval==='PENDING_MANAGER';}).length;
   var waitStock = reqs.filter(function(r){return r.StatusApproval==='APPROVED'&&r.StatusStock==='PENDING';}).length;
-  // รายการขาดจ่าย: ดูจาก DispatchedItems ของแต่ละ req (บันทึกตอน stockAcknowledge)
+  // รายการขาดจ่าย: ดูจาก items ของแต่ละ req (กรองตาม ReqID)
   var partIssued = 0;
-  var _items4pi = typeof DEMO_ITEMS!=='undefined' ? DEMO_ITEMS : [];
   reqs.forEach(function(r){
     if(r.StatusStock==='CLEARED') return;
     if(r.StatusApproval!=='APPROVED') return;
-    // นับแบบเดียวกับตารางค้างจ่าย: reqs × items
-    _items4pi.forEach(function(item){
+    items.filter(function(it){ return it.ReqID===r.ReqID; }).forEach(function(item){
       var pending = Math.max(0, (item.Qty||0) - (typeof item.IssuedQty!=='undefined' ? (item.IssuedQty||0) : (item.Qty||0)));
       if(pending > 0) partIssued++;
     });
@@ -5660,7 +5665,8 @@ function _renderFullReport(){
     var pendingRows=[];
     reqs.forEach(function(r){
       if(r.StatusStock==='CLEARED') return; // ปิดแล้ว ข้ามไป
-      items.forEach(function(item){
+      // กรอง items เฉพาะของใบเบิกนี้
+      items.filter(function(it){ return it.ReqID===r.ReqID; }).forEach(function(item){
         var pending=getPending(item); // Requested - Issued
         if(pending<=0) return;
         var issued=getIssued(item);
