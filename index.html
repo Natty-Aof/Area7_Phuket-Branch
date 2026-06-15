@@ -454,6 +454,9 @@ textarea.fc{min-height:70px;resize:vertical;}
           </div>
           </div>
 
+          <!-- รูปที่ช่างถ่ายมา (Stock เห็น) -->
+          <div class="card hidden" id="clPhotoBox"></div>
+
           <!-- Stock ตรวจสอบ + ใส่เลข SAP -->
           <div id="adminClearSection" class="hidden">
             <div class="card" style="border-color:var(--gm)">
@@ -2426,6 +2429,27 @@ function loadCloseDetail(){
     if(rl) rl.value='';
     if(cn) cn.value = isPendingClearance ? (clearInfo.techNote||'') : '';
     if(cd) cd.classList.remove('hidden');
+
+    // แสดงรูปที่ช่างถ่าย (เฉพาะตอน Stock ตรวจสอบ)
+    var photoBox = document.getElementById('clPhotoBox');
+    if(photoBox){
+      if(isPendingClearance){
+        photoBox.innerHTML = '<div class="tc tm" style="padding:12px">⏳ กำลังโหลดรูป...</div>';
+        photoBox.classList.remove('hidden');
+        callAPI('getPhotos',{id:reqId}).then(function(pr){
+          var photos = pr.data||[];
+          if(!photos.length){ photoBox.innerHTML = '<div class="tc tm" style="padding:12px">ไม่มีรูปที่ช่างถ่ายมา</div>'; return; }
+          photoBox.innerHTML = '<div class="ct">📷 รูปที่ช่างถ่ายมา ('+photos.length+' รูป)</div>'
+            + '<div style="display:flex;gap:10px;flex-wrap:wrap;padding:8px">'
+            + photos.map(function(p){
+                return '<a href="'+p.PhotoUrl+'" target="_blank"><img src="'+p.PhotoUrl+'" style="width:140px;height:140px;object-fit:cover;border-radius:8px;border:1px solid var(--g200)"></a>';
+              }).join('')
+            + '</div>';
+        });
+      } else {
+        photoBox.classList.add('hidden');
+      }
+    }
   });
 }
 
