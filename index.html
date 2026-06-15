@@ -2372,6 +2372,24 @@ function confirmStockAck(){
 }
 
 // ── CLOSE ─────────────────────────────────────────────────────
+// ── IMAGE LIGHTBOX: กดรูปขยาย + ดาวน์โหลด ──
+function openImgLightbox(encodedUrl){
+  var url = decodeURIComponent(encodedUrl);
+  var existing = document.getElementById('imgLightbox');
+  if(existing) existing.remove();
+  var lb = document.createElement('div');
+  lb.id = 'imgLightbox';
+  lb.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px';
+  lb.innerHTML =
+    '<div style="position:absolute;top:16px;right:20px;display:flex;gap:12px">'
+    + '<a href="'+url+'" download="photo_'+Date.now()+'.jpg" style="background:#fff;color:#1a4a2e;padding:8px 16px;border-radius:8px;text-decoration:none;font-weight:600">⬇ บันทึกรูป</a>'
+    + '<button onclick="document.getElementById(\'imgLightbox\').remove()" style="background:#fff;border:none;padding:8px 16px;border-radius:8px;font-weight:600;cursor:pointer">✕ ปิด</button>'
+    + '</div>'
+    + '<img src="'+url+'" style="max-width:92%;max-height:88%;object-fit:contain;border-radius:8px">';
+  lb.onclick = function(e){ if(e.target===lb) lb.remove(); };
+  document.body.appendChild(lb);
+}
+
 function loadCloseDetail(){
   var reqId=document.getElementById('clSel').value;
   var cd=document.getElementById('clDetail');
@@ -2404,11 +2422,12 @@ function loadCloseDetail(){
       var pn = it.PartNo;
       var retVal = isPendingClearance ? (retMap[pn]||0) : 0;
       var defVal = isPendingClearance ? (defMap[pn]||0) : 0;
+      var issued = (typeof it.IssuedQty!=='undefined' && it.IssuedQty!=='') ? it.IssuedQty : it.Qty;
       return '<tr>'
         +'<td class="it td">'+(pn||'-')+'</td>'
         +'<td class="it td">'+(it.NameTH||it.NameEN||'-')+'</td>'
         +'<td class="it td" style="text-align:center">'+it.Qty+' '+(it.Unit||'')+'</td>'
-        +'<td class="it td"><input class="fc" type="number" id="cu_'+i+'" value="'+it.Qty+'" min="0" '+readonly+'width:65px;text-align:center"></td>'
+        +'<td class="it td"><input class="fc" type="number" id="cu_'+i+'" value="'+issued+'" min="0" '+readonly+'width:65px;text-align:center"></td>'
         +'<td class="it td"><input class="fc" type="number" id="cr_'+i+'" value="'+retVal+'" min="0" '+readonly+'width:65px;text-align:center"></td>'
         +'<td class="it td"><input class="fc" type="number" id="cdf_'+i+'" value="'+defVal+'" min="0" '+readonly+'width:65px;text-align:center;color:var(--red)"></td>'
         +'<td class="it td"><input class="fc" id="cn_'+i+'" placeholder="หมายเหตุ" '+(isPendingClearance?'readonly':'')+'></td>'
@@ -2440,9 +2459,10 @@ function loadCloseDetail(){
           var photos = pr.data||[];
           if(!photos.length){ photoBox.innerHTML = '<div class="tc tm" style="padding:12px">ไม่มีรูปที่ช่างถ่ายมา</div>'; return; }
           photoBox.innerHTML = '<div class="ct">📷 รูปที่ช่างถ่ายมา ('+photos.length+' รูป)</div>'
+            + '<div style="font-size:12px;color:var(--g400);padding:0 8px 8px">💡 คลิกที่รูปเพื่อขยาย / บันทึก</div>'
             + '<div style="display:flex;gap:10px;flex-wrap:wrap;padding:8px">'
-            + photos.map(function(p){
-                return '<a href="'+p.PhotoUrl+'" target="_blank"><img src="'+p.PhotoUrl+'" style="width:140px;height:140px;object-fit:cover;border-radius:8px;border:1px solid var(--g200)"></a>';
+            + photos.map(function(p,idx){
+                return '<img src="'+p.PhotoUrl+'" onclick="openImgLightbox(\''+encodeURIComponent(p.PhotoUrl)+'\')" style="width:140px;height:140px;object-fit:cover;border-radius:8px;border:1px solid var(--g200);cursor:pointer">';
               }).join('')
             + '</div>';
         });
@@ -2467,12 +2487,15 @@ function submitClearByTech(){
     if(ret>0) returnedItems.push({partNo:it.PartNo,nameEN:it.NameEN,unit:it.Unit,returnedQty:ret,note:note});
     if(def>0) defectItems.push({partNo:it.PartNo,nameEN:it.NameEN,unit:it.Unit,defectQty:def,note:note});
   });
-  callAPI('submitClearance',{
-    id:reqId,
-    note:document.getElementById('clNote').value,
-    returnedItems:returnedItems,
-    defectItems:defectItems,
-    photoUrl:retPhotoB64,
+  toast('กำลังอัปโหลดรูป...', 'info');
+  uploadPhotoAndGetUrl(retPhotoB64, 'clearance-photos', 'clear_'+reqId+'_'+Date.now()+'.jpg').then(function(url){
+    return callAPI('submitClearance',{
+      id:reqId,
+      note:document.getElementById('clNote').value,
+      returnedItems:returnedItems,
+      defectItems:defectItems,
+      photoUrl:url,
+    });
   }).then(function(res){
     toast(res.message,res.success?'success':'error');
     if(res.success){ retPhotoB64=null; setTimeout(function(){go('list');},600); }
@@ -3305,7 +3328,7 @@ submitPickup = function() {
       return callAPI('confirmPickup', { id: reqId, photoUrl: url });
     }).then(function(res) {
       toast(res.message, res.success ? 'success' : 'error');
-      if (res.success) go('list');
+      if (res.success){ pickupPhotoB64=null; setTimeout(function(){go('list');refreshBadges(true);},600); }
     });
 };
 
@@ -3522,6 +3545,13 @@ function switchSCTab(tab){
   loadStockCard();
 }
 
+// ดึงเลข SAP จาก Note (รูปแบบ "... | SAP: XXX")
+function extractSAP(note){
+  if(!note) return '';
+  var m = note.match(/SAP:\s*([^\s|]+)/);
+  return m ? m[1] : '';
+}
+
 function loadStockCard(){
   var el = document.getElementById('scContent');
   if(!el) return;
@@ -3534,26 +3564,31 @@ function loadStockCard(){
     var typeLabel = {
       IN:'📥 รับเข้า', OUT_SALE:'🛒 ขาย', OUT_RENTAL:'🚗 รถเช่า',
       OUT_CONTRACT:'🚌 รถสัมปทาน', OUT_WARRANTY:'🔧 Warranty',
-      OUT_BRANCH:'🏢 ส่งสาขา', ADJUST:'⚖️ ปรับยอด'
+      OUT_BRANCH:'🏢 ส่งสาขา', ADJUST:'⚖️ ปรับยอด',
+      OUT_REQ:'📤 จ่ายตามใบเบิก', RETURN_GOOD:'↩️ คืนของดี', DEFECT_RETURN:'⚠️ ของเสีย(SCR)'
     };
     var delCol = (CU&&CU.role==='MANAGER') ? '<th style="width:40px"></th>' : '<th style="width:0"></th>';
     var html = '<div class="card" style="padding:0;overflow:hidden"><div class="tw"><table class="it"><thead><tr>'
       +'<th>วันที่</th><th>ประเภท</th><th>Part No.</th><th>ชื่ออะไหล่</th>'
-      +'<th style="text-align:center">จำนวน</th><th>Serial No.</th><th>อ้างอิง</th><th>หมายเหตุ</th>'+delCol
+      +'<th style="text-align:center">จำนวน</th><th>อ้างอิง(ใบเบิก)</th><th>SAP</th><th>หมายเหตุ</th>'+delCol
       +'</tr></thead><tbody>';
     entries.forEach(function(e){
-      var typeClass = e.Type==='IN'||e.Type==='ADJUST' ? 'chip-grn' : 'chip-red';
-      var qtySign = e.Type==='IN'||e.Type==='ADJUST' ? '+' : '-';
+      var qIn=parseFloat(e.QtyIn)||0, qOut=parseFloat(e.QtyOut)||0, qDef=parseFloat(e.QtyDefect)||0;
+      var isIn = qIn>0;
+      var typeClass = isIn ? 'chip-grn' : (qDef>0 ? 'chip-gld' : 'chip-red');
+      var qty = qIn>0 ? qIn : (qOut>0 ? qOut : qDef);
+      var qtySign = isIn ? '+' : '-';
+      var qtyColor = isIn ? 'var(--gm)' : 'var(--red)';
       html += '<tr>'
         +'<td style="font-size:12px;white-space:nowrap">'+new Date(e.CreatedAt).toLocaleDateString('th-TH')+'</td>'
         +'<td><span class="chip '+typeClass+'" style="font-size:11px">'+(typeLabel[e.Type]||e.Type)+'</span></td>'
         +'<td style="font-size:12px;font-weight:700">'+e.PartNo+'</td>'
         +'<td style="font-size:12px">'+(e.NameEN||'-')+'</td>'
-        +'<td style="text-align:center;font-weight:700;color:'+(e.Type==='IN'?'var(--gm)':'var(--red)')+'">'+qtySign+(e.Qty||0)+' '+(e.Unit||'ชิ้น')+'</td>'
-        +'<td style="font-size:12px">'+(e.SerialNo||'-')+'</td>'
-        +'<td style="font-size:12px">'+(e.RefNo||'-')+'</td>'
+        +'<td style="text-align:center;font-weight:700;color:'+qtyColor+'">'+qtySign+qty+' '+(e.Unit||'ชิ้น')+'</td>'
+        +'<td style="font-size:12px">'+(e.DocNo||'-')+'</td>'
+        +'<td style="font-size:12px">'+(e.IMNumber||extractSAP(e.Note)||'-')+'</td>'
         +'<td style="font-size:12px">'+(e.Note||'-')+'</td>'
-        +(CU&&CU.role==='MANAGER'?'<td><button class="btn bd bsm" style="padding:2px 6px" class="btn bd bsm del-sc-btn" data-id="'+e.EntryID+'">🗑️</button></td>':'<td></td>')
+        +(CU&&CU.role==='MANAGER'?'<td><button class="btn bd bsm del-sc-btn" style="padding:2px 6px" data-id="'+e.EntryID+'">🗑️</button></td>':'<td></td>')
         +'</tr>';
     });
     html += '</tbody></table></div></div>';
@@ -5048,121 +5083,68 @@ function switchSCPartTab(tab){
 function renderSCForPart(){
   var el = document.getElementById('scContent');
   if(!el || !_scCurrentPart) return;
-  el.innerHTML = '<div class="card tc" style="padding:20px">⏳ กำลังโหลด...</div>';
+  el.innerHTML = '<div class="card tc" style="padding:20px">⏳ กำลังโหลดความเคลื่อนไหวล่าสุด...</div>';
 
-  // ดึง entries ทั้งหมดจาก demo + PARTS_DB
   var p = _scCurrentPart;
-  var allEntries = [];
+  // ดึงการเคลื่อนไหวจริงจาก backend (StockCard sheet) — รวม SCR ของ part นี้ด้วย
+  Promise.all([
+    callAPI('getStockCardEntries',{partNo:p.partNo}),
+    callAPI('getStockCardEntries',{partNo:'SCR'+p.partNo}),
+  ]).then(function(results){
+    var realEntries = (results[0].data||[]).concat(results[1].data||[]);
+    _buildSCTable(p, realEntries, el);
+  }).catch(function(){
+    _buildSCTable(p, [], el);
+  });
+}
 
-  // ยอดยกมา (จาก PARTS_DB)
+function _buildSCTable(p, realEntries, el){
+  var allEntries = [];
+  var baseStock = (p._baseStock!==undefined ? p._baseStock : p.inStock) || 0;
+
+  // ยอดยกมา ( INIT)
   allEntries.push({
-    EntryID: 'INIT-'+p.partNo,
-    Date: '06/06/2569',
-    Type: 'INIT',
-    DocNo: 'STOCK-INIT-06-06-69',
-    Requester: 'ระบบ (ยอดยกมา)',
-    JobNo: '—',
+    EntryID: 'INIT-'+p.partNo, Date: '06/06/2569', Type: 'INIT',
+    DocNo: 'STOCK-INIT-06-06-69', Requester: 'ระบบ (ยอดยกมา)', JobNo: '—',
     Customer: 'Parts Requisition System - Phuket Branch',
     Purpose: 'ยอดยกมาจากการนับ Stock จริง ณ วันที่ 6/6/69',
-    QtyIn: p.inStock||0,
-    QtyOut: 0,
-    Balance: p.inStock||0,
-    Unit: p.unit||'ชิ้น',
-    Note: 'ยอดเริ่มต้นระบบ'
+    QtyIn: baseStock, QtyOut: 0, QtyDefect: 0, Balance: baseStock,
+    Unit: p.unit||'ชิ้น', Note: 'ยอดเริ่มต้นระบบ',
+    _sortKey: '0000-00-00',
   });
 
-  // เพิ่ม demo entries ที่บันทึกมา (จาก _scDemoEntries)
-  // _scDemoEntries: entries จาก mock stockAcknowledge / submitClearance / submitSCForm
-  // fields: {Date, Type, DocNo, PartNo, NameEN, Qty, Unit, Requester, JobNo, Customer, Purpose, Note}
-  var demoNew = (window._scDemoEntries||[])
-    .filter(function(e){ return e.PartNo===p.partNo; })
-    .sort(function(a,b){ return (a.Date||'').localeCompare(b.Date||''); });
+  // เรียงตามเวลา (เก่า→ใหม่) เพื่อคำนวณ running balance
+  realEntries.sort(function(a,b){ return (a.CreatedAt||'') > (b.CreatedAt||'') ? 1 : -1; });
 
-  var runBalance = p.inStock||0;
-  // คำนวณ balance ถอยหลังจากยอดปัจจุบัน
-  // ก่อนอื่น: หาว่าตอนนี้ออกไปเท่าไหร่
-  demoNew.forEach(function(e){
-    var isIn = e.Type==='IN'||e.Type==='ADJUST'||e.Type==='RETURN';
-    if(!isIn) runBalance += (e.Qty||0); // รวม OUT ที่ออกไปแล้ว = stock ก่อนออก
-  });
-  // แล้ว render ไล่จาก INIT
-  demoNew.forEach(function(e){
-    var isIn    = e.Type==='IN'||e.Type==='RETURN_GOOD'||e.Type==='RETURN';
-    var isOut   = e.Type.startsWith('OUT_');
-    var isDefect= e.Type==='DEFECT'||e.Type==='DEFECT_RETURN';
-    var isAdj   = e.Type==='ADJUST';
-    if(isAdj){
-      // ADJUST: set balance เป็นค่าที่นับจริง
-      if(e.NewBalance !== undefined) runBalance = e.NewBalance;
-      else { runBalance += (e.Qty||0) > 0 ? (e.Qty||0) : -(e.Qty||0); }
-    } else if(isIn)    { runBalance += (e.Qty||0); }
-    else if(isOut)     { runBalance -= (e.Qty||0); }
-    // isDefect → ไม่เปลี่ยน balance
-    // ใช้ทั้ง DocNo และ RefNo (รองรับ 2 field format)
-    var docNo    = e.DocNo || e.RefNo || '—';
-    var dateStr  = e.Date || (e.CreatedAt ? new Date(e.CreatedAt).toLocaleDateString('th-TH') : '—');
-    var requester= e.Requester || (CU ? CU.name||CU.email : '—');
-    var typeMap2 = {
-      'OUT_REQ':'OUT_REQ','OUT_RENTAL':'OUT_RENTAL','OUT_CONTRACT':'OUT_CONTRACT',
-      'OUT_ACCIDENT':'OUT_ACCIDENT','OUT_WARRANTY':'OUT_WARRANTY',
-      'OUT_SALE':'OUT_SALE','OUT_BRANCH':'OUT_BRANCH','OUT_HQ':'OUT_HQ','OUT_OTHER':'OUT_OTHER',
-      'IN':'IN','ADJUST':'ADJUST','RETURN':'RETURN'
-    };
-    var eIsIn    = isIn;
-    var eIsDefect= isDefect;
+  var runBalance = baseStock;
+  realEntries.forEach(function(e){
+    var qIn  = parseFloat(e.QtyIn)||0;
+    var qOut = parseFloat(e.QtyOut)||0;
+    var qDef = parseFloat(e.QtyDefect)||0;
+    var isDefect = (e.Type==='DEFECT_RETURN') || qDef>0;
+    var isSCR = (e.PartNo||'').indexOf('SCR')===0;
+    // ของเสีย SCR → ไม่กระทบ balance ของ part หลัก
+    if(!isSCR){ runBalance += qIn - qOut; }
     allEntries.push({
-      EntryID:  e.EntryID || ('DEMO-'+Date.now()+Math.random()),
-      Date:     dateStr,
-      Type:     typeMap2[e.Type] || e.Type,
-      DocNo:    docNo,
-      Requester:requester,
-      JobNo:    e.JobNo||'—',
-      Customer: e.Customer||'—',
-      Purpose:  e.Purpose||e.Note||'—',
-      QtyIn:    eIsDefect ? 0 : (eIsIn ? (e.Qty||0) : 0),
-      QtyOut:   eIsDefect ? 0 : (eIsIn ? 0 : (e.Qty||0)),
-      QtyDefect:eIsDefect ? (e.Qty||0) : 0,
-      Balance:  Math.max(0, runBalance),
-      Unit:     e.Unit||p.unit||'ชิ้น',
-      Note:     e.Note||(eIsDefect?'⚠️ ไม่กระทบยอด Stock':'')
+      EntryID: e.EntryID, Date: e.Date||(e.CreatedAt?new Date(e.CreatedAt).toLocaleDateString('th-TH'):'—'),
+      Type: e.Type, DocNo: e.DocNo||'—', Requester: e.Requester||e.CreatedBy||'—',
+      JobNo: e.JobNo||'—', Customer: e.Customer||'—', Purpose: e.Purpose||e.Note||'—',
+      QtyIn: qIn, QtyOut: qOut, QtyDefect: qDef,
+      Balance: isSCR ? qDef : Math.max(0, runBalance),
+      Unit: e.Unit||p.unit||'ชิ้น', Note: e.Note||'',
     });
   });
-
-  // เพิ่ม demo requisition entries (การเบิกจาก DEMO_REQS ที่ตรง PartNo)
-  if(typeof DEMO_REQS!=='undefined' && typeof DEMO_ITEMS!=='undefined'){
-    DEMO_REQS.forEach(function(req){
-      DEMO_ITEMS.forEach(function(item){
-        if(item.PartNo !== p.partNo) return;
-        if(req.StatusApproval !== 'APPROVED' && req.StatusStock !== 'CLEARED') return;
-        allEntries.push({
-          EntryID: 'REQ-'+req.ReqID+'-'+item.PartNo,
-          Date: req.OpenDate||'—',
-          Type: 'OUT_REQ',
-          DocNo: req.ReqID,
-          Requester: req.RequesterName||'—',
-          JobNo: req.JobNo||'—',
-          Customer: req.CustomerName||'—',
-          Purpose: req.Purpose||'ซ่อมรถลูกค้า',
-          QtyIn: 0,
-          QtyOut: item.Qty||0,
-          Balance: Math.max(0, (p.inStock||0) - (item.Qty||0)),
-          Unit: item.Unit||p.unit||'ชิ้น',
-          Note: item.Note||''
-        });
-      });
-    });
-  }
 
   // filter ตาม tab
   var filtered = allEntries;
   if(_scPartTab === 'in'){
-    filtered = allEntries.filter(function(e){ return e.Type==='IN'||e.Type==='ADJUST'||e.Type==='INIT'; });
+    filtered = allEntries.filter(function(e){ return (e.QtyIn>0) || e.Type==='INIT'; });
   } else if(_scPartTab === 'out'){
-    filtered = allEntries.filter(function(e){ return e.Type!=='IN'&&e.Type!=='ADJUST'&&e.Type!=='INIT'; });
+    filtered = allEntries.filter(function(e){ return e.QtyOut>0 || e.QtyDefect>0; });
   }
 
   if(!filtered.length){
-    el.innerHTML = '<div class="card tc tm" style="padding:32px">ไม่มีรายการในช่วงนี้ค่ะ</div>';
+    el.innerHTML = '<div class="card tc tm" style="padding:32px">ยังไม่มีความเคลื่อนไหวค่ะ</div>';
     return;
   }
 
