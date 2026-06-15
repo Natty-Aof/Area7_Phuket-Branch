@@ -5001,8 +5001,45 @@ function onSCSearch(){
     .slice(0, 20);
 
   if(!res.length){
-    dd.innerHTML = '<div style="padding:14px 16px;text-align:center;color:var(--g400);font-size:13px">ไม่พบอะไหล่ที่ค้นหาค่ะ 🔍</div>';
+    // ถ้าค้นไม่เจอใน PARTS_DB และน่าจะเป็น SCR / Part จาก StockCard Sheet
+    // ให้ค้นใน StockCard Sheet แทน
+    dd.innerHTML = '<div style="padding:14px 16px;text-align:center;color:var(--g400);font-size:13px">⏳ กำลังค้นหาใน Stock Card...</div>';
     dd.style.display = 'block';
+    callAPI('getStockCardEntries',{partNo: document.getElementById('scSearch').value.trim()}).then(function(r){
+      var entries = r.data||[];
+      if(!entries.length){
+        dd.innerHTML = '<div style="padding:14px 16px;text-align:center;color:var(--g400);font-size:13px">ไม่พบอะไหล่ที่ค้นหาค่ะ 🔍</div>';
+        return;
+      }
+      // สร้าง virtual part object จาก StockCard entries
+      var pn = entries[0].PartNo;
+      var nameEN = entries[0].NameEN||'';
+      var totalIn = entries.reduce(function(s,e){ return s+(parseFloat(e.QtyIn)||0); }, 0);
+      var totalOut = entries.reduce(function(s,e){ return s+(parseFloat(e.QtyOut)||0); }, 0);
+      var virtualPart = {
+        partNo: pn, nameEN: nameEN, nameTH: '', group: 'SCR / ของเสีย',
+        inStock: Math.max(0, totalIn - totalOut), unit: entries[0].Unit||'ชิ้น',
+        location: 'คลัง SCR', _baseStock: 0, _fromSheet: true,
+      };
+      dd.innerHTML = '<div class="sc-search-item" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;gap:10px">'
+        +'<div style="flex:1"><div style="font-weight:700;font-size:13px;color:#b71c1c">⚠️ '+pn+'</div>'
+        +'<div style="font-size:12px;color:#222;margin-top:1px">'+(nameEN||'อะไหล่เสีย/SCR')+'</div>'
+        +'<div style="font-size:11px;color:var(--g400)">📁 คลัง SCR | เข้ามาทั้งหมด '+totalIn+' ชิ้น</div></div>'
+        +'<div style="text-align:right;flex-shrink:0"><div style="font-size:22px;font-weight:700;color:#b71c1c">'+totalIn+'</div>'
+        +'<div style="font-size:10px;color:#b71c1c;background:#ffebee;border-radius:4px;padding:2px 6px">⚠️ ของเสีย</div></div></div>';
+      dd.querySelector('.sc-search-item').addEventListener('click', function(){
+        document.getElementById('scSearch').value = pn + ' — ' + (nameEN||'SCR');
+        dd.style.display = 'none';
+        var badge = document.getElementById('scSelectedBadge');
+        if(badge){
+          badge.style.display = 'flex';
+          document.getElementById('scBadgePartNo').textContent = pn;
+          document.getElementById('scBadgeName').textContent = nameEN||'คลัง SCR';
+        }
+        loadSCForPart(virtualPart);
+      });
+      dd.style.display = 'block';
+    });
     return;
   }
 
