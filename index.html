@@ -2028,7 +2028,22 @@ function go(page){
 // ── DASHBOARD ────────────────────────────────────────────────
 // อัปเดตเฉพาะตัวเลข badge (เบา/เร็ว) — เรียกทุกครั้งที่เปลี่ยนหน้า
 var _badgeLastFetch = 0;
+var _badgeCache = null;
+var _badgeCacheTime = 0;
+var _badgeCacheTTL = 15000; // cache 15 วิ
+var _badgeTimer = null;
+
 function refreshBadges(force){
+  // ถ้าไม่ force และ cache ยังใหม่ ไม่ต้องเรียก API
+  if(!force && _badgeCache && (Date.now()-_badgeCacheTime)<_badgeCacheTTL) return;
+  // debounce — ถ้าเรียกถี่เกินไปรอก่อน
+  if(_badgeTimer) clearTimeout(_badgeTimer);
+  _badgeTimer = setTimeout(function(){
+    _doRefreshBadges();
+  }, force ? 0 : 500);
+}
+
+function _doRefreshBadges(){
   // กัน call ถี่เกินไป — ถ้าเพิ่งดึงไป < 3 วินาที ข้าม (ยกเว้น force)
   var now = Date.now();
   if(!force && (now - _badgeLastFetch) < 3000) return;
@@ -2040,6 +2055,7 @@ function refreshBadges(force){
     var apCount=(s.pendingSupervisor||0)+(s.pendingManager||0);
     if(ab){ ab.textContent=apCount; ab.style.display=apCount>0?'inline':'none'; }
     if(sb){ sb.textContent=s.stockPending||0; sb.style.display=(s.stockPending||0)>0?'inline':'none'; }
+    _badgeCache = s; _badgeCacheTime = Date.now(); // บันทึก cache
   });
   // Badge คำขอแก้ไข (เฉพาะ Manager)
   if(CU&&(CU.role==='MANAGER'||CU.role==='ADMIN')){
@@ -2362,9 +2378,14 @@ function loadStock(){
       return;
     }
 
-    var proms=list.map(function(r){
-      return callAPI('getRequisitionDetail',{id:r.ReqID}).then(function(dr){
-        var items=dr.success?(dr.data.Items||dr.data.items||[]):[];
+    var proms = [callAPI('getBatchDetails', { ids: list.map(function(r){ return r.ReqID; }) })];
+    Promise.all(proms).then(function(results){
+      var batchData = results[0].data || {};
+      var cards = '';
+      list.forEach(function(r){
+        var detail = batchData[r.ReqID];
+        var items = detail ? (detail.Items||detail.items||[]) : [];
+        var itRows='';
         var itRows='';
         items.forEach(function(it){
           var pn = String(it.PartNo||it.partNo||'');
@@ -2408,16 +2429,16 @@ function loadStock(){
             +'<th style="padding:5px 8px;font-size:11px;text-align:left">📍 ตำแหน่งจัดเก็บ</th>'
             +'</tr></thead><tbody>'+itRows+'</tbody></table></div>';
         }
-        var pendingNote=r.StatusApproval==='PENDING_SUPERVISOR'
+        var pendingNote = r.StatusApproval==='PENDING_SUPERVISOR'
           ?'<div style="background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:6px 10px;font-size:12px;color:#795548;margin-bottom:8px">⏳ ยังรอหัวหน้าช่างอนุมัติ — เตรียมของไว้ล่วงหน้าได้เลยค่ะ</div>'
-          :r.StatusApproval==='PENDING_MANAGER'
+          : r.StatusApproval==='PENDING_MANAGER'
           ?'<div style="background:#e3f2fd;border:1px solid #90caf9;border-radius:6px;padding:6px 10px;font-size:12px;color:#1565c0;margin-bottom:8px">⏳ รอผู้จัดการอนุมัติ — เตรียมของไว้ล่วงหน้าได้เลยค่ะ</div>'
-          :'';
-        var canAck=_stockTab==='pending'&&(r.StatusStock==='PENDING'||r.StatusStock==='STOCK_NOTIFIED');
-        var stkBtn=canAck
+          : '';
+        var canAck = _stockTab==='pending'&&(r.StatusStock==='PENDING'||r.StatusStock==='STOCK_NOTIFIED');
+        var stkBtn = canAck
           ?'<button class="btn bgd bsm stk-ack-btn" data-rid="'+encodeURIComponent(r.ReqID)+'">📦 รับจัดของ</button>'
           :'<span class="chip chip-grn">จัดของแล้ว โดย '+(r.StockHandlerEmail||'')+'</span>';
-        return '<div class="qc '+(canAck?'urg':'')+'">'
+        cards += '<div class="qc '+(canAck?'urg':'')+'">'
           +'<div class="fb2"><div><strong>'+r.ReqID+'</strong> '+stChip(r.StatusStock)+'</div><span class="tm" style="font-size:13px">'+r.OpenDate+'</span></div>'
           +pendingNote
           +'<div class="dg" style="grid-template-columns:repeat(3,1fr);gap:8px 16px;margin-top:8px">'
@@ -2429,9 +2450,7 @@ function loadStock(){
           +'<button class="btn bo bsm" onclick="openDetail(\''+r.ReqID+'\')">ดูรายละเอียด</button>'
           +stkBtn+'</div></div>';
       });
-    });
-    Promise.all(proms).then(function(cards){
-      if(sl) sl.innerHTML=cards.join('');
+      if(sl) sl.innerHTML = cards;
     });
   });
 }
@@ -3360,7 +3379,12 @@ function saveNewPart(){
 
 
 // ── PARTS SEARCH (fixed) ─────────────────────────────────────
+var _searchTimer = null;
 function searchParts(){
+  if(_searchTimer) clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(_doSearchParts, 150); // debounce 150ms
+}
+function _doSearchParts(){
   var q = (document.getElementById('partSearch').value||'').trim();
   var modelFilter = (document.getElementById('partModelFilter').value||'').toLowerCase();
   var sr = document.getElementById('searchResults');
