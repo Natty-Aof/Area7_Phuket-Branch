@@ -612,7 +612,6 @@ textarea.fc{min-height:70px;resize:vertical;}
         <div style="display:flex;gap:8px;margin-bottom:12px">
           <button id="scTabStock" class="btn bp bsm" onclick="showSCTab('stock')" style="flex:1">📦 Stock Card</button>
           <button id="scTabSCR" class="btn bo bsm" onclick="showSCTab('scr')" style="flex:1">⚠️ คลัง SCR</button>
-          <button class="btn bo bsm" onclick="openQRScanner('stockcard')" style="flex:1;background:#1565c0;color:#fff;border-color:#1565c0">📷 Scan QR</button>
         </div>
 
         <!-- ── แท็บ: Stock Card ────────────────────────────────── -->
@@ -4057,30 +4056,85 @@ function startQRCamera(){
   var status = document.getElementById('qrStatus');
   if(!video) return;
 
-  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-    if(status) status.textContent = '❌ เบราว์เซอร์ไม่รองรับกล้อง กรุณาใช้ Chrome/Safari';
+  var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  if(!isMobile){
+    // Desktop — ซ่อนกล้อง แสดง input field สำหรับเครื่องอ่าน QR USB
+    video.style.display = 'none';
+    if(status){
+      status.innerHTML =
+        '<div style="padding:16px;text-align:center">'
+        +'<div style="font-size:36px;margin-bottom:8px">📱</div>'
+        +'<div style="font-weight:700;margin-bottom:4px">แนะนำให้ใช้มือถือหรือเครื่องอ่าน QR Code</div>'
+        +'<div style="font-size:12px;color:var(--g400);margin-bottom:16px">'
+        +'บนคอมพิวเตอร์ไม่มีกล้องหลัง — ใช้เครื่องอ่าน QR แบบ USB หรือเปิดบนมือถือแทนค่ะ</div>'
+        +'<div style="font-size:13px;font-weight:600;margin-bottom:8px">🔌 เครื่องอ่าน QR Code (USB)</div>'
+        +'<div style="display:flex;gap:8px;max-width:320px;margin:0 auto">'
+        +'<input id="qrDesktopInput" class="fc" placeholder="สแกน QR Code หรือพิมพ์ Part No..." '
+        +'style="flex:1;font-size:15px;letter-spacing:1px" autofocus>'
+        +'<button class="btn bp bsm" onclick="_submitQRDesktop()">ค้นหา</button>'
+        +'</div>'
+        +'<div style="font-size:11px;color:var(--g400);margin-top:8px">'
+        +'เสียบเครื่องอ่าน QR แล้วสแกน — ข้อมูลจะวิ่งเข้าช่องนี้อัตโนมัติค่ะ</div>'
+        +'</div>';
+    }
+    // รับ Enter จากเครื่องอ่าน QR
+    setTimeout(function(){
+      var inp = document.getElementById('qrDesktopInput');
+      if(inp){
+        inp.focus();
+        inp.addEventListener('keydown', function(e){
+          if(e.key==='Enter' && inp.value.trim()){
+            _submitQRDesktop();
+          }
+        });
+      }
+    }, 100);
     return;
   }
 
-  navigator.mediaDevices.getUserMedia({
-    video: { facingMode: 'environment', width:{ideal:1280}, height:{ideal:720} }
-  }).then(function(stream){
-    _qrStream = stream;
-    _qrTrack = stream.getVideoTracks()[0];
-    video.srcObject = stream;
-    video.play();
-    video.onloadedmetadata = function(){
-      if(status) status.textContent = 'กำลังสแกน... เล็งกล้องไปที่ QR Code';
-      scanQRFrame();
-      // แสดงปุ่มไฟฉายถ้ารองรับ
-      var flashBtn = document.getElementById('qrFlashBtn');
-      if(flashBtn && _qrTrack && _qrTrack.getCapabilities && _qrTrack.getCapabilities().torch){
-        flashBtn.style.display = 'inline-block';
-      }
-    };
-  }).catch(function(err){
-    if(status) status.textContent = '❌ ไม่สามารถเปิดกล้องได้: ' + err.message;
+  // Mobile — เปิดกล้องหลัง
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    if(status) status.textContent = '❌ เบราว์เซอร์ไม่รองรับกล้อง กรุณาใช้ Chrome';
+    return;
+  }
+
+  navigator.mediaDevices.enumerateDevices().then(function(devices){
+    var videoDevices = devices.filter(function(d){ return d.kind==='videoinput'; });
+    var backCam = videoDevices.find(function(d){
+      return /back|rear|environment/i.test(d.label);
+    });
+    var constraints = backCam
+      ? { video:{ deviceId:{ exact:backCam.deviceId }, width:{ideal:1280}, height:{ideal:720} } }
+      : { video:{ facingMode:{ ideal:'environment' }, width:{ideal:1280}, height:{ideal:720} } };
+
+    navigator.mediaDevices.getUserMedia(constraints).then(function(stream){
+      _qrStream = stream;
+      _qrTrack = stream.getVideoTracks()[0];
+      video.srcObject = stream;
+      video.play();
+      video.onloadedmetadata = function(){
+        if(status) status.textContent = 'กำลังสแกน... เล็งกล้องไปที่ QR Code';
+        scanQRFrame();
+        var flashBtn = document.getElementById('qrFlashBtn');
+        if(flashBtn && _qrTrack && _qrTrack.getCapabilities && _qrTrack.getCapabilities().torch){
+          flashBtn.style.display = 'inline-block';
+        }
+      };
+    }).catch(function(err){
+      if(status) status.textContent = '❌ ไม่สามารถเปิดกล้องได้: ' + err.message;
+    });
   });
+}
+
+function _submitQRDesktop(){
+  var inp = document.getElementById('qrDesktopInput');
+  if(!inp || !inp.value.trim()) return;
+  var val = inp.value.trim();
+  stopQRCamera();
+  closeQRScanner();
+  // ใช้ onQRDetected เดิม
+  onQRDetected(val);
 }
 
 function stopQRCamera(){
