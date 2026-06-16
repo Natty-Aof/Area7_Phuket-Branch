@@ -2044,9 +2044,9 @@ function refreshBadges(force){
 }
 
 function _doRefreshBadges(){
-  // กัน call ถี่เกินไป — ถ้าเพิ่งดึงไป < 3 วินาที ข้าม (ยกเว้น force)
+  // กัน call ถี่เกินไป — ถ้าเพิ่งดึงไป < 3 วินาที ข้าม
   var now = Date.now();
-  if(!force && (now - _badgeLastFetch) < 3000) return;
+  if((now - _badgeLastFetch) < 3000) return;
   _badgeLastFetch = now;
   callAPI('getDashboard',{}).then(function(res){
     if(!res.success||!res.summary) return;
