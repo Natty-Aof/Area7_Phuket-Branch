@@ -278,6 +278,7 @@ textarea.fc{min-height:70px;resize:vertical;}
       <div class="ni" data-pg="print" onclick="go('print')"><span class="ic">🖨️</span> พิมพ์ใบเบิก</div>
       <div style="height:1px;background:rgba(255,255,255,.15);margin:8px 12px"></div>
       <div class="ni" data-pg="stockcard" onclick="go('stockcard')"><span class="ic">🗂️</span> Stock Card</div>
+      <div class="ni" data-pg="stockcount" onclick="go('stockcount')" id="nStockCount"><span class="ic">🔢</span> นับสต็อก</div>
       <div class="ni" data-pg="sales" onclick="go('sales')"><span class="ic">🛒</span> ขาย/เบิกจ่ายภายใน</div>
       <div class="ni" data-pg="inventory" onclick="go('inventory')"><span class="ic">📦</span> คงเหลือ</div>
       <div style="flex:1"></div>
@@ -610,6 +611,7 @@ textarea.fc{min-height:70px;resize:vertical;}
         <div style="display:flex;gap:8px;margin-bottom:12px">
           <button id="scTabStock" class="btn bp bsm" onclick="showSCTab('stock')" style="flex:1">📦 Stock Card อะไหล่</button>
           <button id="scTabSCR" class="btn bo bsm" onclick="showSCTab('scr')" style="flex:1">⚠️ คลัง SCR (ของเสีย)</button>
+          <button id="scTabCount" class="btn bo bsm" onclick="showSCTab('count')" style="flex:1">📋 นับสต็อก</button>
         </div>
 
         <!-- ── แท็บ: Stock Card ────────────────────────────────── -->
@@ -742,11 +744,133 @@ textarea.fc{min-height:70px;resize:vertical;}
           </div>
         </div><!-- end scTabSCRContent -->
 
+        <!-- ── แท็บ: นับสต็อก ──────────────────────────────── -->
+        <div id="scTabCountContent" class="hidden">
+          <div class="card" style="padding:14px 16px;margin-bottom:12px;background:#e8f5e9;border-color:#74c69d">
+            <div style="font-size:13px;font-weight:700;color:var(--gd)">📋 บันทึกนับสต็อก (Physical Count)</div>
+            <div style="font-size:12px;color:#555;margin-top:4px">ใช้เมื่อนับของจริงในคลัง แล้วต้องการ reset ยอดในระบบให้ตรงกับของจริง</div>
+          </div>
+
+          <!-- วิธีที่ 1: อัปโหลด Excel -->
+          <div class="card" style="margin-bottom:12px">
+            <div class="ct">📤 วิธีที่ 1 — อัปโหลด Excel</div>
+            <div style="font-size:12px;color:var(--g400);margin-bottom:12px">
+              Format: Column A = <strong>Part No.</strong>, Column B = <strong>จำนวนที่นับจริง</strong> (มีหัวตารางแถวแรก)
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <input type="file" id="stockCountFile" accept=".xlsx,.xls,.csv" style="flex:1;min-width:200px" onchange="onStockCountFileChange(event)">
+              <button class="btn bgd bsm" onclick="downloadCountTemplate()">⬇ ดาวน์โหลด Template</button>
+            </div>
+            <div id="stockCountPreview" class="hidden" style="margin-top:12px">
+              <div style="font-size:13px;font-weight:700;margin-bottom:8px">ตรวจสอบข้อมูลก่อนนำเข้า:</div>
+              <div id="stockCountTable" class="tw"></div>
+              <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:12px">
+                <button class="btn bd bsm" onclick="document.getElementById('stockCountPreview').classList.add('hidden')">ยกเลิก</button>
+                <button class="btn bp" onclick="confirmStockCount()">✅ ยืนยันบันทึกนับสต็อก</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- วิธีที่ 2: กรอกทีละตัว -->
+          <div class="card">
+            <div class="ct">✏️ วิธีที่ 2 — กรอกทีละ Part</div>
+            <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+              <input class="fc" id="countSearchInp" placeholder="พิมพ์ Part No. หรือชื่ออะไหล่..." style="flex:1;min-width:200px" oninput="onCountSearch()">
+            </div>
+            <div id="countSearchDrop" style="display:none;border:1px solid var(--g200);border-radius:8px;margin-bottom:12px;max-height:200px;overflow-y:auto"></div>
+            <div id="countSelectedPart" class="hidden">
+              <div style="background:#f5f5f5;border-radius:8px;padding:10px 12px;margin-bottom:10px">
+                <div style="font-size:12px;font-weight:700;color:var(--gd)" id="countPartNo"></div>
+                <div style="font-size:12px;color:#555" id="countPartName"></div>
+                <div style="font-size:12px;color:var(--g400)">ยอดในระบบปัจจุบัน: <strong id="countPartCurrentStock">—</strong></div>
+              </div>
+              <div class="fg">
+                <label class="fl">จำนวนที่นับจริง <span class="rq">*</span></label>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <input class="fc" type="number" id="countQtyInput" min="0" placeholder="กรอกจำนวนที่นับจริง" style="max-width:180px">
+                  <span style="font-size:13px;color:var(--g400)" id="countPartUnit"></span>
+                </div>
+              </div>
+              <div class="fg">
+                <label class="fl">หมายเหตุ</label>
+                <input class="fc" id="countNote" placeholder="เช่น นับสต็อกประจำเดือน มิ.ย. 2569">
+              </div>
+              <button class="btn bp" onclick="saveSingleCount()">✅ บันทึกยอดนับ</button>
+            </div>
+          </div>
+
+          <!-- ประวัติการนับสต็อก -->
+          <div class="card" style="margin-top:12px">
+            <div class="ct">🗓 ประวัติการนับสต็อก</div>
+            <div id="countHistoryBox">
+              <div class="tc tm" style="padding:20px;color:var(--g400)">กำลังโหลด...</div>
+            </div>
+          </div>
+        </div><!-- end scTabCountContent -->
+
       </div>
 
       <!-- ═══════════════════════════════════════════════════ -->
       <!-- SALES ORDER PAGE                                    -->
       <!-- ═══════════════════════════════════════════════════ -->
+      <!-- ═══════════════════════════════════════════════════ -->
+      <!-- STOCK COUNT PAGE (นับสต็อก)                        -->
+      <!-- ═══════════════════════════════════════════════════ -->
+      <div id="pg-stockcount" class="hidden">
+        <div class="card" style="padding:14px 16px;margin-bottom:12px;background:#e8f5e9;border-color:#74c69d">
+          <div style="font-size:14px;font-weight:700;color:var(--gd)">🔢 นับสต็อก (Physical Count)</div>
+          <div style="font-size:12px;color:#555;margin-top:4px">บันทึกยอดนับจริง → ระบบจะบันทึกส่วนต่างลง Stock Card อัตโนมัติ</div>
+        </div>
+
+        <!-- แท็บ -->
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <button id="scntTabExcel" class="btn bp bsm" onclick="showSCNTTab('excel')" style="flex:1">📂 อัปโหลด Excel</button>
+          <button id="scntTabManual" class="btn bo bsm" onclick="showSCNTTab('manual')" style="flex:1">✏️ กรอกรายตัว</button>
+        </div>
+
+        <!-- แท็บ Excel -->
+        <div id="scntExcelContent">
+          <div class="card">
+            <div class="ct">📂 อัปโหลดไฟล์ Excel</div>
+            <div style="font-size:12px;color:var(--g400);margin-bottom:12px">
+              ไฟล์ Excel ต้องมี 2 column: <strong>PartNo</strong> และ <strong>CountedQty</strong> (จำนวนที่นับจริง)<br>
+              <span style="color:var(--gm)">💡 ดาวน์โหลด template ด้านล่าง</span>
+            </div>
+            <div style="display:flex;gap:8px;margin-bottom:12px">
+              <button class="btn bo bsm" onclick="downloadSCNTTemplate()">⬇️ ดาวน์โหลด Template</button>
+            </div>
+            <input type="file" id="scntFileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="onSCNTFileUpload(event)">
+            <div onclick="document.getElementById('scntFileInput').click()"
+              style="border:2px dashed var(--g200);border-radius:10px;padding:32px;text-align:center;cursor:pointer;background:#fafafa">
+              <div style="font-size:32px">📂</div>
+              <div style="font-size:14px;font-weight:600;margin-top:8px">คลิกเพื่อเลือกไฟล์ Excel</div>
+              <div style="font-size:12px;color:var(--g400);margin-top:4px">.xlsx, .xls, .csv</div>
+            </div>
+            <div id="scntPreviewBox" class="hidden" style="margin-top:12px"></div>
+          </div>
+        </div>
+
+        <!-- แท็บกรอกรายตัว -->
+        <div id="scntManualContent" class="hidden">
+          <div class="card">
+            <div class="ct">✏️ กรอกยอดนับรายตัว</div>
+            <div style="display:flex;gap:8px;margin-bottom:12px">
+              <div style="flex:1;position:relative">
+                <input class="fc" id="scntSearch" placeholder="พิมพ์ Part No. หรือชื่ออะไหล่..." oninput="onSCNTSearch()" autocomplete="off">
+                <div id="scntSearchDrop" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid var(--g200);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.12);z-index:400;max-height:280px;overflow-y:auto"></div>
+              </div>
+            </div>
+            <div id="scntManualList">
+              <div class="tc tm" style="padding:32px;color:var(--g400)">ค้นหาอะไหล่และเพิ่มลงรายการนับค่ะ</div>
+            </div>
+            <div id="scntManualItems" style="margin-top:8px"></div>
+            <div id="scntManualConfirmBox" class="hidden" style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+              <button class="btn bp" onclick="submitSCNTManual()">✅ ยืนยันบันทึกการนับ</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div id="pg-sales" class="hidden">
         <div class="card" style="padding:12px 16px;margin-bottom:0;border-radius:var(--r) var(--r) 0 0">
           <div style="display:flex;gap:8px;align-items:center">
@@ -1785,7 +1909,7 @@ function roleLabel(r){
 }
 
 // ── NAVIGATE ─────────────────────────────────────────────────
-var pgTitles={dashboard:'Dashboard',create:'เปิดใบเบิกอะไหล่',list:'รายการใบเบิกอะไหล่',approval:'รายการรออนุมัติ',stock:'จัดอะไหล่ / รับคืน',pickup:'รับอะไหล่',close:'เคลียร์ใบเบิก',print:'พิมพ์ใบเบิก',profile:'ลายเซ็นของฉัน',jobs:'จัดการ Job No.',stockcard:'Stock Card',sales:'เปิดรายการขาย',inventory:'ยอดคงเหลือ'};
+var pgTitles={dashboard:'Dashboard',create:'เปิดใบเบิกอะไหล่',list:'รายการใบเบิกอะไหล่',approval:'รายการรออนุมัติ',stock:'จัดอะไหล่ / รับคืน',pickup:'รับอะไหล่',close:'เคลียร์ใบเบิก',print:'พิมพ์ใบเบิก',profile:'ลายเซ็นของฉัน',jobs:'จัดการ Job No.',stockcard:'Stock Card',stockcount:'นับสต็อก',sales:'เปิดรายการขาย',inventory:'ยอดคงเหลือ'};
 
 function go(page){
   curPage = page;
@@ -5011,6 +5135,144 @@ var _scPartTab = 'all';      // all / in / out
 var _scAllEntries = [];      // entries ทั้งหมดของ part นั้น
 
 // ── ค้นหา Part ──────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════
+// STOCK COUNT — นับสต็อก
+// ════════════════════════════════════════════════════════════
+var _scntItems = [];
+
+function showSCNTTab(tab){
+  var isExcel = tab==='excel';
+  document.getElementById('scntExcelContent').classList.toggle('hidden',!isExcel);
+  document.getElementById('scntManualContent').classList.toggle('hidden',isExcel);
+  document.getElementById('scntTabExcel').className  = isExcel?'btn bp bsm':'btn bo bsm';
+  document.getElementById('scntTabManual').className = isExcel?'btn bo bsm':'btn bp bsm';
+}
+
+function downloadSCNTTemplate(){
+  var csv = 'PartNo,CountedQty\n01PGC0000000007048,10\n02BLILIRP51V100N22,6\n';
+  var blob = new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  var a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='stock_count_template.csv'; a.click();
+}
+
+function onSCNTFileUpload(e){
+  var file=e.target.files[0]; if(!file) return;
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    var text=ev.target.result;
+    var lines=text.replace(/\r/g,'').split('\n').filter(function(l){return l.trim();});
+    var rows=[];
+    for(var i=1;i<lines.length;i++){
+      var cols=lines[i].split(','); if(!cols[0]) continue;
+      var pn=cols[0].trim(), qty=parseFloat(cols[1])||0;
+      var part=(typeof PARTS_DB!=='undefined'?PARTS_DB:[]).find(function(p){return p.partNo===pn;});
+      var sysQty=part?(part._netStock!==undefined?part._netStock:part.inStock||0):'?';
+      var diff=sysQty!=='?'?(qty-sysQty):'?';
+      rows.push({partNo:pn,nameEN:part?(part.nameEN||part.nameTH||'—'):'(ไม่พบในระบบ)',sysQty:sysQty,countedQty:qty,diff:diff});
+    }
+    var box=document.getElementById('scntPreviewBox'); box.classList.remove('hidden');
+    var html='<div style="font-size:13px;font-weight:700;margin-bottom:8px">📋 ตรวจสอบก่อนบันทึก ('+rows.length+' รายการ)</div>'
+      +'<div class="tw"><table class="it"><thead><tr><th>Part No.</th><th>ชื่อ</th><th style="text-align:center">ยอดระบบ</th><th style="text-align:center">นับจริง</th><th style="text-align:center">ส่วนต่าง</th></tr></thead><tbody>'
+      +rows.map(function(r){
+        var dc=r.diff==='?'?'#999':r.diff>0?'var(--gm)':r.diff<0?'var(--red)':'#999';
+        var dt=r.diff==='?'?'?':(r.diff>0?'+':'')+r.diff;
+        return '<tr><td style="font-size:12px;font-weight:600">'+r.partNo+'</td><td style="font-size:12px">'+r.nameEN+'</td>'
+          +'<td style="text-align:center">'+r.sysQty+'</td><td style="text-align:center;font-weight:700">'+r.countedQty+'</td>'
+          +'<td style="text-align:center;font-weight:700;color:'+dc+'">'+dt+'</td></tr>';
+      }).join('')+'</tbody></table></div>'
+      +'<div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">'
+      +'<button class="btn bd bsm" onclick="document.getElementById(\'scntPreviewBox\').classList.add(\'hidden\')">ยกเลิก</button>'
+      +'<button class="btn bp" id="scntConfirmBtn">✅ ยืนยันบันทึก '+rows.length+' รายการ</button></div>';
+    box.innerHTML=html;
+    document.getElementById('scntConfirmBtn').onclick=function(){ submitSCNTExcel(rows); };
+  };
+  reader.readAsText(file,'UTF-8');
+}
+
+function submitSCNTExcel(rows){
+  var today=new Date().toISOString().split('T')[0];
+  var entries=rows.filter(function(r){return r.diff!=='?'&&r.diff!==0;});
+  if(!entries.length){toast('ยอดตรงกันทั้งหมด ไม่มีรายการที่ต้องปรับ','info');return;}
+  toast('กำลังบันทึก '+entries.length+' รายการ...','info');
+  Promise.all(entries.map(function(r){
+    var diff=r.diff;
+    return callAPI('saveStockCardEntry',{
+      partNo:r.partNo,nameEN:r.nameEN,type:'ADJUST',qty:Math.abs(diff),unit:'ชิ้น',
+      qtyIn:diff>0?Math.abs(diff):0,qtyOut:diff<0?Math.abs(diff):0,
+      date:today,docNo:'PCOUNT-'+today,
+      note:'นับจริง='+r.countedQty+' ระบบ='+r.sysQty+' ส่วนต่าง='+(diff>0?'+':'')+diff,
+    });
+  })).then(function(){
+    toast('บันทึกการนับสต็อกแล้ว '+entries.length+' รายการ ✅','success');
+    syncStockBalance();
+    document.getElementById('scntPreviewBox').classList.add('hidden');
+    document.getElementById('scntFileInput').value='';
+  });
+}
+
+function onSCNTSearch(){
+  var q=(document.getElementById('scntSearch').value||'').trim().toLowerCase();
+  var dd=document.getElementById('scntSearchDrop');
+  if(!q){dd.style.display='none';return;}
+  var res=(typeof PARTS_DB!=='undefined'?PARTS_DB:[]).filter(function(p){return p._search&&p._search.indexOf(q)>=0;}).slice(0,10);
+  if(!res.length){dd.style.display='none';return;}
+  dd.innerHTML=res.map(function(p){
+    var ns=p._netStock!==undefined?p._netStock:p.inStock||0;
+    return '<div onclick="addSCNTItem(\''+p.partNo+'\')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #f5f5f5;font-size:13px">'
+      +'<strong>'+p.partNo+'</strong> — '+(p.nameTH||p.nameEN||'')+' <span style="color:var(--g400);font-size:11px">(ระบบ: '+ns+' '+(p.unit||'ชิ้น')+')</span></div>';
+  }).join('');
+  dd.style.display='block';
+}
+
+function addSCNTItem(partNo){
+  document.getElementById('scntSearchDrop').style.display='none';
+  document.getElementById('scntSearch').value='';
+  if(_scntItems.find(function(x){return x.partNo===partNo;})){toast('เพิ่มรายการนี้แล้วค่ะ','info');return;}
+  var part=(typeof PARTS_DB!=='undefined'?PARTS_DB:[]).find(function(p){return p.partNo===partNo;});
+  if(!part) return;
+  var ns=part._netStock!==undefined?part._netStock:part.inStock||0;
+  _scntItems.push({partNo:partNo,nameEN:part.nameEN||part.nameTH||'',unit:part.unit||'ชิ้น',sysQty:ns,countedQty:ns});
+  renderSCNTManual();
+}
+
+function renderSCNTManual(){
+  var box=document.getElementById('scntManualItems');
+  var cb=document.getElementById('scntManualConfirmBox');
+  if(!_scntItems.length){box.innerHTML='';if(cb)cb.classList.add('hidden');return;}
+  if(cb) cb.classList.remove('hidden');
+  box.innerHTML='<div class="tw"><table class="it"><thead><tr><th>Part No.</th><th>ชื่อ</th><th style="text-align:center">ยอดระบบ</th><th style="text-align:center">นับจริง</th><th style="text-align:center">ส่วนต่าง</th><th></th></tr></thead><tbody>'
+    +_scntItems.map(function(it,i){
+      var diff=it.countedQty-it.sysQty;
+      var dc=diff>0?'var(--gm)':diff<0?'var(--red)':'#999';
+      var dt=diff>0?'+'+diff:diff===0?'—':diff;
+      return '<tr><td style="font-size:12px;font-weight:600">'+it.partNo+'</td><td style="font-size:12px">'+it.nameEN+'</td>'
+        +'<td style="text-align:center">'+it.sysQty+' '+it.unit+'</td>'
+        +'<td style="text-align:center"><input type="number" class="fc" value="'+it.countedQty+'" min="0" style="width:80px;text-align:center" '
+        +'oninput="_scntItems['+i+'].countedQty=Number(this.value);renderSCNTManual()"></td>'
+        +'<td style="text-align:center;font-weight:700;color:'+dc+'">'+dt+'</td>'
+        +'<td><button class="btn bd bsm" style="padding:2px 8px" onclick="_scntItems.splice('+i+',1);renderSCNTManual()">✕</button></td></tr>';
+    }).join('')+'</tbody></table></div>';
+}
+
+function submitSCNTManual(){
+  var today=new Date().toISOString().split('T')[0];
+  var entries=_scntItems.filter(function(it){return it.countedQty!==it.sysQty;});
+  if(!entries.length){toast('ไม่มีรายการที่ต้องปรับ','info');return;}
+  toast('กำลังบันทึก...','info');
+  Promise.all(entries.map(function(it){
+    var diff=it.countedQty-it.sysQty;
+    return callAPI('saveStockCardEntry',{
+      partNo:it.partNo,nameEN:it.nameEN,type:'ADJUST',qty:Math.abs(diff),unit:it.unit,
+      qtyIn:diff>0?Math.abs(diff):0,qtyOut:diff<0?Math.abs(diff):0,
+      date:today,docNo:'PCOUNT-'+today,
+      note:'นับจริง='+it.countedQty+' ระบบ='+it.sysQty+' ส่วนต่าง='+(diff>0?'+':'')+diff,
+    });
+  })).then(function(){
+    toast('บันทึกการนับสต็อกแล้ว '+entries.length+' รายการ ✅','success');
+    _scntItems=[]; renderSCNTManual(); syncStockBalance();
+  });
+}
+
 function onSCSearch(){
   var q = (document.getElementById('scSearch').value||'').trim().toLowerCase();
   var dd = document.getElementById('scSearchDrop');
@@ -5142,16 +5404,195 @@ function scClearSearch(){
 
 // ── แท็บหน้า Stock Card ──────────────────────────────────
 function showSCTab(tab){
-  var isStock = tab === 'stock';
-  document.getElementById('scTabStockContent').classList.toggle('hidden', !isStock);
-  document.getElementById('scTabSCRContent').classList.toggle('hidden', isStock);
-  document.getElementById('scTabStock').className = isStock ? 'btn bp bsm' : 'btn bo bsm';
-  document.getElementById('scTabSCR').className   = isStock ? 'btn bo bsm' : 'btn bp bsm';
-  document.getElementById('scTabSCR').style.background = isStock ? '' : '#b71c1c';
-  document.getElementById('scTabSCR').style.color = isStock ? '' : '#fff';
-  document.getElementById('scTabSCR').style.borderColor = isStock ? '' : '#b71c1c';
-  if(!isStock) loadSCRWarehouse();
+  ['stock','scr','count'].forEach(function(t){
+    var content = document.getElementById('scTabContent_'+t) || document.getElementById(t==='stock'?'scTabStockContent':t==='scr'?'scTabSCRContent':'scTabCountContent');
+    var btn = document.getElementById('scTab'+t.charAt(0).toUpperCase()+t.slice(1));
+    if(content) content.classList.toggle('hidden', t!==tab);
+    if(btn){
+      btn.className = t===tab ? 'btn bp bsm' : 'btn bo bsm';
+      btn.style.background = ''; btn.style.color = ''; btn.style.borderColor = '';
+    }
+  });
+  // สีพิเศษ
+  if(tab==='scr'){
+    var b = document.getElementById('scTabSCR');
+    if(b){ b.style.background='#b71c1c'; b.style.color='#fff'; b.style.borderColor='#b71c1c'; }
+  }
+  if(tab==='scr')  loadSCRWarehouse();
+  if(tab==='count') loadCountHistory();
 }
+
+// ── ดาวน์โหลด Template Excel นับสต็อก ───────────────────
+function downloadCountTemplate(){
+  // สร้าง CSV template
+  var csv = 'Part No.,จำนวนที่นับจริง,หมายเหตุ\n';
+  (typeof PARTS_DB !== 'undefined' ? PARTS_DB : []).slice(0,5).forEach(function(p){
+    csv += p.partNo+',0,\n';
+  });
+  var blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'template_นับสต็อก_'+new Date().toLocaleDateString('th-TH').replace(/\//g,'-')+'.csv';
+  a.click();
+}
+
+// ── อ่านไฟล์ Excel/CSV ──────────────────────────────────
+function onStockCountFileChange(e){
+  var file = e.target.files[0]; if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev){
+    var rows = [];
+    if(file.name.endsWith('.csv')){
+      // CSV
+      var lines = ev.target.result.split('\n');
+      lines.slice(1).forEach(function(line){  // ข้ามหัวตาราง
+        var cols = line.split(',');
+        if(cols[0] && cols[0].trim()) rows.push({partNo:cols[0].trim(), qty:parseFloat(cols[1])||0, note:cols[2]?cols[2].trim():''});
+      });
+    } else {
+      // Excel — ใช้ SheetJS
+      try {
+        var XLSX = window.XLSX;
+        if(!XLSX){ toast('กรุณารอสักครู่ กำลังโหลด Excel reader...','info'); return; }
+        var wb = XLSX.read(ev.target.result, {type:'binary'});
+        var ws = wb.Sheets[wb.SheetNames[0]];
+        var data = XLSX.utils.sheet_to_json(ws, {header:1});
+        data.slice(1).forEach(function(row){
+          if(row[0] && String(row[0]).trim()) rows.push({partNo:String(row[0]).trim(), qty:parseFloat(row[1])||0, note:row[2]?String(row[2]).trim():''});
+        });
+      } catch(err){ toast('อ่านไฟล์ไม่สำเร็จ กรุณาใช้ไฟล์ .csv แทน','error'); return; }
+    }
+    if(!rows.length){ toast('ไม่พบข้อมูลในไฟล์ค่ะ','error'); return; }
+    _showCountPreview(rows);
+  };
+  if(file.name.endsWith('.csv')) reader.readAsText(file, 'UTF-8');
+  else reader.readAsBinaryString(file);
+}
+
+var _countRows = [];
+function _showCountPreview(rows){
+  _countRows = rows;
+  var html = '<table class="it"><thead><tr><th>Part No.</th><th>ยอดในระบบ</th><th>นับจริง</th><th>ส่วนต่าง</th></tr></thead><tbody>';
+  rows.forEach(function(r){
+    var p = (typeof PARTS_DB!=='undefined'?PARTS_DB:[]).find(function(x){ return x.partNo===r.partNo; });
+    var current = p ? (p.inStock||0) : '—';
+    var diff = typeof current==='number' ? (r.qty - current) : '—';
+    var diffColor = diff>0 ? 'var(--gm)' : diff<0 ? 'var(--red)' : '#555';
+    var diffStr = typeof diff==='number' ? (diff>=0?'+':'')+diff : '—';
+    html += '<tr><td style="font-size:12px;font-weight:700">'+r.partNo+'</td>'
+      +'<td style="text-align:center">'+current+'</td>'
+      +'<td style="text-align:center;font-weight:700">'+r.qty+'</td>'
+      +'<td style="text-align:center;font-weight:700;color:'+diffColor+'">'+diffStr+'</td></tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById('stockCountTable').innerHTML = html;
+  document.getElementById('stockCountPreview').classList.remove('hidden');
+}
+
+function confirmStockCount(){
+  if(!_countRows.length) return;
+  var note = prompt('หมายเหตุการนับสต็อก (เช่น: นับสต็อกประจำเดือน มิ.ย. 2569)') || 'นับสต็อก '+new Date().toLocaleDateString('th-TH');
+  toast('กำลังบันทึก '+_countRows.length+' รายการ...','info');
+  // บันทึกทีละรายการ (sequential)
+  var idx = 0;
+  function saveNext(){
+    if(idx >= _countRows.length){
+      toast('บันทึกนับสต็อกครบ '+_countRows.length+' รายการแล้วค่ะ ✅','success');
+      document.getElementById('stockCountPreview').classList.add('hidden');
+      _countRows = [];
+      syncStockBalance();
+      loadCountHistory();
+      return;
+    }
+    var r = _countRows[idx++];
+    var p = (typeof PARTS_DB!=='undefined'?PARTS_DB:[]).find(function(x){ return x.partNo===r.partNo; });
+    callAPI('saveStockCardEntry',{
+      partNo: r.partNo, nameEN: p?p.nameEN:'', unit: p?p.unit:'ชิ้น',
+      type: 'PHYSICAL_COUNT', qty: r.qty, newBalance: r.qty,
+      docNo: 'COUNT-'+Date.now(), note: note+(r.note?(' | '+r.note):''),
+    }).then(saveNext);
+  }
+  saveNext();
+}
+
+// ── ค้นหา Part สำหรับกรอกทีละตัว ────────────────────────
+var _countSelectedPart = null;
+function onCountSearch(){
+  var q = (document.getElementById('countSearchInp').value||'').toLowerCase();
+  var dd = document.getElementById('countSearchDrop');
+  if(!q){ dd.style.display='none'; return; }
+  var res = (typeof PARTS_DB!=='undefined'?PARTS_DB:[]).filter(function(p){ return p._search&&p._search.indexOf(q)>=0; }).slice(0,8);
+  if(!res.length){ dd.innerHTML='<div style="padding:12px;color:var(--g400);text-align:center">ไม่พบ</div>'; dd.style.display='block'; return; }
+  dd.innerHTML = res.map(function(p){
+    return '<div class="sc-search-item" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid #f5f5f5" onclick="selectCountPart(\''+p.partNo+'\')">'
+      +'<div style="font-size:12px;font-weight:700">'+p.partNo+'</div>'
+      +'<div style="font-size:12px;color:#555">'+(p.nameEN||p.nameTH||'')+'</div></div>';
+  }).join('');
+  dd.style.display = 'block';
+}
+
+function selectCountPart(partNo){
+  var p = (typeof PARTS_DB!=='undefined'?PARTS_DB:[]).find(function(x){ return x.partNo===partNo; });
+  if(!p) return;
+  _countSelectedPart = p;
+  document.getElementById('countSearchDrop').style.display='none';
+  document.getElementById('countSearchInp').value = partNo+' — '+(p.nameEN||'');
+  document.getElementById('countPartNo').textContent = p.partNo;
+  document.getElementById('countPartName').textContent = p.nameEN||p.nameTH||'';
+  document.getElementById('countPartCurrentStock').textContent = (p.inStock||0)+' '+(p.unit||'ชิ้น');
+  document.getElementById('countPartUnit').textContent = p.unit||'ชิ้น';
+  document.getElementById('countQtyInput').value = '';
+  document.getElementById('countNote').value = '';
+  document.getElementById('countSelectedPart').classList.remove('hidden');
+}
+
+function saveSingleCount(){
+  if(!_countSelectedPart) return;
+  var qty = parseFloat(document.getElementById('countQtyInput').value);
+  if(isNaN(qty)||qty<0) return toast('กรุณากรอกจำนวนที่ถูกต้องค่ะ','error');
+  var note = document.getElementById('countNote').value || 'นับสต็อก '+new Date().toLocaleDateString('th-TH');
+  var p = _countSelectedPart;
+  callAPI('saveStockCardEntry',{
+    partNo:p.partNo, nameEN:p.nameEN||'', unit:p.unit||'ชิ้น',
+    type:'PHYSICAL_COUNT', qty:qty, newBalance:qty,
+    docNo:'COUNT-'+Date.now(), note:note,
+  }).then(function(res){
+    if(res.success){
+      toast('บันทึกยอดนับ '+p.partNo+' = '+qty+' '+p.unit+' แล้วค่ะ ✅','success');
+      document.getElementById('countSelectedPart').classList.add('hidden');
+      document.getElementById('countSearchInp').value='';
+      _countSelectedPart = null;
+      syncStockBalance();
+      loadCountHistory();
+    } else toast(res.message||'เกิดข้อผิดพลาด','error');
+  });
+}
+
+// ── ประวัติการนับสต็อก ────────────────────────────────────
+function loadCountHistory(){
+  var box = document.getElementById('countHistoryBox');
+  if(!box) return;
+  callAPI('getStockCardEntries',{}).then(function(res){
+    var counts = (res.data||[]).filter(function(e){ return e.Type==='PHYSICAL_COUNT'; })
+      .sort(function(a,b){ return (a.CreatedAt||'')>(b.CreatedAt||'')?-1:1; });
+    if(!counts.length){
+      box.innerHTML='<div class="tc tm" style="padding:20px;color:var(--g400)">ยังไม่มีประวัติการนับสต็อกค่ะ</div>';
+      return;
+    }
+    var html='<div class="tw"><table class="it"><thead><tr><th>วันที่</th><th>Part No.</th><th>ชื่ออะไหล่</th><th style="text-align:center">ยอดนับจริง</th><th>หมายเหตุ</th></tr></thead><tbody>';
+    counts.forEach(function(e){
+      var dt = e.Date||(e.CreatedAt?new Date(e.CreatedAt).toLocaleDateString('th-TH'):'—');
+      html+='<tr><td style="font-size:12px;white-space:nowrap">'+dt+'</td>'
+        +'<td style="font-size:12px;font-weight:700;color:var(--gd)">'+e.PartNo+'</td>'
+        +'<td style="font-size:12px">'+(e.NameEN||'—')+'</td>'
+        +'<td style="text-align:center;font-weight:700">'+( e.QtyIn||e.Qty||0)+' '+(e.Unit||'')+'</td>'
+        +'<td style="font-size:12px;color:var(--g400)">'+(e.Note||'—')+'</td></tr>';
+    });
+    html+='</tbody></table></div>';
+    box.innerHTML=html;
+  });
+}
+
 
 // ── โหลดคลัง SCR ──────────────────────────────────────────
 function loadSCRWarehouse(){
