@@ -606,6 +606,14 @@ textarea.fc{min-height:70px;resize:vertical;}
       <!-- PRINT -->
       <!-- ═══════════════════════════════════════════════════ -->
       <div id="pg-stockcard" class="hidden">
+        <!-- ── แท็บหลัก ──────────────────────────────────────── -->
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <button id="scTabStock" class="btn bp bsm" onclick="showSCTab('stock')" style="flex:1">📦 Stock Card อะไหล่</button>
+          <button id="scTabSCR" class="btn bo bsm" onclick="showSCTab('scr')" style="flex:1">⚠️ คลัง SCR (ของเสีย)</button>
+        </div>
+
+        <!-- ── แท็บ: Stock Card ────────────────────────────────── -->
+        <div id="scTabStockContent">
         <!-- ── ค้นหา Part ──────────────────────────────────── -->
         <div class="card" style="padding:14px 16px">
           <div style="margin-bottom:8px">
@@ -721,6 +729,19 @@ textarea.fc{min-height:70px;resize:vertical;}
           <div style="font-size:13px;margin-top:6px">พิมพ์ Part No. หรือชื่ออะไหล่ในช่องค้นหาด้านบนค่ะ</div>
           <div style="font-size:12px;margin-top:16px;color:#bbb">มีอะไหล่ทั้งหมด 988 รายการในระบบ</div>
         </div>
+        </div><!-- end scTabStockContent -->
+
+        <!-- ── แท็บ: คลัง SCR ────────────────────────────────── -->
+        <div id="scTabSCRContent" class="hidden">
+          <div class="card" style="padding:14px 16px;margin-bottom:12px;background:#fff8e1;border-color:#ffcc02">
+            <div style="font-size:13px;font-weight:700;color:#b71c1c">⚠️ คลัง SCR — อะไหล่เก่า/ชำรุด</div>
+            <div style="font-size:12px;color:#555;margin-top:4px">รายการของเสียที่ช่างส่งคืนมาทั้งหมด (SCR = Scrap/ของเสีย) กดที่แถวเพื่อดูรายละเอียด</div>
+          </div>
+          <div id="scrSummaryBox">
+            <div class="card tc tm" style="padding:32px">⏳ กำลังโหลด...</div>
+          </div>
+        </div><!-- end scTabSCRContent -->
+
       </div>
 
       <!-- ═══════════════════════════════════════════════════ -->
@@ -5119,7 +5140,98 @@ function scClearSearch(){
 }
 
 
-// ── โหลด Stock Card ของ Part นั้น ───────────────────────────
+// ── แท็บหน้า Stock Card ──────────────────────────────────
+function showSCTab(tab){
+  var isStock = tab === 'stock';
+  document.getElementById('scTabStockContent').classList.toggle('hidden', !isStock);
+  document.getElementById('scTabSCRContent').classList.toggle('hidden', isStock);
+  document.getElementById('scTabStock').className = isStock ? 'btn bp bsm' : 'btn bo bsm';
+  document.getElementById('scTabSCR').className   = isStock ? 'btn bo bsm' : 'btn bp bsm';
+  document.getElementById('scTabSCR').style.background = isStock ? '' : '#b71c1c';
+  document.getElementById('scTabSCR').style.color = isStock ? '' : '#fff';
+  document.getElementById('scTabSCR').style.borderColor = isStock ? '' : '#b71c1c';
+  if(!isStock) loadSCRWarehouse();
+}
+
+// ── โหลดคลัง SCR ──────────────────────────────────────────
+function loadSCRWarehouse(){
+  var box = document.getElementById('scrSummaryBox');
+  if(!box) return;
+  box.innerHTML = '<div class="card tc tm" style="padding:32px">⏳ กำลังโหลดคลัง SCR...</div>';
+
+  callAPI('getStockCardEntries',{}).then(function(res){
+    var all = (res.data||[]).filter(function(e){ return e.Type==='DEFECT_RETURN' || (e.PartNo||'').indexOf('SCR')===0; });
+    if(!all.length){
+      box.innerHTML = '<div class="card tc tm" style="padding:40px"><div style="font-size:32px">✅</div><div style="margin-top:8px">ยังไม่มีรายการใน คลัง SCR</div></div>';
+      return;
+    }
+
+    // รวมยอดต่อ SCR Part No.
+    var summary = {};
+    all.forEach(function(e){
+      var pn = e.PartNo;
+      if(!summary[pn]) summary[pn] = { partNo:pn, nameEN:e.NameEN||'', unit:e.Unit||'ชิ้น', total:0, entries:[] };
+      summary[pn].total += parseFloat(e.QtyIn||e.QtyDefect||e.Qty||0);
+      summary[pn].entries.push(e);
+    });
+
+    var rows = Object.values(summary).sort(function(a,b){ return b.total - a.total; });
+    var html = '<div class="card" style="padding:0;overflow:hidden">'
+      +'<div class="tw"><table class="it"><thead><tr>'
+      +'<th>SCR Part No.</th><th>ชื่ออะไหล่</th>'
+      +'<th style="text-align:center">จำนวนรวม</th>'
+      +'<th style="text-align:center">รายการ</th>'
+      +'<th></th>'
+      +'</tr></thead><tbody>';
+
+    rows.forEach(function(r){
+      var originalPn = r.partNo.replace(/^SCR/,'');
+      html += '<tr style="cursor:pointer" onclick="toggleSCRDetail(\''+r.partNo+'\')">'
+        +'<td style="font-size:12px;font-weight:700;color:#b71c1c">'+r.partNo+'</td>'
+        +'<td style="font-size:12px">'+(r.nameEN||'—')+'</td>'
+        +'<td style="text-align:center;font-weight:700;color:#b71c1c">'+r.total+' '+r.unit+'</td>'
+        +'<td style="text-align:center;color:var(--g400)">'+r.entries.length+' ครั้ง</td>'
+        +'<td style="text-align:center;color:var(--g400)">▼</td>'
+        +'</tr>'
+        +'<tr id="scr-detail-'+r.partNo.replace(/[^a-zA-Z0-9]/g,'_')+'" style="display:none">'
+        +'<td colspan="5" style="padding:0;background:#fff8e1">'
+        +'<table class="it" style="margin:0;border-radius:0"><thead><tr>'
+        +'<th>วันที่</th><th>ใบเบิกอ้างอิง</th><th>ผู้เบิก</th><th>ลูกค้า</th><th style="text-align:center">จำนวน</th><th>SAP</th>'
+        +'</tr></thead><tbody>'
+        +r.entries.map(function(e){
+          var dt = e.Date || (e.CreatedAt ? new Date(e.CreatedAt).toLocaleDateString('th-TH') : '—');
+          var sap = e.Note ? (e.Note.match(/SAP:\s*([^\s|]+)/)||['','—'])[1] : '—';
+          return '<tr>'
+            +'<td style="font-size:12px">'+dt+'</td>'
+            +'<td style="font-size:12px;color:var(--gd)">'+( e.DocNo||'—')+'</td>'
+            +'<td style="font-size:12px">'+(e.Requester||'—')+'</td>'
+            +'<td style="font-size:12px">'+(e.Customer||'—')+'</td>'
+            +'<td style="text-align:center;font-weight:700;color:#b71c1c">'+(parseFloat(e.QtyIn||e.QtyDefect||e.Qty||0))+' '+r.unit+'</td>'
+            +'<td style="font-size:12px">'+(sap||'—')+'</td>'
+            +'</tr>';
+        }).join('')
+        +'</tbody></table></td></tr>';
+    });
+    html += '</tbody></table></div></div>';
+
+    // สรุปยอดรวม
+    var totalItems = rows.length;
+    var totalPcs = rows.reduce(function(s,r){ return s+r.total; }, 0);
+    box.innerHTML = '<div class="card" style="padding:10px 14px;margin-bottom:8px;background:#ffebee;border-color:#ffcdd2;display:flex;gap:16px">'
+      +'<div><div style="font-size:11px;color:#b71c1c">รายการ SCR ทั้งหมด</div><div style="font-size:22px;font-weight:700;color:#b71c1c">'+totalItems+'</div><div style="font-size:11px;color:#b71c1c">Part No.</div></div>'
+      +'<div style="border-left:1px solid #ffcdd2;padding-left:16px"><div style="font-size:11px;color:#b71c1c">จำนวนชิ้นรวม</div><div style="font-size:22px;font-weight:700;color:#b71c1c">'+totalPcs+'</div><div style="font-size:11px;color:#b71c1c">ชิ้น</div></div>'
+      +'</div>'
+      + html;
+  });
+}
+
+function toggleSCRDetail(partNo){
+  var id = 'scr-detail-'+partNo.replace(/[^a-zA-Z0-9]/g,'_');
+  var el = document.getElementById(id);
+  if(el) el.style.display = el.style.display==='none' ? '' : 'none';
+}
+
+
 function loadSCForPart(p){
   _scCurrentPart = p;
   _scPartTab = 'all';
