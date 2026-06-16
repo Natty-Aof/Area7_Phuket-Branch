@@ -612,7 +612,7 @@ textarea.fc{min-height:70px;resize:vertical;}
         <div style="display:flex;gap:8px;margin-bottom:12px">
           <button id="scTabStock" class="btn bp bsm" onclick="showSCTab('stock')" style="flex:1">📦 Stock Card</button>
           <button id="scTabSCR" class="btn bo bsm" onclick="showSCTab('scr')" style="flex:1">⚠️ คลัง SCR</button>
-          <button class="btn bo bsm" onclick="openQRScanner()" style="flex:1;background:#1565c0;color:#fff;border-color:#1565c0">📷 Scan QR</button>
+          <button class="btn bo bsm" onclick="openQRScanner('stockcard')" style="flex:1;background:#1565c0;color:#fff;border-color:#1565c0">📷 Scan QR</button>
         </div>
 
         <!-- ── แท็บ: Stock Card ────────────────────────────────── -->
@@ -1037,37 +1037,6 @@ textarea.fc{min-height:70px;resize:vertical;}
 <script src="parts_data.js"></script>
       <!-- ═══════════════════════════════════════════════════ -->
       <!-- STOCK CARD PAGE                                     -->
-
-<!-- ── QR SCANNER MODAL ──────────────────────────────────── -->
-<div id="qrScanModal" class="mo hidden" style="z-index:2100">
-  <div class="mow" style="max-width:400px">
-    <div class="moh">
-      <div class="mot">📷 Scan QR Code อะไหล่</div>
-      <button class="mcl" onclick="closeQRScanner()">✕</button>
-    </div>
-    <div class="mob" style="padding:12px;text-align:center">
-      <div style="position:relative;width:100%;background:#000;border-radius:10px;overflow:hidden;min-height:280px">
-        <video id="qrVideo" autoplay playsinline style="width:100%;display:block;border-radius:10px"></video>
-        <canvas id="qrCanvas" style="display:none"></canvas>
-        <!-- กรอบ scan -->
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:200px;height:200px;border:3px solid #00e676;border-radius:8px;pointer-events:none">
-          <div style="position:absolute;top:-3px;left:-3px;width:24px;height:24px;border-top:4px solid #00e676;border-left:4px solid #00e676;border-radius:2px"></div>
-          <div style="position:absolute;top:-3px;right:-3px;width:24px;height:24px;border-top:4px solid #00e676;border-right:4px solid #00e676;border-radius:2px"></div>
-          <div style="position:absolute;bottom:-3px;left:-3px;width:24px;height:24px;border-bottom:4px solid #00e676;border-left:4px solid #00e676;border-radius:2px"></div>
-          <div style="position:absolute;bottom:-3px;right:-3px;width:24px;height:24px;border-bottom:4px solid #00e676;border-right:4px solid #00e676;border-radius:2px"></div>
-        </div>
-      </div>
-      <div id="qrScanResult" style="padding:10px 4px;font-size:13px;color:var(--g400);margin-top:8px">
-        📷 ส่องกล้องไปที่ QR Code บน Label อะไหล่ค่ะ
-      </div>
-      <!-- fallback: พิมพ์เอง -->
-      <div style="margin-top:8px;display:flex;gap:8px">
-        <input class="fc" id="qrManualInput" placeholder="หรือพิมพ์ Part No. เอง..." style="flex:1;font-size:13px">
-        <button class="btn bp bsm" onclick="onQRScanned(document.getElementById('qrManualInput').value.trim())">ค้นหา</button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- ── CHANGE REQUEST MODAL ─────────────────────────────── -->
 <div id="changeReqModal" class="mo hidden" style="z-index:2000">
@@ -4180,12 +4149,34 @@ function onQRDetected(rawData){
       addRow({ partNo:partNo, nameEN:nameEN, nameTH:'', unit:unit });
     }
   } else if(_qrScanTarget === 'stockcard'){
-    var el = document.getElementById('scPartNo');
-    if(el){ el.value = partNo; onSCPartInput(); }
-    var nameEl = document.getElementById('scPartName');
-    if(nameEl && nameEN){ nameEl.value = nameEN; document.getElementById('scPartNameRow').style.display=''; }
-    var unitEl = document.getElementById('scUnit');
-    if(unitEl && unit){ unitEl.value = unit; }
+    // ไปหน้า Stock Card แล้วโหลด part นั้น
+    go('stockcard');
+    setTimeout(function(){
+      var part = (typeof PARTS_DB!=='undefined'?PARTS_DB:[]).find(function(p){ return p.partNo===partNo; });
+      if(part){
+        // แสดง location ด้วย
+        var locMsg = part.location ? ' 📍 '+part.location : '';
+        toast('สแกนได้: '+partNo+locMsg, 'success');
+        loadSCForPart(part);
+        var inp = document.getElementById('scSearch');
+        if(inp) inp.value = partNo+' — '+(part.nameEN||part.nameTH||'');
+      } else {
+        // ไม่เจอใน PARTS_DB → ค้น StockCard Sheet (เช่น SCR)
+        callAPI('getStockCardEntries',{partNo:partNo}).then(function(r){
+          if((r.data||[]).length){
+            var e = r.data[0];
+            var vp = {partNo:partNo,nameEN:nameEN||e.NameEN||'',nameTH:'',inStock:0,unit:e.Unit||'ชิ้น',_fromSheet:true,_baseStock:0};
+            loadSCForPart(vp);
+          } else {
+            toast('ไม่พบ '+partNo+' ในระบบค่ะ','error');
+          }
+        });
+      }
+    }, 400);
+  } else if(_qrScanTarget === 'scr'){
+    // กรองใน SCR tab
+    var scrInp = document.getElementById('scrSearchInput');
+    if(scrInp){ scrInp.value = partNo; filterSCRList(); }
   }
 }
 
@@ -5254,103 +5245,6 @@ var _scCurrentPart = null;   // part object ที่เลือกอยู่
 var _scPartTab = 'all';      // all / in / out
 var _scAllEntries = [];      // entries ทั้งหมดของ part นั้น
 
-// ── ค้นหา Part ──────────────────────────────────────────────
-// ════════════════════════════════════════════════════════════
-// QR CODE SCANNER — ใช้ BarcodeDetector API (built-in Chrome)
-// ════════════════════════════════════════════════════════════
-var _qrStream = null;
-var _qrScanInterval = null;
-
-function openQRScanner(){
-  var modal = document.getElementById('qrScanModal');
-  if(modal) modal.classList.remove('hidden');
-  document.getElementById('qrScanResult').textContent = '📷 กำลังเปิดกล้อง...';
-  document.getElementById('qrManualInput').value = '';
-
-  // เปิดกล้องหลัง
-  navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' } })
-    .then(function(stream){
-      _qrStream = stream;
-      var video = document.getElementById('qrVideo');
-      video.srcObject = stream;
-      video.play();
-      document.getElementById('qrScanResult').textContent = '📷 ส่องกล้องไปที่ QR Code บน Label ค่ะ';
-
-      // เลือก method scan
-      if(typeof BarcodeDetector !== 'undefined'){
-        // Chrome/Android — ใช้ BarcodeDetector API (เร็วที่สุด)
-        var detector = new BarcodeDetector({ formats: ['qr_code','code_128','ean_13'] });
-        _qrScanInterval = setInterval(function(){
-          if(!video.videoWidth) return;
-          detector.detect(video).then(function(codes){
-            if(codes && codes.length > 0){
-              clearInterval(_qrScanInterval);
-              onQRScanned(codes[0].rawValue);
-            }
-          }).catch(function(){});
-        }, 300);
-      } else {
-        // Fallback — แจ้งให้พิมพ์เอง
-        document.getElementById('qrScanResult').innerHTML =
-          '⚠️ เบราว์เซอร์นี้ไม่รองรับ Scan QR อัตโนมัติ<br>กรุณาพิมพ์ Part No. ในช่องด้านล่างค่ะ';
-      }
-    })
-    .catch(function(e){
-      document.getElementById('qrScanResult').innerHTML =
-        '❌ ไม่สามารถเปิดกล้องได้<br><small>'+e.message+'</small><br>กรุณาพิมพ์ Part No. ในช่องด้านล่างค่ะ';
-    });
-}
-
-function closeQRScanner(){
-  if(_qrScanInterval){ clearInterval(_qrScanInterval); _qrScanInterval=null; }
-  if(_qrStream){ _qrStream.getTracks().forEach(function(t){ t.stop(); }); _qrStream=null; }
-  var video = document.getElementById('qrVideo');
-  if(video){ video.srcObject=null; }
-  var modal = document.getElementById('qrScanModal');
-  if(modal) modal.classList.add('hidden');
-}
-
-function onQRScanned(text){
-  if(!text) return;
-  if(_qrScanInterval){ clearInterval(_qrScanInterval); _qrScanInterval=null; }
-  if(_qrStream){ _qrStream.getTracks().forEach(function(t){ t.stop(); }); _qrStream=null; }
-
-  // parse QR: "PartNo|NameEN|Unit" หรือแค่ "PartNo"
-  var parts = text.split('|');
-  var partNo = parts[0].trim();
-  var nameEN = parts[1]||'';
-
-  var part = (typeof PARTS_DB!=='undefined'?PARTS_DB:[]).find(function(p){ return p.partNo===partNo; });
-
-  document.getElementById('qrScanResult').innerHTML =
-    '✅ <strong>'+partNo+'</strong>'
-    +(part && part.location ? ' &nbsp; 📍 <strong style="color:var(--gd)">'+part.location+'</strong>' : '')
-    +'<br>กำลังเปิด Stock Card...';
-
-  setTimeout(function(){
-    closeQRScanner();
-    go('stockcard');
-    setTimeout(function(){
-      if(part){
-        loadSCForPart(part);
-        var inp = document.getElementById('scSearch');
-        if(inp) inp.value = partNo+' — '+(part.nameEN||part.nameTH||'');
-      } else {
-        var inp = document.getElementById('scSearch');
-        if(inp) inp.value = partNo;
-        callAPI('getStockCardEntries',{partNo:partNo}).then(function(r){
-          if((r.data||[]).length){
-            var e=r.data[0];
-            var vp={partNo:partNo,nameEN:nameEN||e.NameEN||'',nameTH:'',inStock:0,unit:e.Unit||'ชิ้น',_fromSheet:true,_baseStock:0};
-            loadSCForPart(vp);
-          } else { toast('ไม่พบ '+partNo+' ในระบบค่ะ','error'); }
-        });
-      }
-    }, 300);
-  }, 800);
-}
-
-
 var _crCurrentRefId = '';
 
 function openChangeReqModal(refId, refType){
@@ -5910,11 +5804,8 @@ function filterSCRList(){
 }
 
 function openQRScannerForSCR(){
-  // สแกน QR แล้วค้นหาใน SCR
-  _qrScanForSCR = true;
-  openQRScanner();
+  openQRScanner('scr');
 }
-var _qrScanForSCR = false;
 var _scrAllRows = [];
 
 function loadSCRWarehouse(){
