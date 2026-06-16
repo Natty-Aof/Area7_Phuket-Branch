@@ -2367,20 +2367,23 @@ function loadStock(){
         var items=dr.success?(dr.data.Items||dr.data.items||[]):[];
         var itRows='';
         items.forEach(function(it){
-          var pn=it.PartNo||'';
+          var pn = String(it.PartNo||it.partNo||'');
           var loc=partLocs[pn]||'';
           var lid='loc_'+r.ReqID+'_'+pn.replace(/[^a-z0-9]/gi,'_');
-          var pnSafe=pn.replace(/'/g,"\'");
-          var locSafe=loc.replace(/'/g,"\'");
-          var pImgH = partImgHtml(pn,'sm',it.NameEN||it.NameTH||'');
+          var pnSafe=pn.replace(/'/g,"\\'");
+          var locSafe=String(loc).replace(/'/g,"\\'");
+          var nameEN = it.NameEN||it.nameEN||it.NameTH||it.nameTH||'-';
+          var qty = it.Qty||it.qty||'';
+          var unit = it.Unit||it.unit||'';
+          var pImgH = partImgHtml(pn,'sm',nameEN);
           var tr = document.createElement('tr');
           tr.innerHTML = '<td style="padding:4px 8px;border-bottom:1px solid #eef2ef;vertical-align:middle">'
             +'<div style="display:flex;align-items:center;gap:8px">'
             +pImgH
             +'<div><div style="font-size:12px;font-weight:700;color:#1a4a2e">'+pn+'</div>'
-            +'<div style="font-size:11px;color:var(--g400)">'+(it.NameEN||it.NameTH||'-')+'</div></div>'
+            +'<div style="font-size:11px;color:var(--g400)">'+nameEN+'</div></div>'
             +'</div></td>'
-            +'<td style="padding:4px 8px;font-size:12px;border-bottom:1px solid #eef2ef;text-align:center">'+(it.Qty||'')+' '+(it.Unit||'')+'</td>'
+            +'<td style="padding:4px 8px;font-size:12px;border-bottom:1px solid #eef2ef;text-align:center">'+qty+' '+unit+'</td>'
             +'<td style="padding:4px 8px;border-bottom:1px solid #eef2ef">'
             +'<div style="display:flex;align-items:center;gap:6px">'
             +'<span id="'+lid+'" style="font-size:12px;font-weight:700;color:var(--gm);min-width:60px">'+(loc||'—')+'</span>'
