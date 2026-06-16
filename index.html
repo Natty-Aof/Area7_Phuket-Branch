@@ -549,7 +549,15 @@ textarea.fc{min-height:70px;resize:vertical;}
 
         <!-- ⑧ รายการรอคืน / รอเคลียร์ ─────────────────── -->
         <div class="card" style="padding:14px 16px">
-          <div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:10px">⚠️ รายการอะไหล่ขาดจ่าย — ต้องเบิกเพิ่มจาก HQ</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+            <div style="font-size:13px;font-weight:700;color:var(--red)">⚠️ รายการอะไหล่ขาดจ่าย — ต้องเบิกเพิ่มจาก HQ</div>
+            <div style="display:flex;gap:6px">
+              <button class="btn bsm" id="boFilterAll" onclick="setRptShortageFilter('all')" style="background:var(--gd);color:#fff;border-color:var(--gd);font-size:11px">ทั้งหมด</button>
+              <button class="btn bo bsm" id="boFilterPending" onclick="setRptShortageFilter('pending')" style="font-size:11px">🔴 ยังขาด</button>
+              <button class="btn bo bsm" id="boFilterOrdered" onclick="setRptShortageFilter('ordered')" style="font-size:11px">🟡 รอ HQ</button>
+              <button class="btn bo bsm" id="boFilterReceived" onclick="setRptShortageFilter('received')" style="font-size:11px">✅ ได้แล้ว</button>
+            </div>
+          </div>
           <div id="rptReturnReport"><div class="tc tm" style="padding:20px">กด "โหลดรายงาน" ค่ะ</div></div>
         </div>
 
@@ -1036,6 +1044,57 @@ textarea.fc{min-height:70px;resize:vertical;}
 <script src="parts_data.js"></script>
       <!-- ═══════════════════════════════════════════════════ -->
       <!-- STOCK CARD PAGE                                     -->
+
+<!-- ── BACK ORDER MODAL ───────────────────────────────────── -->
+<div id="backOrderModal" class="mo hidden" style="z-index:2000">
+  <div class="mow" style="max-width:460px">
+    <div class="moh" style="background:linear-gradient(135deg,#1565c0,#1976d2)">
+      <div class="mot" style="color:#fff">📋 สั่งอะไหล่เพิ่มจาก HQ</div>
+      <button class="mcl" onclick="document.getElementById('backOrderModal').classList.add('hidden')" style="color:#fff">✕</button>
+    </div>
+    <div class="mob">
+      <div class="fg"><label class="fl">Part No.</label><input class="fc" id="boPartNo" readonly style="background:#f5f5f5;font-weight:700"></div>
+      <div class="fg"><label class="fl">ชื่ออะไหล่</label><input class="fc" id="boNameEN" readonly style="background:#f5f5f5"></div>
+      <div style="display:flex;gap:10px">
+        <div class="fg" style="flex:1"><label class="fl">ยอดขาด</label><input class="fc" id="boQtyShort" readonly style="background:#f5f5f5;color:var(--red);font-weight:700"></div>
+        <div class="fg" style="flex:1"><label class="fl">จำนวนที่สั่ง <span class="rq">*</span></label><input class="fc" id="boQtyOrdered" type="number" min="1" placeholder="จำนวน"></div>
+      </div>
+      <div class="fg"><label class="fl">วันที่คาดว่าได้ของ</label><input class="fc" id="boExpectedAt" type="date"></div>
+      <div class="fg"><label class="fl">หมายเหตุ</label><input class="fc" id="boNote" placeholder="เช่น สั่งผ่าน HQ วันที่ ..., เลข PO ..."></div>
+      <input type="hidden" id="boSources">
+    </div>
+    <div class="mof">
+      <button class="btn bd" onclick="document.getElementById('backOrderModal').classList.add('hidden')">ยกเลิก</button>
+      <button class="btn bp" onclick="submitBackOrder()" style="background:#1565c0;border-color:#1565c0">📋 ยืนยันสั่ง HQ</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── RECEIVE BACK ORDER MODAL ───────────────────────────── -->
+<div id="receiveBoModal" class="mo hidden" style="z-index:2000">
+  <div class="mow" style="max-width:420px">
+    <div class="moh" style="background:linear-gradient(135deg,#1b5e20,#2e7d32)">
+      <div class="mot" style="color:#fff">✅ รับของจาก HQ</div>
+      <button class="mcl" onclick="document.getElementById('receiveBoModal').classList.add('hidden')" style="color:#fff">✕</button>
+    </div>
+    <div class="mob">
+      <div class="fg"><label class="fl">Backorder No.</label><input class="fc" id="rboBoNo" readonly style="background:#f5f5f5;font-weight:700"></div>
+      <div class="fg"><label class="fl">อะไหล่</label><input class="fc" id="rboPartNo" readonly style="background:#f5f5f5"></div>
+      <div style="display:flex;gap:10px">
+        <div class="fg" style="flex:1"><label class="fl">จำนวนที่สั่ง</label><input class="fc" id="rboQtyOrdered" readonly style="background:#f5f5f5"></div>
+        <div class="fg" style="flex:1"><label class="fl">รับจริง <span class="rq">*</span></label><input class="fc" id="rboQtyReceived" type="number" min="1" placeholder="จำนวน"></div>
+      </div>
+      <div class="fg"><label class="fl">หมายเหตุ</label><input class="fc" id="rboNote" placeholder="เช่น รับครบ / รับบางส่วน..."></div>
+      <div style="background:#e8f5e9;padding:10px 12px;border-radius:8px;font-size:12px;color:#1b5e20">
+        ✅ ระบบจะบันทึก Stock Card + แจ้งช่างที่รอของอัตโนมัติค่ะ
+      </div>
+    </div>
+    <div class="mof">
+      <button class="btn bd" onclick="document.getElementById('receiveBoModal').classList.add('hidden')">ยกเลิก</button>
+      <button class="btn bp" onclick="submitReceiveBO()" style="background:#1b5e20;border-color:#1b5e20">✅ ยืนยันรับของ</button>
+    </div>
+  </div>
+</div>
 
 <!-- ── CHANGE REQUEST MODAL ─────────────────────────────── -->
 <div id="changeReqModal" class="mo hidden" style="z-index:2000">
@@ -5307,6 +5366,137 @@ var _scCurrentPart = null;   // part object ที่เลือกอยู่
 var _scPartTab = 'all';      // all / in / out
 var _scAllEntries = [];      // entries ทั้งหมดของ part นั้น
 
+// ════════════════════════════════════════════════════════════════
+// BACK ORDERS — สั่งอะไหล่จาก HQ
+// ════════════════════════════════════════════════════════════════
+var _rptShortageFilter = 'all';
+var _rptShortageData = [];
+var _backOrders = [];
+
+function setRptShortageFilter(f){
+  _rptShortageFilter = f;
+  ['All','Pending','Ordered','Received'].forEach(function(x){
+    var btn = document.getElementById('boFilter'+x);
+    if(!btn) return;
+    var active = (f===x.toLowerCase())||(f==='all'&&x==='All');
+    btn.className = active ? 'btn bsm' : 'btn bo bsm';
+    btn.style.background = active ? 'var(--gd)' : '';
+    btn.style.color = active ? '#fff' : '';
+    btn.style.borderColor = active ? 'var(--gd)' : '';
+  });
+  renderRptShortage();
+}
+
+function openBackOrderModal(partNo, nameEN, qtyShort, sources){
+  document.getElementById('boPartNo').value = partNo;
+  document.getElementById('boNameEN').value = nameEN||'';
+  document.getElementById('boQtyShort').value = qtyShort+' ชิ้น';
+  document.getElementById('boQtyOrdered').value = qtyShort;
+  document.getElementById('boExpectedAt').value = '';
+  document.getElementById('boNote').value = '';
+  document.getElementById('boSources').value = (sources||[]).join(',');
+  document.getElementById('backOrderModal').classList.remove('hidden');
+}
+
+function submitBackOrder(){
+  var partNo = document.getElementById('boPartNo').value;
+  var qty = Number(document.getElementById('boQtyOrdered').value)||0;
+  if(!qty) return toast('กรุณากรอกจำนวนที่สั่งค่ะ','error');
+  callAPI('createBackOrder',{
+    partNo: partNo, nameEN: document.getElementById('boNameEN').value,
+    qtyShort: parseInt(document.getElementById('boQtyShort').value)||0,
+    qtyOrdered: qty, expectedAt: document.getElementById('boExpectedAt').value,
+    note: document.getElementById('boNote').value,
+    sources: document.getElementById('boSources').value.split(',').filter(Boolean),
+  }).then(function(res){
+    toast(res.message, res.success?'success':'error');
+    if(res.success){ document.getElementById('backOrderModal').classList.add('hidden'); loadBackOrders().then(renderRptShortage); }
+  });
+}
+
+function openReceiveBoModal(boNo, partNo, nameEN, qtyOrdered){
+  document.getElementById('rboBoNo').value = boNo;
+  document.getElementById('rboPartNo').value = partNo+' — '+(nameEN||'');
+  document.getElementById('rboQtyOrdered').value = qtyOrdered+' ชิ้น';
+  document.getElementById('rboQtyReceived').value = qtyOrdered;
+  document.getElementById('rboNote').value = '';
+  document.getElementById('receiveBoModal').classList.remove('hidden');
+}
+
+function submitReceiveBO(){
+  var boNo = document.getElementById('rboBoNo').value;
+  var qty = Number(document.getElementById('rboQtyReceived').value)||0;
+  if(!qty) return toast('กรุณากรอกจำนวนที่รับจริงค่ะ','error');
+  toast('กำลังบันทึก...','info');
+  callAPI('receiveBackOrder',{boNo:boNo, qtyReceived:qty, note:document.getElementById('rboNote').value, unit:'ชิ้น'})
+    .then(function(res){
+      toast(res.message, res.success?'success':'error');
+      if(res.success){ document.getElementById('receiveBoModal').classList.add('hidden'); syncStockBalance(); loadBackOrders().then(renderRptShortage); }
+    });
+}
+
+function loadBackOrders(){
+  return callAPI('getBackOrders',{}).then(function(res){ _backOrders=res.data||[]; return _backOrders; });
+}
+
+function getBOForPart(partNo){
+  return _backOrders.find(function(bo){ return bo.PartNo===partNo&&(bo.Status==='ORDERED'||bo.Status==='PENDING'); });
+}
+
+function renderRptShortage(){
+  var el = document.getElementById('rptReturnReport');
+  if(!el || !_rptShortageData.length) return;
+  var f = _rptShortageFilter;
+  var filtered = _rptShortageData.filter(function(p){
+    var bo = getBOForPart(p.partNo);
+    var rec = _backOrders.find(function(b){ return b.PartNo===p.partNo&&b.Status==='RECEIVED'; });
+    if(f==='pending') return !bo&&!rec;
+    if(f==='ordered') return !!bo;
+    if(f==='received') return !bo&&!!rec;
+    return true;
+  });
+
+  if(!filtered.length){ el.innerHTML='<div class="tc tm" style="padding:24px;color:var(--gm)">✅ ไม่มีรายการในหมวดนี้ค่ะ</div>'; return; }
+
+  var totalShort=filtered.reduce(function(s,p){return s+p.totalShort;},0);
+  var html='<div style="background:#fff3e0;padding:10px 14px;border-radius:8px;margin-bottom:10px;font-size:13px;color:#e65100">'
+    +'⚠️ อะไหล่ขาดจ่าย <strong>'+filtered.length+' รายการ</strong> รวม <strong>'+totalShort+' ชิ้น</strong></div>'
+    +'<div class="tw"><table class="it" style="font-size:13px"><thead><tr>'
+    +'<th>Part No.</th><th>ชื่ออะไหล่</th><th style="text-align:center">ขาดรวม</th>'
+    +'<th style="text-align:center">เบิกรวม</th><th style="text-align:center">จ่ายได้</th>'
+    +'<th>สถานะ HQ</th><th style="text-align:center">จัดการ</th></tr></thead><tbody>';
+
+  filtered.forEach(function(p){
+    var bo=getBOForPart(p.partNo);
+    var rec=_backOrders.find(function(b){return b.PartNo===p.partNo&&b.Status==='RECEIVED';});
+    var statusHtml,actionBtn;
+    if(bo){
+      var exp=bo.ExpectedAt?new Date(bo.ExpectedAt).toLocaleDateString('th-TH'):'—';
+      statusHtml='<span style="color:#f57c00;font-size:12px;font-weight:600">🟡 รอ HQ<br><span style="font-weight:400;font-size:11px">คาดได้: '+exp+'</span></span>';
+      actionBtn='<button class="btn bsm" onclick="openReceiveBoModal(\''+bo.BONo+'\',\''+p.partNo+'\',\''+(p.nameEN||'').replace(/'/g,"\\'")+'\','+p.totalShort+')" style="background:#1b5e20;color:#fff;border-color:#1b5e20;font-size:11px">✅ รับของแล้ว</button>';
+    } else if(rec){
+      statusHtml='<span style="color:var(--gm);font-size:12px;font-weight:600">✅ ได้รับแล้ว<br><span style="font-weight:400;font-size:11px">'+new Date(rec.ReceivedAt||'').toLocaleDateString('th-TH')+'</span></span>';
+      actionBtn='';
+    } else {
+      statusHtml='<span style="color:var(--red);font-size:12px;font-weight:600">🔴 ยังไม่ได้สั่ง</span>';
+      actionBtn='<button class="btn bsm" onclick="openBackOrderModal(\''+p.partNo+'\',\''+(p.nameEN||'').replace(/'/g,"\\'")+'\','+p.totalShort+','+JSON.stringify(p.reqs.map(function(r){return r.reqId;}))+')\" style=\"background:#1565c0;color:#fff;border-color:#1565c0;font-size:11px\">📋 สั่ง HQ</button>';
+    }
+    html+='<tr style="background:#fff8e1"><td style="font-weight:700;font-size:12px">'+p.partNo+'</td><td style="font-size:12px">'+p.nameEN+'</td>'
+      +'<td style="text-align:center;font-weight:700;color:var(--red);font-size:15px">'+p.totalShort+' ชิ้น</td>'
+      +'<td style="text-align:center;color:var(--g400)">'+p.totalReq+'</td><td style="text-align:center;color:var(--gm)">'+p.totalIssued+'</td>'
+      +'<td>'+statusHtml+'</td><td style="text-align:center">'+actionBtn+'</td></tr>';
+    p.reqs.forEach(function(r){
+      html+='<tr style="background:#fafafa"><td colspan="2" style="font-size:11px;color:var(--g400);padding-left:20px">↳ '+r.reqId+' | Job: '+r.jobNo+' | '+r.customer+'</td>'
+        +'<td style="text-align:center;font-weight:700;color:var(--red);font-size:12px">'+r.short+'</td>'
+        +'<td style="text-align:center;font-size:12px;color:var(--g400)">'+r.requested+'</td>'
+        +'<td style="text-align:center;font-size:12px;color:var(--gm)">'+r.issued+'</td>'
+        +'<td colspan="2" style="font-size:11px;color:var(--g400)">'+(r.status==='PENDING'?'⏳ รอจัด':r.status)+'</td></tr>';
+    });
+  });
+  html+='</tbody></table></div><div style="font-size:12px;color:var(--g400);margin-top:8px">💡 กด "📋 สั่ง HQ" เพื่อบันทึก | กด "✅ รับของแล้ว" เมื่อของมาถึง</div>';
+  el.innerHTML=html;
+}
+
 var _crCurrentRefId = '';
 
 function openChangeReqModal(refId, refType){
@@ -6730,42 +6920,12 @@ function _renderFullReport(){
     if(!shortList.length){
       returnEl.innerHTML='<div class="tc tm" style="padding:24px;color:var(--gm)">✅ ไม่มีอะไหล่ขาดจ่ายค่ะ — Stock จ่ายครบทุกรายการแล้ว</div>';
     } else {
-      var totalShortItems = shortList.reduce(function(s,p){ return s+p.totalShort; },0);
-      var html = '<div style="background:#fff3e0;padding:10px 14px;border-radius:8px;margin-bottom:10px;font-size:13px;color:#e65100">'
-        +'⚠️ มีอะไหล่ขาดจ่าย <strong>'+shortList.length+' รายการ</strong> รวม <strong>'+totalShortItems+' ชิ้น</strong>'
-        +' — พัสดุควรเบิกเพิ่มจากสำนักงานใหญ่</div>'
-        +'<div class="tw"><table class="it" style="font-size:13px"><thead><tr>'
-        +'<th>Part No.</th><th>ชื่ออะไหล่</th>'
-        +'<th style="text-align:center">ขาดรวม</th>'
-        +'<th style="text-align:center">เบิกรวม</th>'
-        +'<th style="text-align:center">จ่ายได้</th>'
-        +'<th>ใบเบิกที่เกี่ยวข้อง</th>'
-        +'</tr></thead><tbody>';
-
-      shortList.forEach(function(p){
-        // แถวหลัก — สรุปต่อ Part
-        html += '<tr style="background:#fff8e1">'
-          +'<td style="font-weight:700;font-size:12px">'+p.partNo+'</td>'
-          +'<td style="font-size:12px">'+p.nameEN+'</td>'
-          +'<td style="text-align:center;font-weight:700;color:var(--red);font-size:15px">'+p.totalShort+' ชิ้น</td>'
-          +'<td style="text-align:center;color:var(--g400)">'+p.totalReq+'</td>'
-          +'<td style="text-align:center;color:var(--gm)">'+p.totalIssued+'</td>'
-          +'<td style="font-size:11px;color:var(--g400)">'+p.reqs.map(function(r){ return r.reqId; }).join(', ')+'</td>'
-          +'</tr>';
-        // แถวย่อย — รายละเอียดแต่ละใบ
-        p.reqs.forEach(function(r){
-          html += '<tr style="background:#fafafa">'
-            +'<td colspan="2" style="font-size:11px;color:var(--g400);padding-left:20px">↳ '+r.reqId+' | Job: '+r.jobNo+' | '+r.customer+' | '+r.requester+'</td>'
-            +'<td style="text-align:center;font-weight:700;color:var(--red);font-size:12px">'+r.short+'</td>'
-            +'<td style="text-align:center;font-size:12px;color:var(--g400)">'+r.requested+'</td>'
-            +'<td style="text-align:center;font-size:12px;color:var(--gm)">'+r.issued+'</td>'
-            +'<td style="font-size:11px;color:var(--g400)">'+(r.status==='PENDING'?'⏳ รอจัด':r.status==='ACKNOWLEDGED'?'📦 จัดบางส่วน':r.status)+'</td>'
-            +'</tr>';
-        });
+      // เก็บข้อมูลไว้ใน cache แล้ว load BackOrders มารวม
+      _rptShortageData = shortList;
+      returnEl.innerHTML = '<div class="tc tm" style="padding:16px">⏳ กำลังโหลดสถานะ HQ...</div>';
+      loadBackOrders().then(function(){
+        renderRptShortage();
       });
-      html += '</tbody></table></div>'
-        +'<div style="font-size:12px;color:var(--g400);margin-top:8px;padding:4px">💡 รายการขาดจ่าย = จำนวนที่ช่างเบิก - จำนวนที่ Stock จ่ายจริง</div>';
-      returnEl.innerHTML = html;
     }
   }
 }
