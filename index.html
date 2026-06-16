@@ -5335,6 +5335,13 @@ function loadChangeReqPage(){
   var box = document.getElementById('crListBox');
   if(!box) return;
   box.innerHTML = '<div class="card tc tm" style="padding:24px">⏳ กำลังโหลด...</div>';
+
+  // รอ CU พร้อมก่อน (อาจยังไม่ได้ login)
+  if(!CU || !CU.role){
+    setTimeout(loadChangeReqPage, 500);
+    return;
+  }
+
   callAPI('getChangeRequests',{}).then(function(res){
     var list = res.data||[];
     var isManager = CU&&(CU.role==='MANAGER'||CU.role==='ADMIN');
