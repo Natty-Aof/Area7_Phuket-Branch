@@ -5336,15 +5336,12 @@ function loadChangeReqPage(){
   if(!box) return;
   box.innerHTML = '<div class="card tc tm" style="padding:24px">⏳ กำลังโหลด...</div>';
 
-  // รอ CU พร้อมก่อน (อาจยังไม่ได้ login)
-  if(!CU || !CU.role){
-    setTimeout(loadChangeReqPage, 500);
-    return;
-  }
-
   callAPI('getChangeRequests',{}).then(function(res){
     var list = res.data||[];
-    var isManager = CU&&(CU.role==='MANAGER'||CU.role==='ADMIN');
+    // ใช้ role จาก CU หรือดึงจาก response
+    var myRole = (CU&&CU.role)||'';
+    var myEmail = (CU&&CU.email)||'';
+    var isManager = myRole==='MANAGER'||myRole==='ADMIN';
     var crTypeLabel = {EDIT_INFO:'✏️ แก้ไขข้อมูล',EDIT_QTY:'🔢 แก้ไขจำนวน',CANCEL:'❌ ยกเลิก',OTHER:'📝 อื่นๆ'};
     var statusLabel = {PENDING:'⏳ รออนุมัติ',APPROVED:'✅ อนุมัติแล้ว',REJECTED:'❌ ไม่อนุมัติ',DONE:'🏁 ดำเนินการแล้ว'};
     var statusColor = {PENDING:'#e65100',APPROVED:'var(--gm)',REJECTED:'var(--red)',DONE:'var(--g400)'};
@@ -5365,7 +5362,7 @@ function loadChangeReqPage(){
         var actionBtn = '';
         if(isManager && cr.Status==='PENDING'){
           actionBtn='<button class="btn bp bsm" onclick="openCRApprove(\''+cr.CRNo+'\')" style="font-size:11px">✅ พิจารณา</button>';
-        } else if(cr.Status==='APPROVED' && cr.RequestedBy===CU.email){
+        } else if(cr.Status==='APPROVED' && cr.RequestedBy===myEmail){
           actionBtn='<button class="btn bo bsm" onclick="alert(\'ฟีเจอร์แก้ไขจริงจะเปิดใช้งานเร็วๆ นี้ค่ะ\')" style="font-size:11px;background:#6a1b9a;color:#fff;border-color:#6a1b9a">🔑 ดำเนินการ</button>';
         }
         return '<tr>'
