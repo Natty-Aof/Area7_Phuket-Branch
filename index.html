@@ -1989,6 +1989,7 @@ function go(page){
   if(page==='print') loadPrintSel();
   if(page==='profile') loadProfile();
   if(page==='report') loadReportPage();
+  if(page==='changereq') loadChangeReqPage();
   if(page==='stockcount'){
     var lbl = document.getElementById('scntDateLabel');
     if(lbl) lbl.textContent = 'วันที่นับ: '+new Date().toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'});
