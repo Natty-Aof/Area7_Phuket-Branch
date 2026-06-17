@@ -3001,13 +3001,20 @@ function confirmNote(action, reqId){
   closeNoteMo();
   var data={id:reqId,note:note,approverName:CU.name};
   if(action==='approve'){
-    // ดึงสถานะจาก cache จริง แล้วกำหนด level ให้ถูกต้อง
     var reqData=(window._REQS_MAP||{})[reqId]||(window._DEMO_REQS_MAP||{})[reqId];
     var isSupervisorStep=(reqData&&reqData.StatusApproval==='PENDING_SUPERVISOR')||CU.role==='SUPERVISOR';
     data.level=isSupervisorStep?'supervisor':'manager';
     callAPI('approveRequisition',data).then(function(res){
-      toast(res.message,res.success?'success':'error');
-      if(res.success){loadApproval();loadDashboard();refreshBadges(true);}
+      if(res.success){
+        toast(res.message,'success');
+        loadApproval(); loadDashboard(); refreshBadges(true);
+      } else if(res.message && res.message.indexOf('ดำเนินการไปแล้ว')>=0){
+        // ใบนี้ถูกอนุมัติไปแล้ว (กดซ้ำ) → refresh หน้าให้เป็นปัจจุบัน
+        toast('ดำเนินการแล้วค่ะ — กำลัง refresh...','info');
+        loadApproval(); loadDashboard(); refreshBadges(true);
+      } else {
+        toast(res.message||'เกิดข้อผิดพลาด','error');
+      }
     });
   } else {
     data.role=CU.role==='SUPERVISOR'?'SUPERVISOR':'MANAGER';
