@@ -278,6 +278,7 @@ textarea.fc{min-height:70px;resize:vertical;}
       <div class="ni" data-pg="print" onclick="go('print')"><span class="ic">🖨️</span> พิมพ์ใบเบิก</div>
       <div style="height:1px;background:rgba(255,255,255,.15);margin:8px 12px"></div>
       <div class="ni" data-pg="stockcard" onclick="go('stockcard')"><span class="ic">🗂️</span> Stock Card</div>
+      <div class="ni" data-pg="vehiclehistory" onclick="go('vehiclehistory')"><span class="ic">🚗</span> ประวัติรถ</div>
       <div class="ni" data-pg="stockcount" onclick="go('stockcount')" id="nStockCount"><span class="ic">🔢</span> นับสต็อก</div>
       <div class="ni hidden" id="nChangeReq" data-pg="changereq" onclick="go('changereq')"><span class="ic">🔑</span> คำขอแก้ไข<span class="badge" id="crBadge">0</span></div>
       <div class="ni" data-pg="sales" onclick="go('sales')"><span class="ic">🛒</span> ขาย/เบิกจ่ายภายใน</div>
@@ -446,6 +447,18 @@ textarea.fc{min-height:70px;resize:vertical;}
             </div>
             <input type="file" id="retPhoIn" accept="image/*" capture="environment" style="display:none" onchange="onRetPhoto(event)">
           </div>
+
+          <!-- ── ระบุรถที่ใส่อะไหล่ (บังคับ) ──────────────── -->
+          <div class="card" id="vehicleAssignSection">
+            <div class="ct">🚗 ระบุรถที่ใส่อะไหล่ <span class="rq">*</span>
+              <span style="font-size:12px;color:var(--red);font-weight:400">(บังคับระบุก่อนส่งเคลียร์)</span>
+            </div>
+            <div style="font-size:12px;color:var(--g400);margin-bottom:10px">
+              กรอกว่าอะไหล่แต่ละชิ้นถูกใส่รถ Serial No. อะไรบ้าง
+            </div>
+            <div id="vehicleAssignList"></div>
+          </div>
+
           <div class="card">
             <div class="fg"><label class="fl">หมายเหตุ / รายงานการทำงาน</label>
               <textarea class="fc" id="clNote" placeholder="สรุปงานที่ทำ อะไหล่ที่ใช้จริง สิ่งผิดปกติ..."></textarea>
@@ -1042,6 +1055,37 @@ textarea.fc{min-height:70px;resize:vertical;}
 
 <div class="tw2" id="toastW"></div>
 <script src="parts_data.js"></script>
+      <!-- ═══════════════════════════════════════════════════ -->
+      <!-- VEHICLE HISTORY PAGE                               -->
+      <!-- ═══════════════════════════════════════════════════ -->
+      <div id="pg-vehiclehistory" class="hidden">
+        <div class="card" style="padding:14px 16px;margin-bottom:10px;background:linear-gradient(135deg,#1a237e,#283593);color:#fff">
+          <div style="font-size:15px;font-weight:700">🚗 ประวัติการซ่อม/เปลี่ยนอะไหล่ตาม Serial No.</div>
+          <div style="font-size:11px;opacity:.8;margin-top:2px">ค้นหา Serial No. รถ → ดูประวัติการเปลี่ยนอะไหล่ทั้งหมด</div>
+        </div>
+
+        <!-- ค้นหา -->
+        <div class="card" style="padding:12px 14px;margin-bottom:10px">
+          <div style="display:flex;gap:8px">
+            <div style="flex:1;position:relative">
+              <input class="fc" id="vhSearch" placeholder="🔍 พิมพ์ Serial No. รถ..." oninput="onVHSearch()" autocomplete="off">
+              <div id="vhSearchDrop" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid var(--g200);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.12);z-index:400;max-height:280px;overflow-y:auto"></div>
+            </div>
+            <button class="btn bp bsm" onclick="loadVehicleHistory()">ค้นหา</button>
+          </div>
+          <!-- รายละเอียดรถที่เลือก -->
+          <div id="vhCarInfo" style="display:none;margin-top:10px;padding:10px 12px;background:#e8eaf6;border-radius:8px;font-size:13px"></div>
+        </div>
+
+        <!-- ผลลัพธ์ -->
+        <div id="vhResultBox">
+          <div class="card tc tm" style="padding:40px;color:var(--g400)">
+            <div style="font-size:32px;margin-bottom:8px">🚗</div>
+            <div>ค้นหา Serial No. รถเพื่อดูประวัติการซ่อมค่ะ</div>
+          </div>
+        </div>
+      </div>
+
       <!-- ═══════════════════════════════════════════════════ -->
       <!-- STOCK CARD PAGE                                     -->
 
@@ -2022,7 +2066,7 @@ function roleLabel(r){
 }
 
 // ── NAVIGATE ─────────────────────────────────────────────────
-var pgTitles={dashboard:'Dashboard',create:'เปิดใบเบิกอะไหล่',list:'รายการใบเบิกอะไหล่',approval:'รายการรออนุมัติ',stock:'จัดอะไหล่ / รับคืน',pickup:'รับอะไหล่',close:'เคลียร์ใบเบิก',print:'พิมพ์ใบเบิก',profile:'ลายเซ็นของฉัน',jobs:'จัดการ Job No.',stockcard:'Stock Card',stockcount:'นับสต็อก',changereq:'คำขออนุมัติแก้ไข',sales:'เปิดรายการขาย',inventory:'ยอดคงเหลือ'};
+var pgTitles={dashboard:'Dashboard',create:'เปิดใบเบิกอะไหล่',list:'รายการใบเบิกอะไหล่',approval:'รายการรออนุมัติ',stock:'จัดอะไหล่ / รับคืน',pickup:'รับอะไหล่',close:'เคลียร์ใบเบิก',print:'พิมพ์ใบเบิก',profile:'ลายเซ็นของฉัน',jobs:'จัดการ Job No.',stockcard:'Stock Card',stockcount:'นับสต็อก',changereq:'คำขออนุมัติแก้ไข',vehiclehistory:'ประวัติรถ',sales:'เปิดรายการขาย',inventory:'ยอดคงเหลือ'};
 
 function go(page){
   curPage = page;
@@ -2049,6 +2093,7 @@ function go(page){
   if(page==='profile') loadProfile();
   if(page==='report') loadReportPage();
   if(page==='changereq') loadChangeReqPage();
+  if(page==='vehiclehistory'){ loadVehiclesDB(); }
   if(page==='stockcount'){
     var lbl = document.getElementById('scntDateLabel');
     if(lbl) lbl.textContent = 'วันที่นับ: '+new Date().toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'});
@@ -2727,6 +2772,17 @@ function loadCloseDetail(){
 
     // เก็บ items ไว้ใช้ตอน submit
     window._clearItems = items;
+    // โหลด Vehicles DB แล้ว init ส่วนระบุรถ
+    loadVehiclesDB().then(function(){
+      initVehicleAssign(items.map(function(it){
+        return {
+          partNo: String(it.PartNo||it.partNo||''),
+          nameEN: it.NameEN||it.nameEN||it.NameTH||'',
+          qty: parseFloat(it.IssuedQty!=null&&it.IssuedQty!==''?it.IssuedQty:it.Qty)||0,
+          unit: it.Unit||it.unit||'ชิ้น',
+        };
+      }).filter(function(it){ return it.qty>0; }));
+    });
 
     // toggle sections
     if(techSection) techSection.classList.toggle('hidden', isPendingClearance);
@@ -2783,16 +2839,37 @@ function submitClearByTech(){
   if(!reqId) return toast('กรุณาเลือกใบเบิก','error');
   if(!retPhotoB64) return toast('กรุณาถ่ายรูปของที่คืน/ของเสียก่อนค่ะ','error');
 
-  // อ่านจาก DOM ตรงๆ (ไม่ผ่าน _clearItems เพื่อป้องกัน race condition)
+  // ตรวจสอบการระบุรถ
+  var items = window._clearItems||[];
+  var usedItems = items.filter(function(it,i){
+    var cu = Number((document.getElementById('cu_'+i)||{}).value)||0;
+    return cu>0;
+  });
+
+  var vhCheck = getVehicleAssignEntries(usedItems.map(function(it,i){
+    return {
+      partNo: String(it.PartNo||it.partNo||''),
+      nameEN: it.NameEN||it.nameEN||it.NameTH||'',
+      qty: Number((document.getElementById('cu_'+i)||{}).value)||0,
+      unit: it.Unit||it.unit||'ชิ้น',
+    };
+  }));
+
+  if(vhCheck.errors.length){
+    toast('กรุณาระบุรถให้ครบ:\n'+vhCheck.errors.join('\n'),'error');
+    document.getElementById('vehicleAssignSection').scrollIntoView({behavior:'smooth'});
+    return;
+  }
+
+  // อ่านจาก DOM ตรงๆ
   var tbody = document.getElementById('clItemsBody');
   var rows = tbody ? tbody.querySelectorAll('tr') : [];
-  var items = window._clearItems||[];
   var returnedItems=[], defectItems=[];
 
   rows.forEach(function(tr, i){
-    var partNo = items[i] ? items[i].PartNo : (tr.cells[0]?tr.cells[0].textContent.trim():'');
-    var nameEN = items[i] ? (items[i].NameEN||items[i].NameTH||'') : '';
-    var unit   = items[i] ? (items[i].Unit||'ชิ้น') : 'ชิ้น';
+    var partNo = items[i] ? String(items[i].PartNo||items[i].partNo||'') : '';
+    var nameEN = items[i] ? (items[i].NameEN||items[i].nameEN||items[i].NameTH||'') : '';
+    var unit   = items[i] ? (items[i].Unit||items[i].unit||'ชิ้น') : 'ชิ้น';
     var ret  = Number((document.getElementById('cr_'+i)||{}).value)||0;
     var def  = Number((document.getElementById('cdf_'+i)||{}).value)||0;
     var note = (document.getElementById('cn_'+i)||{}).value||'';
@@ -2801,14 +2878,22 @@ function submitClearByTech(){
   });
 
   toast('กำลังบันทึก...', 'info');
-  callAPI('submitClearance',{
-    id:reqId,
-    note:document.getElementById('clNote').value,
-    returnedItems:returnedItems,
-    defectItems:defectItems,
-    photoUrl:retPhotoB64,
+
+  // บันทึก VehicleHistory ก่อน แล้วค่อย submitClearance
+  var saveVH = vhCheck.entries.length
+    ? callAPI('saveVehicleHistory',{reqId:reqId, entries:vhCheck.entries, techName:CU&&CU.name||''})
+    : Promise.resolve({success:true});
+
+  saveVH.then(function(){
+    return callAPI('submitClearance',{
+      id:reqId,
+      note:document.getElementById('clNote').value,
+      returnedItems:returnedItems,
+      defectItems:defectItems,
+      photoUrl:retPhotoB64,
+    });
   }).then(function(res){
-    toast(res.message,res.success?'success':'error');
+    toast(res.message, res.success?'success':'error');
     if(res.success){ retPhotoB64=null; setTimeout(function(){go('list');},600); }
   });
 }
@@ -5374,8 +5459,234 @@ var _scPartTab = 'all';      // all / in / out
 var _scAllEntries = [];      // entries ทั้งหมดของ part นั้น
 
 // ════════════════════════════════════════════════════════════════
-// BACK ORDERS — สั่งอะไหล่จาก HQ
+// VEHICLE HISTORY — ประวัติรถ
 // ════════════════════════════════════════════════════════════════
+var _vehiclesDB = [];      // cache รายการรถ
+var _vhCurrentSerial = ''; // serial ที่กำลังดู
+var _vhAssignItems = [];   // รายการระบุรถตอนเคลียร์
+
+// โหลด Vehicles จาก Sheet (cache)
+function loadVehiclesDB(){
+  if(_vehiclesDB.length) return Promise.resolve(_vehiclesDB);
+  return callAPI('getVehicles',{}).then(function(res){
+    _vehiclesDB = res.data||[];
+    return _vehiclesDB;
+  });
+}
+
+// ── ค้นหาใน Vehicle History page ──────────────────────────────
+function onVHSearch(){
+  var q = (document.getElementById('vhSearch').value||'').trim().toLowerCase();
+  var dd = document.getElementById('vhSearchDrop');
+  if(!dd) return;
+  if(!q){ dd.style.display='none'; return; }
+
+  loadVehiclesDB().then(function(vehicles){
+    var res = vehicles.filter(function(v){
+      return (v.SerialNo||'').toLowerCase().indexOf(q)>=0
+        || (v.CarNo||'').toLowerCase().indexOf(q)>=0
+        || (v.Location||'').toLowerCase().indexOf(q)>=0;
+    }).slice(0,15);
+
+    if(!res.length){ dd.innerHTML='<div style="padding:12px;text-align:center;color:var(--g400);font-size:13px">ไม่พบรถที่ค้นหาค่ะ</div>'; dd.style.display='block'; return; }
+
+    dd.innerHTML = res.map(function(v){
+      return '<div onclick="selectVH(\''+v.SerialNo+'\')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #f5f5f5;font-size:13px">'
+        +'<strong>'+v.SerialNo+'</strong>'
+        +(v.CarNo?' <span style="color:var(--g400)">['+v.CarNo+']</span>':'')
+        +' <span style="background:#e8eaf6;color:#1a237e;border-radius:4px;padding:1px 6px;font-size:11px">'+( v.StatusType||'')+'</span>'
+        +'<div style="font-size:11px;color:var(--g400);margin-top:2px">'+( v.Location||'—')+' | '+(v.Customer||v.VehicleType||'')+'</div>'
+        +'</div>';
+    }).join('');
+    dd.style.display='block';
+  });
+}
+
+function selectVH(serialNo){
+  document.getElementById('vhSearch').value = serialNo;
+  document.getElementById('vhSearchDrop').style.display='none';
+  _vhCurrentSerial = serialNo;
+
+  // แสดงข้อมูลรถ
+  loadVehiclesDB().then(function(vehicles){
+    var car = vehicles.find(function(v){ return v.SerialNo===serialNo; });
+    var info = document.getElementById('vhCarInfo');
+    if(car && info){
+      info.style.display='block';
+      info.innerHTML='<div style="display:flex;gap:16px;flex-wrap:wrap">'
+        +'<div><span style="color:var(--g400);font-size:11px">Serial No.</span><div style="font-weight:700;color:#1a237e">'+car.SerialNo+'</div></div>'
+        +(car.CarNo?'<div><span style="color:var(--g400);font-size:11px">เบอร์รถ</span><div style="font-weight:600">'+car.CarNo+'</div></div>':'')
+        +'<div><span style="color:var(--g400);font-size:11px">ประเภท</span><div style="font-weight:600">'+( car.VehicleType||'—')+'</div></div>'
+        +'<div><span style="color:var(--g400);font-size:11px">สถานะ</span><div style="font-weight:600;color:#1a237e">'+( car.StatusType||'—')+'</div></div>'
+        +(car.Customer?'<div><span style="color:var(--g400);font-size:11px">ลูกค้า</span><div style="font-weight:600">'+car.Customer+'</div></div>':'')
+        +'<div><span style="color:var(--g400);font-size:11px">สถานที่</span><div style="font-weight:600">'+( car.Location||'—')+'</div></div>'
+        +'</div>';
+    }
+    loadVehicleHistory();
+  });
+}
+
+function loadVehicleHistory(){
+  var serial = _vhCurrentSerial || (document.getElementById('vhSearch').value||'').trim();
+  if(!serial){ toast('กรุณาระบุ Serial No. รถค่ะ','error'); return; }
+  _vhCurrentSerial = serial;
+  var box = document.getElementById('vhResultBox');
+  if(!box) return;
+  box.innerHTML = '<div class="card tc tm" style="padding:24px">⏳ กำลังโหลดประวัติรถ...</div>';
+
+  callAPI('getVehicleHistory',{serialNo:serial}).then(function(res){
+    var rows = res.data||[];
+    if(!rows.length){
+      box.innerHTML='<div class="card tc tm" style="padding:40px;color:var(--g400)"><div style="font-size:28px">📋</div><div style="margin-top:8px">ยังไม่มีประวัติการซ่อม/เปลี่ยนอะไหล่ของรถคันนี้ค่ะ</div></div>';
+      return;
+    }
+
+    var html='<div class="card" style="padding:10px 14px;margin-bottom:8px;background:#e8eaf6;font-size:13px">'
+      +'🔧 ประวัติทั้งหมด <strong>'+rows.length+' รายการ</strong> | Serial: <strong>'+serial+'</strong></div>'
+      +'<div class="card" style="padding:0;overflow:hidden"><div class="tw"><table class="it" style="font-size:13px"><thead><tr>'
+      +'<th>วันที่</th><th>ใบเบิก</th><th>Part No.</th><th>ชื่ออะไหล่</th>'
+      +'<th style="text-align:center">จำนวน</th><th>ช่าง</th><th>หมายเหตุ</th>'
+      +'</tr></thead><tbody>'
+      +rows.map(function(r){
+        var dt = r.Date ? new Date(r.Date).toLocaleDateString('th-TH',{year:'numeric',month:'short',day:'numeric'}) : '—';
+        return '<tr>'
+          +'<td style="white-space:nowrap">'+dt+'</td>'
+          +'<td style="font-size:12px;color:var(--gd)">'+( r.ReqID||'—')+'</td>'
+          +'<td style="font-size:11px;font-weight:600">'+r.PartNo+'</td>'
+          +'<td style="font-size:12px">'+( r.PartName||'—')+'</td>'
+          +'<td style="text-align:center;font-weight:700;color:var(--gd)">'+r.Qty+' '+(r.Unit||'')+'</td>'
+          +'<td style="font-size:12px">'+( r.TechName||r.TechEmail||'—')+'</td>'
+          +'<td style="font-size:11px;color:var(--g400)">'+( r.Note||'—')+'</td>'
+          +'</tr>';
+      }).join('')
+      +'</tbody></table></div></div>';
+    box.innerHTML=html;
+  });
+}
+
+// ── ระบุรถตอนเคลียร์ใบเบิก ───────────────────────────────────
+function initVehicleAssign(items){
+  // items = [{partNo, nameEN, qty, unit}]
+  _vhAssignItems = [];
+  var box = document.getElementById('vehicleAssignList');
+  if(!box) return;
+
+  if(!items||!items.length){ box.innerHTML='<div style="color:var(--g400);font-size:12px">ไม่มีรายการอะไหล่</div>'; return; }
+
+  // สร้าง assign entries — 1 แถวต่อ 1 อะไหล่ (เพิ่มได้)
+  _vhAssignItems = items.map(function(it,i){ return [{serialNo:'',qty:it.qty,note:'',_partIdx:i}]; });
+  renderVehicleAssign(items);
+}
+
+function renderVehicleAssign(items){
+  var box = document.getElementById('vehicleAssignList');
+  if(!box||!items||!items.length) return;
+
+  var html = items.map(function(it,pi){
+    var assigns = _vhAssignItems[pi]||[{serialNo:'',qty:it.qty,note:''}];
+    var totalAssigned = assigns.reduce(function(s,a){ return s+(Number(a.qty)||0); },0);
+    var remaining = (it.qty||0) - totalAssigned;
+    var ok = remaining===0;
+
+    return '<div style="margin-bottom:14px;padding:12px;background:#f8f9fa;border-radius:8px;border-left:4px solid '+(ok?'var(--gm)':'var(--g200)')+'">'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">'
+        +'<span style="font-size:12px;font-weight:700;color:var(--gd)">'+it.partNo+'</span>'
+        +'<span style="font-size:12px">'+( it.nameEN||it.nameTH||'')+'</span>'
+        +'<span style="font-size:11px;background:var(--g100);padding:2px 8px;border-radius:4px;color:var(--gd)">เบิกไป '+it.qty+' '+( it.unit||'ชิ้น')+'</span>'
+        +(ok?'<span style="font-size:11px;background:#e8f5e9;color:var(--gm);padding:2px 8px;border-radius:4px">✅ ครบ</span>'
+            :'<span style="font-size:11px;background:#fff3e0;color:#e65100;padding:2px 8px;border-radius:4px">⚠️ คงเหลือ '+remaining+' '+( it.unit||'ชิ้น')+'</span>')
+      +'</div>'
+      +assigns.map(function(a,ai){
+        return '<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">'
+          +'<div style="position:relative;flex:2;min-width:150px">'
+            +'<input class="fc" placeholder="Serial No. รถ..." value="'+(a.serialNo||'')+'" '
+              +'style="font-size:13px" '
+              +'oninput="_vhAssignItems['+pi+']['+ai+'].serialNo=this.value;_vhShowSerialDrop(this,'+pi+','+ai+')" '
+              +'onblur="setTimeout(function(){var d=document.getElementById(\'vhad_'+pi+'_'+ai+'\');if(d)d.style.display=\'none\';},200)">'
+            +'<div id="vhad_'+pi+'_'+ai+'" style="display:none;position:absolute;top:calc(100% + 2px);left:0;right:0;background:#fff;border:1px solid var(--g200);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:300;max-height:180px;overflow-y:auto;font-size:12px"></div>'
+          +'</div>'
+          +'<input class="fc" type="number" min="0" max="'+it.qty+'" value="'+(a.qty||'')+'" placeholder="จำนวน" '
+            +'style="width:80px;font-size:13px;text-align:center" '
+            +'oninput="_vhAssignItems['+pi+']['+ai+'].qty=Number(this.value);renderVehicleAssign('+JSON.stringify(items)+')">'
+          +'<input class="fc" value="'+(a.note||'')+'" placeholder="หมายเหตุ (เช่น เปลี่ยนหน้า)" '
+            +'style="flex:2;font-size:12px" '
+            +'oninput="_vhAssignItems['+pi+']['+ai+'].note=this.value">'
+          +(assigns.length>1?'<button onclick="_vhAssignItems['+pi+'].splice('+ai+',1);renderVehicleAssign('+JSON.stringify(items)+')" style="background:none;border:none;color:var(--g400);cursor:pointer;font-size:16px">✕</button>':'')
+          +'</div>';
+      }).join('')
+      +'<button onclick="_vhAssignItems['+pi+'].push({serialNo:\'\',qty:0,note:\'\'});renderVehicleAssign('+JSON.stringify(items)+')" '
+        +'style="font-size:12px;color:var(--gd);background:none;border:1px dashed var(--gd);border-radius:6px;padding:4px 12px;cursor:pointer;margin-top:2px">+ เพิ่มรถอีกคัน</button>'
+    +'</div>';
+  }).join('');
+
+  box.innerHTML = html;
+}
+
+function _vhShowSerialDrop(inp, pi, ai){
+  var q = (inp.value||'').toLowerCase().trim();
+  var ddId = 'vhad_'+pi+'_'+ai;
+  var dd = document.getElementById(ddId);
+  if(!dd) return;
+  if(!q){ dd.style.display='none'; return; }
+
+  var res = _vehiclesDB.filter(function(v){
+    return (v.SerialNo||'').toLowerCase().indexOf(q)>=0
+      || (v.CarNo||'').toLowerCase().indexOf(q)>=0;
+  }).slice(0,10);
+
+  if(!res.length){ dd.style.display='none'; return; }
+  dd.innerHTML = res.map(function(v){
+    return '<div onmousedown="_vhPickSerial(\''+v.SerialNo+'\','+pi+','+ai+')" '
+      +'style="padding:8px 10px;cursor:pointer;border-bottom:1px solid #f5f5f5">'
+      +'<strong>'+v.SerialNo+'</strong>'
+      +(v.CarNo?' ['+v.CarNo+']':'')+' '
+      +'<span style="color:var(--g400);font-size:11px">'+( v.StatusType||'')+' | '+(v.Location||'')+'</span>'
+      +'</div>';
+  }).join('');
+  dd.style.display='block';
+}
+
+function _vhPickSerial(serial, pi, ai){
+  _vhAssignItems[pi][ai].serialNo = serial;
+  var inp = document.querySelector('#vhad_'+pi+'_'+ai).previousElementSibling;
+  if(inp) inp.value = serial;
+  var dd = document.getElementById('vhad_'+pi+'_'+ai);
+  if(dd) dd.style.display='none';
+}
+
+function getVehicleAssignEntries(items){
+  // ตรวจสอบและรวบรวม entries สำหรับบันทึก
+  var entries = [];
+  var errors = [];
+  (_vhAssignItems||[]).forEach(function(assigns, pi){
+    var it = items[pi];
+    if(!it) return;
+    var totalAssigned = assigns.reduce(function(s,a){ return s+(Number(a.qty)||0); },0);
+    assigns.forEach(function(a){
+      if(!a.serialNo){ errors.push('อะไหล่ '+it.partNo+' มีรายการที่ยังไม่ได้ระบุ Serial No.'); return; }
+      if(!(Number(a.qty)>0)){ errors.push('อะไหล่ '+it.partNo+' รถ '+a.serialNo+' ยังไม่ได้ระบุจำนวน'); return; }
+      // หาข้อมูลรถ
+      var car = _vehiclesDB.find(function(v){ return v.SerialNo===a.serialNo; })||{};
+      entries.push({
+        serialNo: a.serialNo,
+        vehicleType: car.VehicleType||'',
+        customerAtTime: car.Customer||car.StatusType||'',
+        location: car.Location||'',
+        partNo: it.partNo,
+        partName: it.nameEN||it.nameTH||'',
+        qty: Number(a.qty)||0,
+        unit: it.unit||'ชิ้น',
+        note: a.note||'',
+      });
+    });
+    if(totalAssigned !== (it.qty||0)){
+      errors.push('อะไหล่ '+it.partNo+' ระบุรวม '+totalAssigned+' แต่เบิกไป '+it.qty+' — ต้องระบุให้ครบ');
+    }
+  });
+  return {entries:entries, errors:errors};
+}
+
+
 var _rptShortageFilter = 'all';
 var _rptShortageData = [];
 var _backOrders = [];
