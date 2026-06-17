@@ -2091,7 +2091,10 @@ function go(page){
   if(page==='profile') loadProfile();
   if(page==='report') loadReportPage();
   if(page==='changereq') loadChangeReqPage();
-  if(page==='vehiclehistory'){ loadVehiclesDB(); }
+  if(page==='vehiclehistory'){
+    // preload vehicles ทันที เพื่อให้ค้นหาได้เร็ว
+    loadVehiclesDB();
+  }
   if(page==='stockcount'){
     var lbl = document.getElementById('scntDateLabel');
     if(lbl) lbl.textContent = 'วันที่นับ: '+new Date().toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'});
@@ -5554,6 +5557,7 @@ function onVHSearch(){
   if(!dd) return;
   if(!q){ dd.style.display='none'; return; }
 
+  // รอ loadVehiclesDB ก่อนเสมอ
   loadVehiclesDB().then(function(vehicles){
     var res = vehicles.filter(function(v){
       return String(v.SerialNo||'').toLowerCase().indexOf(q)>=0
