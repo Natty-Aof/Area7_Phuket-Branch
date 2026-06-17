@@ -5470,11 +5470,23 @@ var _vehiclesDB = [];      // cache รายการรถ
 var _vhCurrentSerial = ''; // serial ที่กำลังดู
 var _vhAssignItems = [];   // รายการระบุรถตอนเคลียร์
 
-// โหลด Vehicles จาก Sheet (cache)
 function loadVehiclesDB(){
   if(_vehiclesDB.length) return Promise.resolve(_vehiclesDB);
   return callAPI('getVehicles',{}).then(function(res){
-    _vehiclesDB = res.data||[];
+    _vehiclesDB = (res.data||[]).map(function(v){
+      // normalize ทุก field ให้เป็น string
+      return {
+        SerialNo:    String(v.SerialNo||'').trim(),
+        VehicleType: String(v.VehicleType||'').trim(),
+        CarNo:       String(v.CarNo||'').trim(),
+        Model:       String(v.Model||'').trim(),
+        StatusType:  String(v.StatusType||'').trim(),
+        Customer:    String(v.Customer||'').trim(),
+        Location:    String(v.Location||'').trim(),
+        Status:      String(v.Status||'').trim(),
+        Note:        String(v.Note||'').trim(),
+      };
+    }).filter(function(v){ return v.SerialNo; }); // กรองแถวว่าง
     return _vehiclesDB;
   });
 }
@@ -5544,9 +5556,10 @@ function onVHSearch(){
 
   loadVehiclesDB().then(function(vehicles){
     var res = vehicles.filter(function(v){
-      return (v.SerialNo||'').toLowerCase().indexOf(q)>=0
-        || (v.CarNo||'').toLowerCase().indexOf(q)>=0
-        || (v.Location||'').toLowerCase().indexOf(q)>=0;
+      return String(v.SerialNo||'').toLowerCase().indexOf(q)>=0
+        || String(v.CarNo||'').toLowerCase().indexOf(q)>=0
+        || String(v.Location||'').toLowerCase().indexOf(q)>=0
+        || String(v.Customer||'').toLowerCase().indexOf(q)>=0;
     }).slice(0,15);
 
     if(!res.length){ dd.innerHTML='<div style="padding:12px;text-align:center;color:var(--g400);font-size:13px">ไม่พบรถที่ค้นหาค่ะ</div>'; dd.style.display='block'; return; }
