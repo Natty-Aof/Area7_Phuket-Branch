@@ -2417,15 +2417,16 @@ function loadStock(){
     var sl=document.getElementById('stList');
     if(!sl) return;
 
-    // รอจัด = อนุมัติแล้ว + StatusStock ยังไม่ CLEARED/PICKED_UP/PENDING_CLEARANCE
+    // รอจัด = อนุมัติแล้ว + StatusStock เป็น PENDING เท่านั้น
     var pending = all.filter(function(r){
       return r.StatusApproval==='APPROVED'
-        && (r.StatusStock==='PENDING'||r.StatusStock==='ACKNOWLEDGED'||!r.StatusStock);
+        && (r.StatusStock==='PENDING'||!r.StatusStock);
     });
-    // จัดแล้ว = PICKED_UP ขึ้นไป
+    // จัดแล้ว = ACKNOWLEDGED ขึ้นไป (Stock จัดแล้ว รอช่างรับ / ปิดงาน)
     var done = all.filter(function(r){
       return r.StatusApproval==='APPROVED'
-        && (r.StatusStock==='PICKED_UP'||r.StatusStock==='PENDING_CLEARANCE'||r.StatusStock==='CLEARED');
+        && (r.StatusStock==='ACKNOWLEDGED'||r.StatusStock==='PICKED_UP'
+          ||r.StatusStock==='PENDING_CLEARANCE'||r.StatusStock==='CLEARED');
     });
 
     var bp = document.getElementById('stBadgePend');
@@ -3093,10 +3094,10 @@ function confirmNote(action, reqId){
     callAPI('approveRequisition',data).then(function(res){
       if(res.success){
         toast(res.message,'success');
-        setTimeout(function(){ loadApproval(); loadDashboard(); refreshBadges(true); }, 500);
+        setTimeout(function(){ go('approval'); }, 800);
       } else if(res.message && res.message.indexOf('ดำเนินการไปแล้ว')>=0){
         toast('ดำเนินการแล้วค่ะ — กำลัง refresh...','info');
-        setTimeout(function(){ loadApproval(); loadDashboard(); refreshBadges(true); }, 500);
+        setTimeout(function(){ go('approval'); }, 800);
       } else {
         toast(res.message||'เกิดข้อผิดพลาด','error');
       }
@@ -3106,7 +3107,7 @@ function confirmNote(action, reqId){
     data.rejectorName=CU.name;
     callAPI('rejectRequisition',data).then(function(res){
       toast(res.message,res.success?'success':'error');
-      if(res.success){ setTimeout(function(){ loadApproval(); loadDashboard(); refreshBadges(true); }, 500); }
+      if(res.success){ setTimeout(function(){ go('approval'); refreshBadges(true); }, 800); }
     });
   }
 }
