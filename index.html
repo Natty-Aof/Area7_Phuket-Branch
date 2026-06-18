@@ -3093,11 +3093,10 @@ function confirmNote(action, reqId){
     callAPI('approveRequisition',data).then(function(res){
       if(res.success){
         toast(res.message,'success');
-        loadApproval(); loadDashboard(); refreshBadges(true);
+        setTimeout(function(){ loadApproval(); loadDashboard(); refreshBadges(true); }, 500);
       } else if(res.message && res.message.indexOf('ดำเนินการไปแล้ว')>=0){
-        // ใบนี้ถูกอนุมัติไปแล้ว (กดซ้ำ) → refresh หน้าให้เป็นปัจจุบัน
         toast('ดำเนินการแล้วค่ะ — กำลัง refresh...','info');
-        loadApproval(); loadDashboard(); refreshBadges(true);
+        setTimeout(function(){ loadApproval(); loadDashboard(); refreshBadges(true); }, 500);
       } else {
         toast(res.message||'เกิดข้อผิดพลาด','error');
       }
@@ -3107,7 +3106,7 @@ function confirmNote(action, reqId){
     data.rejectorName=CU.name;
     callAPI('rejectRequisition',data).then(function(res){
       toast(res.message,res.success?'success':'error');
-      if(res.success){loadApproval();loadDashboard();refreshBadges(true);}
+      if(res.success){ setTimeout(function(){ loadApproval(); loadDashboard(); refreshBadges(true); }, 500); }
     });
   }
 }
