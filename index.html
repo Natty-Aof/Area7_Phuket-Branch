@@ -6589,7 +6589,9 @@ function loadSCRWarehouse(){
   box.innerHTML = '<div class="card tc tm" style="padding:32px">⏳ กำลังโหลดคลัง SCR...</div>';
 
   callAPI('getStockCardEntries',{}).then(function(res){
-    var all = (res.data||[]).filter(function(e){ return e.Type==='DEFECT_RETURN' || (e.PartNo||'').indexOf('SCR')===0; });
+    var all = (res.data||[]).filter(function(e){
+      return e.Type==='DEFECT_RETURN' || String(e.PartNo||'').indexOf('SCR')===0;
+    });
     if(!all.length){
       _scrAllRows = [];
       box.innerHTML = '<div class="card tc tm" style="padding:40px"><div style="font-size:32px">✅</div><div style="margin-top:8px">ยังไม่มีรายการใน คลัง SCR</div></div>';
