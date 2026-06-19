@@ -3051,7 +3051,9 @@ function loadCloseDetail(){
     if(!window._clItemState || !isPendingClearance) {
       window._clItemState = items.map(function(it, i){
         var pn = it.PartNo;
-        var issued = (it.IssuedQty!=null && it.IssuedQty!=='') ? Number(it.IssuedQty) : Number(it.Qty);
+        var qty = Number(it.Qty)||0;
+        var issued = (it.IssuedQty!=null && it.IssuedQty!=='' && Number(it.IssuedQty)>0)
+          ? Number(it.IssuedQty) : qty;
         return {
           partNo: pn,
           nameEN: it.NameEN||it.NameTH||'',
