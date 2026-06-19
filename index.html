@@ -895,7 +895,7 @@ textarea.fc{min-height:70px;resize:vertical;}
         </div>
 
         <!-- Footer ยืนยัน -->
-        <div id="scntFooter" style="display:none;position:sticky;bottom:0;background:#fff;border-top:2px solid var(--gm);padding:12px 16px;margin:0 -4px;display:none;gap:10px;align-items:center;justify-content:space-between;z-index:100">
+        <div id="scntFooter" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:2px solid var(--gm);padding:12px 16px;gap:10px;align-items:center;justify-content:space-between;z-index:150">
           <div id="scntFooterSummary" style="font-size:13px;color:var(--g400)"></div>
           <div style="display:flex;gap:8px">
             <button class="btn bd bsm" onclick="clearSCNTItems()">🗑️ ล้างรายการ</button>
@@ -1067,7 +1067,7 @@ textarea.fc{min-height:70px;resize:vertical;}
   <div class="bni">
     <button class="bib active" data-pg="dashboard" onclick="go('dashboard')"><span class="ic2">📊</span><span>หน้าหลัก</span></button>
     <button class="bib" data-pg="create" onclick="go('create')"><span class="ic2">📝</span><span>เปิดใบเบิก</span></button>
-    <button class="bib" data-pg="report" onclick="go('report')"><span class="ic2">📊</span><span>รายงาน</span></button>
+    <button class="bib" data-pg="pickup" onclick="go('pickup')"><span class="ic2">📥</span><span>รับของ</span></button>
     <button class="bib hidden" id="bnAp" data-pg="approval" onclick="go('approval')"><span class="ic2">✅</span><span>อนุมัติ</span></button>
     <button class="bib hidden" id="bnSt" data-pg="stock" onclick="go('stock')"><span class="ic2">📦</span><span>Stock</span></button>
     <button class="bib" onclick="openMore()"><span class="ic2">☰</span><span>เพิ่มเติม</span></button>
@@ -1076,10 +1076,13 @@ textarea.fc{min-height:70px;resize:vertical;}
 <div class="mov" id="moreOv" onclick="closeMore()"></div>
 <div class="ms" id="moreSheet">
   <div class="msh"></div>
-  <div class="msi" onclick="go('pickup');closeMore()"><span>📥</span> รับอะไหล่</div>
   <div class="msi" onclick="go('close');closeMore()"><span>🔄</span> เคลียร์ใบเบิก</div>
   <div class="msi" onclick="go('list');closeMore()"><span>📋</span> รายการใบเบิก</div>
   <div class="msi" onclick="go('report');closeMore()"><span>📊</span> รายงาน</div>
+  <div class="msi" onclick="go('stockcard');closeMore()"><span>🗂️</span> Stock Card</div>
+  <div class="msi" onclick="go('vehiclehistory');closeMore()"><span>🚗</span> ประวัติรถ</div>
+  <div class="msi" onclick="go('stockcount');closeMore()"><span>🔢</span> นับสต็อก</div>
+  <div class="msi" onclick="go('inventory');closeMore()"><span>📦</span> ยอดคงเหลือ</div>
   <div class="msi" onclick="go('print');closeMore()"><span>🖨️</span> พิมพ์ใบเบิก</div>
   <div class="msi" onclick="go('profile');closeMore()"><span>✍️</span> ลายเซ็นของฉัน</div>
   <div class="msi" onclick="go('jobs');closeMore()"><span>⚙️</span> จัดการ Job</div>
@@ -1611,6 +1614,68 @@ var DEMO_ITEMS = [];
 var DEMO_REQS = [];
 var DEMO_LOCS = {'05-16U291':'A-01-02','07-16290250':'A-01-05','01BPB000010396':'D-01-02'};
 
+// ── _goWithoutPush: เปลี่ยนหน้าโดยไม่ push history (ใช้ตอน popstate) ──
+function _goWithoutPush(page){
+  curPage = page;
+  refreshBadges();
+  document.querySelectorAll('.ni,.bib').forEach(function(el){
+    if(el) el.classList.toggle('active', el.dataset.pg===page);
+  });
+  document.querySelectorAll('[id^="pg-"]').forEach(function(el){if(el)el.classList.add('hidden');});
+  var pg = document.getElementById('pg-'+page);
+  if(pg) pg.classList.remove('hidden');
+  var t=document.getElementById('pgTitle');
+  if(t) t.textContent=pgTitles[page]||page;
+  if(page==='dashboard') loadDashboard();
+  if(page==='create'){initCreate();}
+  if(page==='list') { loadList(); }
+  if(page==='approval') loadApproval();
+  if(page==='stock'){loadStock();}
+  if(page==='stockcard'){loadStockCard();}
+  if(page==='sales'){initSales();}
+  if(page==='inventory'){loadInventory();}
+  if(page==='pickup') loadPickupPage();
+  if(page==='close') loadCloseSel();
+  if(page==='print') loadPrintSel();
+  if(page==='profile') loadProfile();
+  if(page==='report') loadReportPage();
+  if(page==='changereq') loadChangeReqPage();
+  if(page==='vehiclehistory'){ loadVehiclesDB(); }
+  if(page==='stockcount'){
+    var lbl = document.getElementById('scntDateLabel');
+    if(lbl) lbl.textContent = 'วันที่นับ: '+new Date().toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'});
+    renderSCNTManual();
+  }
+  if(page==='jobs') loadJobs();
+}
+
+// ── SESSION RESTORE: กด Back แล้วไม่ต้อง Login ใหม่ ──────────
+(function(){
+  try {
+    var saved = sessionStorage.getItem('_bgCU');
+    if(saved){
+      var u = JSON.parse(saved);
+      if(u && u.email && u.role){
+        CU = u;
+        var _validPg = ['dashboard','create','list','approval','stock','pickup','close','print','profile','jobs','stockcard','stockcount','changereq','vehiclehistory','sales','inventory','report'];
+        var restorePage = function(){
+          initApp();
+          var hash = window.location.hash.replace('#','');
+          if(hash && _validPg.indexOf(hash)>=0){
+            go(hash);
+          }
+        };
+        // รอ DOM พร้อมแล้วค่อย initApp
+        if(document.readyState === 'loading'){
+          document.addEventListener('DOMContentLoaded', restorePage);
+        } else {
+          restorePage();
+        }
+      }
+    }
+  } catch(e){}
+})();
+
 // ── GSI LOADER ───────────────────────────────────────────────
 (function(){
   var s = document.createElement('script');
@@ -1629,13 +1694,18 @@ function showDemo(){
 
 window._gsiReady = initGSI;
 window.onload = function(){
+  // ถ้า session restore แล้ว (CU มีค่า) ไม่ต้องโหลด GSI ใหม่
+  if(CU && CU.email){ return; }
   if(typeof google !== 'undefined' && google.accounts) initGSI();
   setTimeout(function(){
+    if(CU && CU.email) return; // session restored ระหว่างรอ
     if(typeof google === 'undefined' || !google.accounts) showDemo();
   }, 3000);
 };
 
 function initGSI(){
+  // ถ้า session restore แล้ว ไม่ต้อง init GSI ซ้ำ
+  if(CU && CU.email){ return; }
   if(typeof google === 'undefined' || !google.accounts) return showDemo();
   google.accounts.id.initialize({client_id:GOOGLE_CLIENT_ID, callback:onGSI, auto_select:false});
   var btn = document.getElementById('gBtn');
@@ -2003,6 +2073,21 @@ document.addEventListener('click', function(e){
 });
 
 function initApp(){
+  // ── Session Persistence: เก็บ CU ไว้ใน sessionStorage กันกด Back แล้ว logout ──
+  try {
+    sessionStorage.setItem('_bgCU', JSON.stringify({
+      email: CU.email, name: CU.name, role: CU.role
+    }));
+  } catch(e){}
+
+  // ── popstate: กดปุ่ม Back/Forward ของโทรศัพท์ → เปลี่ยนหน้าในแอปแทน ──
+  window.onpopstate = function(e){
+    if(!CU) return; // ถ้าไม่ได้ login ไม่ทำอะไร
+    var page = (e.state && e.state.page) || 'dashboard';
+    // เปลี่ยนหน้าโดยไม่ pushState ซ้ำ
+    _goWithoutPush(page);
+  };
+
   // Pre-load inventory data จาก PARTS_DB ทันที
   if(typeof PARTS_DB !== 'undefined' && PARTS_DB.length){
     _inventoryData = PARTS_DB.map(function(p){
@@ -2068,6 +2153,15 @@ var pgTitles={dashboard:'Dashboard',create:'เปิดใบเบิกอะ
 
 function go(page){
   curPage = page;
+  // ── History API: กันปุ่ม Back กลับไป login ──
+  try {
+    var state = { page: page };
+    if(window.history.state && window.history.state.page === page){
+      history.replaceState(state, '', '#'+page);
+    } else {
+      history.pushState(state, '', '#'+page);
+    }
+  } catch(e){}
   refreshBadges();  // อัปเดต badge ทุกครั้งที่เปลี่ยนหน้า
   document.querySelectorAll('.ni,.bib').forEach(function(el){
     if(el) el.classList.toggle('active', el.dataset.pg===page);
