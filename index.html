@@ -1649,32 +1649,7 @@ function _goWithoutPush(page){
   if(page==='jobs') loadJobs();
 }
 
-// ── SESSION RESTORE: กด Back แล้วไม่ต้อง Login ใหม่ ──────────
-(function(){
-  try {
-    var saved = sessionStorage.getItem('_bgCU');
-    if(saved){
-      var u = JSON.parse(saved);
-      if(u && u.email && u.role){
-        CU = u;
-        var _validPg = ['dashboard','create','list','approval','stock','pickup','close','print','profile','jobs','stockcard','stockcount','changereq','vehiclehistory','sales','inventory','report'];
-        var restorePage = function(){
-          initApp();
-          var hash = window.location.hash.replace('#','');
-          if(hash && _validPg.indexOf(hash)>=0){
-            go(hash);
-          }
-        };
-        // รอ DOM พร้อมแล้วค่อย initApp
-        if(document.readyState === 'loading'){
-          document.addEventListener('DOMContentLoaded', restorePage);
-        } else {
-          restorePage();
-        }
-      }
-    }
-  } catch(e){}
-})();
+// ── SESSION RESTORE moved to bottom of script (after all functions defined) ──
 
 // ── GSI LOADER ───────────────────────────────────────────────
 (function(){
@@ -1778,10 +1753,10 @@ function demoLogin(role){
 
 // ── API ──────────────────────────────────────────────────────
 function callAPI(action, data, userEmail){
-  // Demo mode disabled
+  var email = userEmail || (CU && CU.email) || '';
   return fetch(SCRIPT_URL, {
     method:'POST',
-    body:JSON.stringify({action:action, data:data||{}, userEmail:userEmail||CU.email})
+    body:JSON.stringify({action:action, data:data||{}, userEmail:email})
   }).then(function(r){ return r.json(); }).catch(function(e){
     toast('Server error: '+e.message,'error');
     return {success:false};
@@ -2216,6 +2191,7 @@ function refreshBadges(force){
 }
 
 function _doRefreshBadges(){
+  if(!CU) return;
   // กัน call ถี่เกินไป — ถ้าเพิ่งดึงไป < 3 วินาที ข้าม
   var now = Date.now();
   if((now - _badgeLastFetch) < 3000) return;
@@ -2224,10 +2200,14 @@ function _doRefreshBadges(){
     if(!res.success||!res.summary) return;
     var s=res.summary;
     var ab=document.getElementById('apBadge'), sb=document.getElementById('stBadge');
-    var apCount=(s.pendingSupervisor||0)+(s.pendingManager||0);
+    // Badge อนุมัติ: Supervisor เห็นเฉพาะ PENDING_SUPERVISOR, Manager เห็นทั้งคู่
+    var apCount = 0;
+    if(CU.role==='SUPERVISOR')        apCount = s.pendingSupervisor||0;
+    else if(CU.role==='MANAGER'||CU.role==='ADMIN')
+                                      apCount = (s.pendingSupervisor||0)+(s.pendingManager||0);
     if(ab){ ab.textContent=apCount; ab.style.display=apCount>0?'inline':'none'; }
     if(sb){ sb.textContent=s.stockPending||0; sb.style.display=(s.stockPending||0)>0?'inline':'none'; }
-    _badgeCache = s; _badgeCacheTime = Date.now(); // บันทึก cache
+    _badgeCache = s; _badgeCacheTime = Date.now();
   });
   // Badge คำขอแก้ไข (เฉพาะ Manager)
   if(CU&&(CU.role==='MANAGER'||CU.role==='ADMIN')){
@@ -2274,6 +2254,7 @@ function loadDashboard(){
 
 // ── CREATE ───────────────────────────────────────────────────
 function initCreate(){
+  if(!CU) return;
   var now=new Date(), y=now.getFullYear()+543;
   var d=String(now.getDate()).padStart(2,'0'), m=String(now.getMonth()+1).padStart(2,'0');
   var nd=document.getElementById('nDate'), ni=document.getElementById('nId'), nr=document.getElementById('nReq');
@@ -2361,6 +2342,7 @@ function onPhoto(e){
 }
 
 function submitReq(){
+  if(!CU) return toast('กรุณาเข้าสู่ระบบก่อนค่ะ','error');
   var job=document.getElementById('nJob').value.trim();
   if(!job) return toast('กรุณากรอก Job No.','error');
   var cust=document.getElementById('nCust').value.trim();
@@ -2458,26 +2440,54 @@ function loadList(){
 
 // ── APPROVAL ─────────────────────────────────────────────────
 function loadApproval(){
-  // SUPERVISOR เห็นเฉพาะ PENDING_SUPERVISOR
-  // MANAGER/ADMIN เห็นทั้ง PENDING_SUPERVISOR และ PENDING_MANAGER
+  if(!CU) return;
   var isSup = CU.role === 'SUPERVISOR';
-  var isMgr = ['MANAGER','ADMIN','STOCK','SUPERVISOR'].indexOf(CU.role) >= 0;
-  var status = isSup ? 'PENDING_SUPERVISOR' : '';
-  callAPI('getRequisitions', {status: status}).then(function(res){
-    // กรองเฉพาะที่รออนุมัติ
-    res.data = (res.data||[]).filter(function(r){
-      if(isSup) return r.StatusApproval === 'PENDING_SUPERVISOR';
-      if(isMgr) return r.StatusApproval === 'PENDING_SUPERVISOR' || r.StatusApproval === 'PENDING_MANAGER';
-      return false;
+  var isMgr = CU.role === 'MANAGER' || CU.role === 'ADMIN';
+  // STOCK ไม่มีสิทธิ์อนุมัติ
+  if(!isSup && !isMgr){
+    var al=document.getElementById('apList');
+    if(al) al.innerHTML='<div class="card tc tm" style="padding:32px">ไม่มีสิทธิ์ดูหน้านี้ค่ะ</div>';
+    return;
+  }
+  // ดึงเฉพาะรายการที่รออนุมัติตาม role
+  // Supervisor เห็นเฉพาะ PENDING_SUPERVISOR
+  // Manager เห็นทั้ง PENDING_SUPERVISOR และ PENDING_MANAGER
+  var fetchPending;
+  if(isSup){
+    fetchPending = callAPI('getRequisitions',{status:'PENDING_SUPERVISOR'});
+  } else {
+    // Manager: ดึงทั้งสอง status แล้ว merge
+    fetchPending = Promise.all([
+      callAPI('getRequisitions',{status:'PENDING_SUPERVISOR'}),
+      callAPI('getRequisitions',{status:'PENDING_MANAGER'}),
+    ]).then(function(results){
+      var combined = (results[0].data||[]).concat(results[1].data||[]);
+      // sort by CreatedAt desc
+      combined.sort(function(a,b){ return b.CreatedAt > a.CreatedAt ? 1 : -1; });
+      return { success:true, data: combined };
     });
+  }
+
+  fetchPending.then(function(res){
+    var list = res.data || [];
     // เก็บ cache สำหรับ confirmNote
     window._REQS_MAP = {};
-    (res.data||[]).forEach(function(r){ window._REQS_MAP[r.ReqID] = r; });
+    list.forEach(function(r){ window._REQS_MAP[r.ReqID] = r; });
     var al=document.getElementById('apList');
     if(!al) return;
-    var list=res.data||[];
-    if(!list.length){al.innerHTML='<div class="card tc tm" style="padding:32px">ไม่มีรายการรออนุมัติ 🎉</div>';return;}
+    if(!list.length){
+      al.innerHTML='<div class="card tc tm" style="padding:32px">ไม่มีรายการรออนุมัติ 🎉</div>';
+      return;
+    }
     al.innerHTML=list.map(function(r){
+      // Manager เห็นปุ่มอนุมัติเฉพาะ PENDING_MANAGER
+      // Supervisor เห็นปุ่มอนุมัติเฉพาะ PENDING_SUPERVISOR
+      var canApprove = (isSup && r.StatusApproval==='PENDING_SUPERVISOR')
+                    || (isMgr && r.StatusApproval==='PENDING_MANAGER');
+      var approveBtn = canApprove
+        ? '<button class="btn bd bsm" onclick="openNoteMo(\'reject\',\''+r.ReqID+'\')">✕ ปฏิเสธ</button>'
+          +'<button class="btn bp bsm" onclick="openNoteMo(\'approve\',\''+r.ReqID+'\')">✓ อนุมัติ</button>'
+        : '<span class="chip chip-blu" style="font-size:12px">⏳ รอผจก.อนุมัติต่อ</span>';
       return '<div class="qc">'
         +'<div class="fb2"><div><strong>'+r.ReqID+'</strong> '+apChip(r.StatusApproval)+'</div><span class="tm" style="font-size:13px">'+r.OpenDate+'</span></div>'
         +'<div class="dg" style="grid-template-columns:repeat(3,1fr);gap:8px 16px;margin-top:8px">'
@@ -2486,8 +2496,7 @@ function loadApproval(){
         +'<div class="di"><div class="dl">ลูกค้า</div><div class="dv">'+r.CustomerName+'</div></div></div>'
         +'<div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">'
         +'<button class="btn bo bsm" onclick="openDetail(\''+r.ReqID+'\')">ดูรายละเอียด</button>'
-        +'<button class="btn bd bsm" onclick="openNoteMo(\'reject\',\''+r.ReqID+'\')">✕ ปฏิเสธ</button>'
-        +'<button class="btn bp bsm" onclick="openNoteMo(\'approve\',\''+r.ReqID+'\')">✓ อนุมัติ</button>'
+        +approveBtn
         +'</div></div>';
     }).join('');
   });
@@ -3043,6 +3052,7 @@ function submitJob(){
 
 // ── PROFILE ───────────────────────────────────────────────────
 function loadProfile(){
+  if(!CU) return;
   callAPI('getSignature',{email:CU.email}).then(function(res){
     var box=document.getElementById('curSigBox');
     if(res.success&&res.signatureBase64){
@@ -3178,6 +3188,7 @@ function openNoteMo(action, reqId){
 function closeNoteMo(){var mo=document.getElementById('noteMo');if(mo){mo.classList.remove('open');mo.classList.add('hidden');}}
 
 function confirmNote(action, reqId){
+  if(!CU) return;
   var note=document.getElementById('noteIn').value;
   closeNoteMo();
   var data={id:reqId,note:note,approverName:CU.name};
@@ -3669,6 +3680,7 @@ function populateModelFilter(){
 var pickupPhotoB64 = null;
 
 function loadPickupPage(){
+  if(!CU) return;
   callAPI('getRequisitions',{}).then(function(res){
     var items = (res.data||[]).filter(function(r){
       // ขึ้นทันทีที่ Stock กด "รับจัดของ" (ACKNOWLEDGED) — ไม่ต้องรอ Manager อนุมัติ
@@ -3761,6 +3773,7 @@ function submitPickup(){
 var retPhotoB64 = null;
 
 function loadCloseSel(){
+  if(!CU) return;
   callAPI('getRequisitions',{}).then(function(res){
     var list = (res.data||[]).filter(function(r){
       // แสดงใบที่รับของแล้ว (รอเคลียร์) หรือช่างส่งเคลียร์แล้ว (รอ Stock ปิด)
@@ -8761,6 +8774,33 @@ function deleteStockEntry(entryId){
     if(res.success){ renderSCForPart(); }
   });
 }
+
+// ── SESSION RESTORE: กด Back แล้วไม่ต้อง Login ใหม่ ──────────
+// วางไว้ท้ายสุด เพื่อให้ทุก function ถูก declare ก่อน
+(function(){
+  try {
+    var saved = sessionStorage.getItem('_bgCU');
+    if(!saved) return;
+    var u = JSON.parse(saved);
+    if(!u || !u.email || !u.role) return;
+    CU = u;
+    var _validPg = ['dashboard','create','list','approval','stock','pickup','close','print',
+      'profile','jobs','stockcard','stockcount','changereq','vehiclehistory','sales','inventory','report'];
+    var restorePage = function(){
+      if(typeof initApp !== 'function') return;
+      initApp();
+      var hash = window.location.hash.replace('#','');
+      if(hash && _validPg.indexOf(hash) >= 0){
+        go(hash);
+      }
+    };
+    if(document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', restorePage);
+    } else {
+      restorePage();
+    }
+  } catch(e){ console.warn('Session restore error:', e); }
+})();
 </script>
 
 <!-- ── STOCK CARD FORM MODAL ──────────────────────── -->
