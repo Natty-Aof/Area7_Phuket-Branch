@@ -362,17 +362,39 @@ textarea.fc{min-height:70px;resize:vertical;}
 
       <!-- LIST -->
       <div id="pg-list" class="hidden">
-        <div class="fb">
-          <div class="fg"><label class="fl">เดือน</label><input class="fc" id="fMonth" placeholder="เช่น 04/2569"></div>
-          <div class="fg"><label class="fl">JOB NO.</label><input class="fc" id="fJob" placeholder="Job No."></div>
-          <div class="fg"><label class="fl">สถานะ</label><select class="fc" id="fStatus"><option value="">ทั้งหมด</option><option value="PENDING_SUPERVISOR">รอหัวหน้า</option><option value="PENDING_MANAGER">รอผจก.</option><option value="APPROVED">อนุมัติแล้ว</option><option value="REJECTED">ปฏิเสธ</option></select></div>
-          <div class="fg" style="display:flex;align-items:flex-end;gap:8px"><label class="cbi" style="white-space:nowrap"><input type="checkbox" id="fMyOnly"> เฉพาะของฉัน</label></div>
-          <button class="btn bp bsm" onclick="loadList()" style="align-self:flex-end">🔍 ค้นหา</button>
+
+        <!-- ── Month Navigator ── -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+          <button class="btn bo bsm" onclick="shiftListMonth(-1)">◀</button>
+          <div style="font-size:15px;font-weight:600;color:var(--gd);min-width:110px;text-align:center" id="listMonthLabel">—</div>
+          <button class="btn bo bsm" onclick="shiftListMonth(1)">▶</button>
+          <button class="btn bgd bsm" onclick="setListMonthToday()">เดือนนี้</button>
+          <div style="flex:1"></div>
+          <label class="cbi" style="font-size:13px"><input type="checkbox" id="fMyOnly" onchange="loadList()"> เฉพาะของฉัน</label>
         </div>
-        <div class="card"><div class="tw">
-          <table><thead><tr><th>เลขที่</th><th>วันที่</th><th>Job No.</th><th>ผู้เบิก</th><th>ลูกค้า</th><th>สถานะอนุมัติ</th><th>สถานะ Stock</th><th></th></tr></thead>
-          <tbody id="listTbl"><tr><td colspan="8" class="tc tm" style="padding:24px">กดค้นหาเพื่อดูรายการ</td></tr></tbody></table>
-        </div></div>
+
+        <!-- ── Summary Cards ── -->
+        <div id="listSummary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:12px"></div>
+
+        <!-- ── Alert: ค้างนาน ── -->
+        <div id="listAlert" style="display:none;margin-bottom:10px"></div>
+
+        <!-- ── Filter + Tabs ── -->
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+          <input class="fc" id="fJob" placeholder="🔍 Job No. / ลูกค้า / ชื่อช่าง..." oninput="renderListFromCache()" style="flex:1;min-width:160px">
+          <div style="display:flex;gap:0;border-radius:8px;overflow:hidden;border:1px solid var(--g200)">
+            <button id="ltAll"    onclick="setListTab('all')"     style="padding:5px 12px;font-size:12px;border:none;cursor:pointer;background:var(--gd);color:#fff">ทั้งหมด</button>
+            <button id="ltOpen"   onclick="setListTab('open')"   style="padding:5px 12px;font-size:12px;border:none;cursor:pointer;background:#fff;color:var(--g400)">ยังไม่คืน</button>
+            <button id="ltOld"    onclick="setListTab('old')"    style="padding:5px 12px;font-size:12px;border:none;cursor:pointer;background:#fff;color:var(--g400)">ค้างนาน</button>
+            <button id="ltDone"   onclick="setListTab('done')"   style="padding:5px 12px;font-size:12px;border:none;cursor:pointer;background:#fff;color:var(--g400)">ปิดแล้ว</button>
+          </div>
+        </div>
+
+        <!-- ── List Body ── -->
+        <div id="listBody" class="card" style="padding:0;overflow:hidden">
+          <div class="tc tm" style="padding:32px">กำลังโหลด...</div>
+        </div>
+
       </div>
 
       <!-- APPROVAL -->
@@ -1635,7 +1657,7 @@ function _goWithoutPush(page){
   if(t) t.textContent=pgTitles[page]||page;
   if(page==='dashboard') loadDashboard();
   if(page==='create'){initCreate();}
-  if(page==='list') { loadList(); }
+  if(page==='list') { _initListMonth(); loadList(); }
   if(page==='approval') loadApproval();
   if(page==='stock'){loadStock();}
   if(page==='stockcard'){loadStockCard();}
@@ -2155,7 +2177,7 @@ function go(page){
   if(t) t.textContent=pgTitles[page]||page;
   if(page==='dashboard') loadDashboard();
   if(page==='create'){initCreate();}
-  if(page==='list') { loadList(); }  // โหลดรายการอัตโนมัติเมื่อเข้าหน้า
+  if(page==='list') { _initListMonth(); loadList(); }  // โหลดรายการอัตโนมัติเมื่อเข้าหน้า
   if(page==='approval') loadApproval();
   if(page==='stock'){loadStock();}
   if(page==='stockcard'){loadStockCard();}
@@ -2433,15 +2455,180 @@ function onACKey(e, rid){
 }
 
 // ── LIST ─────────────────────────────────────────────────────
+// ── LIST PAGE STATE ───────────────────────────────────────────
+var _listYear  = 0;
+var _listMonth = 0; // 1-12
+var _listTab   = 'all';
+var _listCache = [];
+
+function _initListMonth(){
+  if(_listYear) return;
+  var now = new Date();
+  _listYear  = now.getFullYear() + 543;
+  _listMonth = now.getMonth() + 1;
+}
+
+function setListMonthToday(){
+  var now = new Date();
+  _listYear  = now.getFullYear() + 543;
+  _listMonth = now.getMonth() + 1;
+  loadList();
+}
+
+function shiftListMonth(d){
+  _listMonth += d;
+  if(_listMonth > 12){ _listMonth = 1; _listYear++; }
+  if(_listMonth < 1) { _listMonth = 12; _listYear--; }
+  loadList();
+}
+
+function setListTab(t){
+  _listTab = t;
+  ['All','Open','Old','Done'].forEach(function(x){
+    var el = document.getElementById('lt'+x);
+    if(el){ el.style.background = (t===x.toLowerCase()?'var(--gd)':'#fff'); el.style.color = (t===x.toLowerCase()?'#fff':'var(--g400)'); }
+  });
+  renderListFromCache();
+}
+
 function loadList(){
-  var filter={month:document.getElementById('fMonth').value,jobNo:document.getElementById('fJob').value,status:document.getElementById('fStatus').value,myOnly:document.getElementById('fMyOnly').checked};
-  callAPI('getRequisitions',filter).then(function(res){
-    var rows=(res.data||[]).map(function(r){
-      var _db1=(CU&&CU.role==='MANAGER')?'<button class="btn bd bsm del-req-btn" style="padding:2px 7px;margin-left:4px" data-rid="'+r.ReqID+'">🗑️</button>':'';
-      return '<tr><td><strong>'+r.ReqID+'</strong></td><td>'+r.OpenDate+'</td><td>'+r.JobNo+'</td><td>'+(r.RequesterName||'')+'</td><td>'+r.CustomerName+'</td><td>'+apChip(r.StatusApproval)+'</td><td>'+stChip(r.StatusStock)+'</td><td style="white-space:nowrap"><button class="btn bo bsm" onclick="openDetail(\''+r.ReqID+'\')">ดู</button>'+_db1+'</td></tr>';
-    }).join('');
-    var t=document.getElementById('listTbl');
-    if(t) t.innerHTML=rows||'<tr><td colspan="8" class="tc tm" style="padding:24px">ไม่พบรายการ</td></tr>';
+  _initListMonth();
+  var mm = String(_listMonth).padStart(2,'0');
+  var label = document.getElementById('listMonthLabel');
+  var thMonths = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  if(label) label.textContent = thMonths[_listMonth] + ' ' + _listYear;
+
+  var body = document.getElementById('listBody');
+  if(body) body.innerHTML = '<div class="tc tm" style="padding:32px">⏳ กำลังโหลด...</div>';
+
+  var myOnly = document.getElementById('fMyOnly') && document.getElementById('fMyOnly').checked;
+  callAPI('getRequisitions',{ month: mm+'/'+_listYear, myOnly: myOnly }).then(function(res){
+    _listCache = res.data || [];
+    _buildListSummary(_listCache);
+    renderListFromCache();
+  });
+}
+
+function _buildListSummary(rows){
+  var now = Date.now();
+  var total = rows.length;
+  var notReturned = rows.filter(function(r){ return r.StatusStock !== 'CLOSED'; }).length;
+  var closed = rows.filter(function(r){ return r.StatusStock === 'CLOSED'; }).length;
+  var pending = rows.filter(function(r){ return r.StatusStock === 'PENDING_CLEARANCE'; }).length;
+  var old = rows.filter(function(r){
+    if(r.StatusStock==='CLOSED') return false;
+    if(!r.PickedUpAt) return false;
+    var d = new Date(r.PickedUpAt);
+    return (now - d.getTime()) > 7*24*3600*1000;
+  });
+  var oldCount = old.length;
+
+  var sum = document.getElementById('listSummary');
+  if(sum) sum.innerHTML = [
+    {n:total,   l:'ใบเบิกทั้งหมด', c:'var(--gd)'},
+    {n:notReturned, l:'ยังไม่คืนของ', c:'#e65100'},
+    {n:closed,  l:'ปิดงานแล้ว', c:'var(--gm)'},
+    {n:pending, l:'รอ Stock ตรวจ', c:'var(--red)'},
+    {n:oldCount,l:'ค้างนาน > 7 วัน', c:'#b71c1c'},
+  ].map(function(s){
+    return '<div style="background:var(--g50,#f8f9fa);border:1px solid var(--g200);border-radius:10px;padding:10px 12px">'
+      +'<div style="font-size:22px;font-weight:700;color:'+s.c+';line-height:1">'+s.n+'</div>'
+      +'<div style="font-size:11px;color:var(--g400);margin-top:3px">'+s.l+'</div>'
+    +'</div>';
+  }).join('');
+
+  // Alert: ค้างนาน
+  var alert = document.getElementById('listAlert');
+  if(alert){
+    if(oldCount > 0){
+      var ids = old.map(function(r){ return r.ReqID; }).join(', ');
+      alert.style.display='block';
+      alert.innerHTML = '<div style="background:#fff3e0;border-left:4px solid #e65100;padding:8px 12px;border-radius:8px;font-size:12px;color:#b71c1c">'
+        +'⚠️ มี '+oldCount+' ใบเบิกที่รับของไปนานกว่า 7 วัน ยังไม่เคลียร์: <strong>'+ids+'</strong></div>';
+    } else {
+      alert.style.display='none';
+    }
+  }
+}
+
+function renderListFromCache(){
+  var q = ((document.getElementById('fJob')||{}).value||'').toLowerCase();
+  var rows = _listCache.filter(function(r){
+    if(q && (r.JobNo||'').toLowerCase().indexOf(q)<0
+          && (r.CustomerName||'').toLowerCase().indexOf(q)<0
+          && (r.RequesterName||'').toLowerCase().indexOf(q)<0) return false;
+    if(_listTab==='open') return r.StatusStock !== 'CLOSED';
+    if(_listTab==='done') return r.StatusStock === 'CLOSED';
+    if(_listTab==='old'){
+      if(r.StatusStock==='CLOSED'||!r.PickedUpAt) return false;
+      return (Date.now()-new Date(r.PickedUpAt).getTime()) > 7*24*3600*1000;
+    }
+    return true;
+  });
+
+  var body = document.getElementById('listBody');
+  if(!body) return;
+  if(!rows.length){
+    body.innerHTML='<div class="tc tm" style="padding:32px">ไม่พบรายการในเดือนนี้ค่ะ</div>';
+    return;
+  }
+
+  var now = Date.now();
+  // แบ่งกลุ่ม
+  var grpOld=[], grpOpen=[], grpPending=[], grpClosed=[];
+  rows.forEach(function(r){
+    var isClosed = r.StatusStock==='CLOSED';
+    var isPending = r.StatusStock==='PENDING_CLEARANCE';
+    var isOld = !isClosed && r.PickedUpAt && (now-new Date(r.PickedUpAt).getTime())>7*24*3600*1000;
+    if(isClosed) grpClosed.push(r);
+    else if(isPending) grpPending.push(r);
+    else if(isOld) grpOld.push(r);
+    else grpOpen.push(r);
+  });
+
+  var canDel = CU && (CU.role==='MANAGER'||CU.role==='ADMIN');
+
+  function rowHtml(r, bgOverride){
+    var daysOld = r.PickedUpAt ? Math.floor((now-new Date(r.PickedUpAt).getTime())/(24*3600*1000)) : 0;
+    var dateStr = (r.OpenDate||'').replace('T',' ').slice(0,10);
+    var bg = bgOverride || '';
+    return '<div style="display:grid;grid-template-columns:150px 1fr 90px 80px 110px 110px auto;gap:0;align-items:center;padding:9px 12px;border-bottom:0.5px solid var(--g200);font-size:12px;background:'+bg+';cursor:default" onmouseover="this.style.background=\''+(bgOverride||'var(--g50)')+'\';" onmouseout="this.style.background=\''+bg+'\'">'
+      +'<div><div style="font-weight:700;color:var(--gd)">'+r.ReqID+'</div><div style="font-size:11px;color:var(--g400)">'+dateStr+'</div></div>'
+      +'<div><div>'+r.CustomerName+'</div><div style="font-size:11px;color:var(--g400)">'+(r.RequesterName||'')+'</div></div>'
+      +'<div style="color:var(--g400)">'+r.JobNo+'</div>'
+      +'<div style="font-size:11px;color:'+(daysOld>7?'#e65100':'var(--g400)')+'">'+( r.PickedUpAt?daysOld+'d ago':'—')+'</div>'
+      +'<div>'+apChip(r.StatusApproval)+'</div>'
+      +'<div>'+stChip(r.StatusStock)+'</div>'
+      +'<div style="display:flex;gap:4px;white-space:nowrap">'
+        +'<button class="btn bo bsm" style="padding:2px 8px" onclick="openDetail(\''+r.ReqID+'\')">ดู</button>'
+        +(canDel?'<button class="btn bd bsm del-req-btn" style="padding:2px 6px" data-rid="'+r.ReqID+'">🗑️</button>':'')
+      +'</div>'
+    +'</div>';
+  }
+
+  function section(label, color, bg, items){
+    if(!items.length) return '';
+    return '<div style="padding:4px 12px;font-size:11px;font-weight:700;color:'+color+';background:'+bg+';border-bottom:0.5px solid var(--g200)">'
+      +label+' ('+items.length+')</div>'
+      +items.map(function(r){ return rowHtml(r, ''); }).join('');
+  }
+
+  var thHtml = '<div style="display:grid;grid-template-columns:150px 1fr 90px 80px 110px 110px auto;gap:0;padding:6px 12px;font-size:11px;font-weight:600;color:var(--g400);background:var(--g100,#f5f5f5);border-bottom:1px solid var(--g200)">'
+    +'<div>เลขที่</div><div>ลูกค้า / ผู้เบิก</div><div>Job No.</div><div>รับไปกี่วัน</div><div>สถานะอนุมัติ</div><div>สถานะ Stock</div><div></div>'
+  +'</div>';
+
+  var oldSection = grpOld.length ? '<div style="padding:4px 12px;font-size:11px;font-weight:700;color:#b71c1c;background:#fff3e0;border-bottom:0.5px solid var(--g200)">⚠️ ค้างนาน > 7 วัน ('+grpOld.length+')</div>'+grpOld.map(function(r){ return rowHtml(r,'#fff8f0'); }).join('') : '';
+
+  body.innerHTML = thHtml
+    + oldSection
+    + section('🔴 รอ Stock ตรวจสอบ','var(--red)','#fff5f5', grpPending)
+    + section('🟡 ยังไม่คืนของ','#e65100','#fffde7', grpOpen)
+    + section('✅ ปิดงานแล้ว','var(--gm)','#f1f8f1', grpClosed)
+    + '<div style="padding:8px 12px;font-size:12px;color:var(--g400);border-top:1px solid var(--g200)">แสดง '+rows.length+' รายการ</div>';
+
+  // rebind delete buttons
+  body.querySelectorAll('.del-req-btn').forEach(function(btn){
+    btn.onclick = function(){ deleteReq(btn.dataset.rid); };
   });
 }
 
