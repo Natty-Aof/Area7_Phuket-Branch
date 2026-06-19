@@ -2612,16 +2612,17 @@ function renderListFromCache(){
   var canDel = CU && (CU.role==='MANAGER'||CU.role==='ADMIN');
 
   function _miniChip(s, type){
+    var bs = 'font-size:10px;padding:2px 6px;border-radius:8px;white-space:nowrap;display:inline-block;max-width:88px;overflow:hidden;text-overflow:ellipsis;';
     if(type==='ap'){
       var m={PENDING_SUPERVISOR:'⏳ รอหน.',PENDING_MANAGER:'⏳ รอผจก.',APPROVED:'✓ อนุมัติ',REJECTED:'✕ ปฏิเสธ'};
-      var c={PENDING_SUPERVISOR:'#e65100',PENDING_MANAGER:'#1565c0',APPROVED:'#1b5e20',REJECTED:'#b71c1c'};
+      var c={PENDING_SUPERVISOR:'#7b3f00',PENDING_MANAGER:'#0d47a1',APPROVED:'#1b5e20',REJECTED:'#b71c1c'};
       var bg={PENDING_SUPERVISOR:'#fff3e0',PENDING_MANAGER:'#e3f2fd',APPROVED:'#e8f5e9',REJECTED:'#ffebee'};
-      return '<span style="font-size:10px;padding:2px 7px;border-radius:10px;white-space:nowrap;background:'+(bg[s]||'#f5f5f5')+';color:'+(c[s]||'#666')+'">'+(m[s]||s)+'</span>';
+      return '<span style="'+bs+'background:'+(bg[s]||'#f5f5f5')+';color:'+(c[s]||'#555')+'">'+(m[s]||s)+'</span>';
     } else {
-      var m2={PENDING:'รอจัด',ACKNOWLEDGED:'Stock จัด',PICKED_UP:'รับแล้ว',PENDING_CLEARANCE:'รอ Stock',CLEARED:'ปิดแล้ว',CLOSED:'ปิดแล้ว',REJECTED:'ปฏิเสธ'};
-      var c2={PENDING:'#555',ACKNOWLEDGED:'#e65100',PICKED_UP:'#1565c0',PENDING_CLEARANCE:'#b71c1c',CLEARED:'#1b5e20',CLOSED:'#1b5e20',REJECTED:'#b71c1c'};
-      var bg2={PENDING:'#f5f5f5',ACKNOWLEDGED:'#fff3e0',PICKED_UP:'#e3f2fd',PENDING_CLEARANCE:'#ffebee',CLEARED:'#e8f5e9',CLOSED:'#e8f5e9',REJECTED:'#ffebee'};
-      return '<span style="font-size:10px;padding:2px 7px;border-radius:10px;white-space:nowrap;background:'+(bg2[s]||'#f5f5f5')+';color:'+(c2[s]||'#666')+'">'+(m2[s]||s)+'</span>';
+      var m2={PENDING:'รอจัด',STOCK_NOTIFIED:'แจ้งแล้ว',ACKNOWLEDGED:'Stock จัด',PICKED_UP:'รับแล้ว',PENDING_CLEARANCE:'รอ Stock',CLEARED:'ปิดแล้ว',CLOSED:'ปิดแล้ว',REJECTED:'ปฏิเสธ'};
+      var c2={PENDING:'#555',STOCK_NOTIFIED:'#0d47a1',ACKNOWLEDGED:'#7b3f00',PICKED_UP:'#0d47a1',PENDING_CLEARANCE:'#b71c1c',CLEARED:'#1b5e20',CLOSED:'#1b5e20',REJECTED:'#b71c1c'};
+      var bg2={PENDING:'#f5f5f5',STOCK_NOTIFIED:'#e3f2fd',ACKNOWLEDGED:'#fff3e0',PICKED_UP:'#e3f2fd',PENDING_CLEARANCE:'#ffebee',CLEARED:'#e8f5e9',CLOSED:'#e8f5e9',REJECTED:'#ffebee'};
+      return '<span style="'+bs+'background:'+(bg2[s]||'#f5f5f5')+';color:'+(c2[s]||'#555')+'">'+(m2[s]||s)+'</span>';
     }
   }
   function rowHtml(r, bgOverride){
@@ -2629,21 +2630,22 @@ function renderListFromCache(){
     var dateStr = (r.OpenDate||r.CreatedAt||'').replace('T',' ').slice(0,10);
     var bg = bgOverride || '';
     var canDel2 = CU && (CU.role==='MANAGER'||CU.role==='ADMIN');
-    var cols = '140px minmax(0,1fr) 100px 80px 55px 80px 85px 70px';
-    return '<div style="display:grid;grid-template-columns:'+cols+';gap:0;align-items:center;padding:7px 10px;border-bottom:0.5px solid var(--g200);font-size:12px;background:'+bg+'" onmouseover="this.style.background=\''+(bgOverride||'var(--g50,#f8f9fa)')+'\'" onmouseout="this.style.background=\''+bg+'\'">'
-      +'<div style="font-weight:700;color:var(--gd);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+r.ReqID+'</div>'
-      +'<div style="min-width:0"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+r.CustomerName+'</div><div style="font-size:11px;color:var(--g400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(r.RequesterName||'')+'</div></div>'
-      +'<div style="color:var(--g400);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+r.JobNo+'</div>'
+    var cols = '150px 180px 100px 72px 42px 90px 90px 64px';
+    return '<div style="display:grid;grid-template-columns:'+cols+';gap:0;align-items:center;padding:7px 10px;border-bottom:0.5px solid var(--g200);font-size:12px;background:'+bg+'" onmouseover="this.style.background=\'var(--g50,#f8f9fa)\'" onmouseout="this.style.background=\''+bg+'\'">'
+      +'<div style="font-weight:700;color:var(--gd);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:4px">'+r.ReqID+'</div>'
+      +'<div style="min-width:0;overflow:hidden;padding-right:4px"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px">'+r.CustomerName+'</div><div style="font-size:10px;color:var(--g400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(r.RequesterName||'')+'</div></div>'
+      +'<div style="color:var(--g400);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:4px">'+r.JobNo+'</div>'
       +'<div style="font-size:11px;color:var(--g400);white-space:nowrap">'+dateStr.slice(5)+'</div>'
-      +'<div style="font-size:11px;color:'+(daysOld!=null&&daysOld>7?'#e65100':'var(--g400)')+';white-space:nowrap">'+( daysOld!=null ? daysOld+'d' : '—')+'</div>'
-      +'<div>'+_miniChip(r.StatusApproval,'ap')+'</div>'
-      +'<div>'+_miniChip(r.StatusStock,'st')+'</div>'
-      +'<div style="display:flex;gap:4px;align-items:center">'
-        +'<button class="btn bo bsm" style="padding:2px 8px;font-size:11px" onclick="openDetail(\''+r.ReqID+'\')">ดู</button>'
-        +(canDel2?'<button class="btn bd bsm del-req-btn" style="padding:2px 6px;font-size:11px" data-rid="'+r.ReqID+'">🗑️</button>':'')
+      +'<div style="font-size:11px;color:'+(daysOld!=null&&daysOld>7?'#e65100':'var(--g400)')+';text-align:center">'+( daysOld!=null ? daysOld+'d' : '—')+'</div>'
+      +'<div style="overflow:hidden">'+_miniChip(r.StatusApproval,'ap')+'</div>'
+      +'<div style="overflow:hidden">'+_miniChip(r.StatusStock,'st')+'</div>'
+      +'<div style="display:flex;gap:3px;align-items:center;justify-content:flex-end">'
+        +'<button class="btn bo bsm" style="padding:2px 7px;font-size:11px" onclick="openDetail(\''+r.ReqID+'\')" >ดู</button>'
+        +(canDel2?'<button class="btn bd bsm del-req-btn" style="padding:2px 5px;font-size:11px" data-rid="'+r.ReqID+'">🗑️</button>':'')
       +'</div>'
     +'</div>';
   }
+
 
   function section(label, items){
     if(!items.length) return '';
@@ -2652,7 +2654,7 @@ function renderListFromCache(){
       +items.map(function(r){ return rowHtml(r,''); }).join('');
   }
 
-  var thHtml = '<div style="display:grid;grid-template-columns:140px minmax(0,1fr) 100px 80px 55px 80px 85px 70px;gap:0;padding:6px 10px;font-size:11px;font-weight:600;color:var(--g400);background:var(--g100,#f5f5f5);border-bottom:1px solid var(--g200)">'
+  var thHtml = '<div style="display:grid;grid-template-columns:150px 180px 100px 72px 42px 90px 90px 64px;gap:0;padding:6px 10px;font-size:11px;font-weight:600;color:var(--g400);background:var(--g100,#f5f5f5);border-bottom:1px solid var(--g200)">'
     +'<div>เลขที่</div><div>ลูกค้า / ผู้เบิก</div><div>Job No.</div><div>วันที่</div><div>วัน</div><div>อนุมัติ</div><div>Stock</div><div></div>'
   +'</div>';
 
