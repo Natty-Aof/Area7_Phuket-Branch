@@ -2589,41 +2589,45 @@ function renderListFromCache(){
   var canDel = CU && (CU.role==='MANAGER'||CU.role==='ADMIN');
 
   function rowHtml(r, bgOverride){
-    var daysOld = r.PickedUpAt ? Math.floor((now-new Date(r.PickedUpAt).getTime())/(24*3600*1000)) : 0;
-    var dateStr = (r.OpenDate||'').replace('T',' ').slice(0,10);
+    var daysOld = r.PickedUpAt ? Math.floor((now-new Date(r.PickedUpAt).getTime())/(24*3600*1000)) : null;
+    var dateStr = (r.OpenDate||r.CreatedAt||'').replace('T',' ').slice(0,10);
     var bg = bgOverride || '';
-    return '<div style="display:grid;grid-template-columns:150px 1fr 90px 80px 110px 110px auto;gap:0;align-items:center;padding:9px 12px;border-bottom:0.5px solid var(--g200);font-size:12px;background:'+bg+';cursor:default" onmouseover="this.style.background=\''+(bgOverride||'var(--g50)')+'\';" onmouseout="this.style.background=\''+bg+'\'">'
-      +'<div><div style="font-weight:700;color:var(--gd)">'+r.ReqID+'</div><div style="font-size:11px;color:var(--g400)">'+dateStr+'</div></div>'
-      +'<div><div>'+r.CustomerName+'</div><div style="font-size:11px;color:var(--g400)">'+(r.RequesterName||'')+'</div></div>'
-      +'<div style="color:var(--g400)">'+r.JobNo+'</div>'
-      +'<div style="font-size:11px;color:'+(daysOld>7?'#e65100':'var(--g400)')+'">'+( r.PickedUpAt?daysOld+'d ago':'—')+'</div>'
-      +'<div>'+apChip(r.StatusApproval)+'</div>'
-      +'<div>'+stChip(r.StatusStock)+'</div>'
-      +'<div style="display:flex;gap:4px;white-space:nowrap">'
-        +'<button class="btn bo bsm" style="padding:2px 8px" onclick="openDetail(\''+r.ReqID+'\')">ดู</button>'
-        +(canDel?'<button class="btn bd bsm del-req-btn" style="padding:2px 6px" data-rid="'+r.ReqID+'">🗑️</button>':'')
+    var canDel2 = CU && (CU.role==='MANAGER'||CU.role==='ADMIN');
+    return '<div style="display:grid;grid-template-columns:160px 200px 110px 90px 90px 130px 80px;gap:0;align-items:center;padding:8px 12px;border-bottom:0.5px solid var(--g200);font-size:12px;background:'+bg+'" onmouseover="this.style.background=\''+(bgOverride||'var(--g50,#f8f9fa)')+'\';" onmouseout="this.style.background=\''+bg+'\'">'
+      +'<div style="font-weight:700;color:var(--gd);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+r.ReqID+'</div>'
+      +'<div style="min-width:0"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+r.CustomerName+'</div><div style="font-size:11px;color:var(--g400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(r.RequesterName||'')+'</div></div>'
+      +'<div style="color:var(--g400);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+r.JobNo+'</div>'
+      +'<div style="font-size:11px;color:var(--g400)">'+dateStr+'</div>'
+      +'<div style="font-size:11px;color:'+(daysOld!=null&&daysOld>7?'#e65100':'var(--g400)')+'">'+( daysOld!=null ? daysOld+' วัน' : '—')+'</div>'
+      +'<div style="display:flex;flex-direction:column;gap:3px">'+apChip(r.StatusApproval)+'<span style="display:inline-block;margin-top:1px">'+stChip(r.StatusStock)+'</span></div>'
+      +'<div style="display:flex;gap:4px;align-items:center">'
+        +'<button class="btn bo bsm" style="padding:2px 8px;font-size:11px" onclick="openDetail(\''+r.ReqID+'\')">ดู</button>'
+        +(canDel2?'<button class="btn bd bsm del-req-btn" style="padding:2px 6px;font-size:11px" data-rid="'+r.ReqID+'">🗑️</button>':'')
       +'</div>'
     +'</div>';
   }
 
-  function section(label, color, bg, items){
+  function section(label, items){
     if(!items.length) return '';
-    return '<div style="padding:4px 12px;font-size:11px;font-weight:700;color:'+color+';background:'+bg+';border-bottom:0.5px solid var(--g200)">'
+    return '<div style="padding:5px 12px;font-size:11px;font-weight:600;color:var(--g400);background:var(--g100,#f5f5f5);border-top:1px solid var(--g200);border-bottom:0.5px solid var(--g200)">'
       +label+' ('+items.length+')</div>'
-      +items.map(function(r){ return rowHtml(r, ''); }).join('');
+      +items.map(function(r){ return rowHtml(r,''); }).join('');
   }
 
-  var thHtml = '<div style="display:grid;grid-template-columns:150px 1fr 90px 80px 110px 110px auto;gap:0;padding:6px 12px;font-size:11px;font-weight:600;color:var(--g400);background:var(--g100,#f5f5f5);border-bottom:1px solid var(--g200)">'
-    +'<div>เลขที่</div><div>ลูกค้า / ผู้เบิก</div><div>Job No.</div><div>รับไปกี่วัน</div><div>สถานะอนุมัติ</div><div>สถานะ Stock</div><div></div>'
+  var thHtml = '<div style="display:grid;grid-template-columns:160px 200px 110px 90px 90px 130px 80px;gap:0;padding:7px 12px;font-size:11px;font-weight:600;color:var(--g400);background:var(--g100,#f5f5f5);border-bottom:1px solid var(--g200)">'
+    +'<div>เลขที่</div><div>ลูกค้า / ผู้เบิก</div><div>Job No.</div><div>วันที่</div><div>รับไปกี่วัน</div><div>สถานะ</div><div></div>'
   +'</div>';
 
-  var oldSection = grpOld.length ? '<div style="padding:4px 12px;font-size:11px;font-weight:700;color:#b71c1c;background:#fff3e0;border-bottom:0.5px solid var(--g200)">⚠️ ค้างนาน > 7 วัน ('+grpOld.length+')</div>'+grpOld.map(function(r){ return rowHtml(r,'#fff8f0'); }).join('') : '';
+  var oldSection = grpOld.length
+    ? '<div style="padding:5px 12px;font-size:11px;font-weight:700;color:#b71c1c;background:#fff3e0;border-bottom:0.5px solid #ffe0b2;border-top:1px solid var(--g200)">⚠️ ค้างนาน > 7 วัน ('+grpOld.length+')</div>'
+      + grpOld.map(function(r){ return rowHtml(r,'#fffbf0'); }).join('')
+    : '';
 
   body.innerHTML = thHtml
     + oldSection
-    + section('🔴 รอ Stock ตรวจสอบ','var(--red)','#fff5f5', grpPending)
-    + section('🟡 ยังไม่คืนของ','#e65100','#fffde7', grpOpen)
-    + section('✅ ปิดงานแล้ว','var(--gm)','#f1f8f1', grpClosed)
+    + section('🔴 รอ Stock ตรวจสอบ', grpPending)
+    + section('🟡 ยังไม่คืนของ', grpOpen)
+    + section('✅ ปิดงานแล้ว', grpClosed)
     + '<div style="padding:8px 12px;font-size:12px;color:var(--g400);border-top:1px solid var(--g200)">แสดง '+rows.length+' รายการ</div>';
 
   // rebind delete buttons
