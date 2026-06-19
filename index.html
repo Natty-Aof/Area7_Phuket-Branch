@@ -5802,63 +5802,124 @@ function loadVehicleHistory(){
 
 // ── ระบุรถตอนเคลียร์ใบเบิก ───────────────────────────────────
 function initVehicleAssign(items){
-  // items = [{partNo, nameEN, qty, unit}]
   _vhAssignItems = [];
+  window._vhPartPhotos = {};
+  window._vhLastItems = items;
   var box = document.getElementById('vehicleAssignList');
   if(!box) return;
-
   if(!items||!items.length){ box.innerHTML='<div style="color:var(--g400);font-size:12px">ไม่มีรายการอะไหล่</div>'; return; }
-
-  // สร้าง assign entries — 1 แถวต่อ 1 อะไหล่ (เพิ่มได้)
-  _vhAssignItems = items.map(function(it,i){ return [{serialNo:'',qty:it.qty,note:'',_partIdx:i}]; });
+  _vhAssignItems = items.map(function(it){ return [{serialNo:'',qty:it.qty,note:'',photo:null}]; });
   renderVehicleAssign(items);
 }
 
 function renderVehicleAssign(items){
   var box = document.getElementById('vehicleAssignList');
   if(!box||!items||!items.length) return;
+  if(!window._vhPartPhotos) window._vhPartPhotos = {};
 
   var html = items.map(function(it,pi){
-    var assigns = _vhAssignItems[pi]||[{serialNo:'',qty:it.qty,note:''}];
+    var assigns = _vhAssignItems[pi]||[{serialNo:'',qty:it.qty,note:'',photo:null}];
     var totalAssigned = assigns.reduce(function(s,a){ return s+(Number(a.qty)||0); },0);
     var remaining = (it.qty||0) - totalAssigned;
     var ok = remaining===0;
+    var partPhoto = window._vhPartPhotos[pi]||null;
 
-    return '<div style="margin-bottom:14px;padding:12px;background:#f8f9fa;border-radius:8px;border-left:4px solid '+(ok?'var(--gm)':'var(--g200)')+'">'
-      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">'
-        +'<span style="font-size:12px;font-weight:700;color:var(--gd)">'+it.partNo+'</span>'
-        +'<span style="font-size:12px">'+( it.nameEN||it.nameTH||'')+'</span>'
-        +'<span style="font-size:11px;background:var(--g100);padding:2px 8px;border-radius:4px;color:var(--gd)">เบิกไป '+it.qty+' '+( it.unit||'ชิ้น')+'</span>'
-        +(ok?'<span style="font-size:11px;background:#e8f5e9;color:var(--gm);padding:2px 8px;border-radius:4px">✅ ครบ</span>'
-            :'<span style="font-size:11px;background:#fff3e0;color:#e65100;padding:2px 8px;border-radius:4px">⚠️ คงเหลือ '+remaining+' '+( it.unit||'ชิ้น')+'</span>')
-      +'</div>'
-      +assigns.map(function(a,ai){
-        return '<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">'
+    var rowsHtml = assigns.map(function(a,ai){
+      var photoHtml = a.photo
+        ? '<div style="position:relative;display:inline-block">'
+            +'<img src="'+a.photo+'" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:2px solid var(--gm);cursor:pointer" onclick="openImgLightbox(\''+encodeURIComponent(a.photo)+'\')">'
+            +'<button onclick="_vhAssignItems['+pi+']['+ai+'].photo=null;renderVehicleAssign(window._clearItems.map(function(it){return {partNo:String(it.PartNo||it.partNo||\'\'),nameEN:it.NameEN||it.NameTH||\'\',qty:parseFloat(it.IssuedQty!=null&&it.IssuedQty!==\'\'?it.IssuedQty:it.Qty)||0,unit:it.Unit||\'ชิ้น\'};}));" style="position:absolute;top:-6px;right:-6px;background:var(--red);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;line-height:1">✕</button>'
+          +'</div>'
+        : '<label style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;background:#f5f5f5;border:1.5px dashed var(--g300);border-radius:6px;cursor:pointer;font-size:11px;color:var(--g400)">'
+            +'+ รูป<input type="file" accept="image/*" capture="environment" style="display:none" onchange="_onVhSerialPhoto(event,'+pi+','+ai+')">'
+          +'</label>';
+
+      return '<div style="background:#fff;border-radius:8px;padding:10px;margin-bottom:8px;border:1px solid var(--g200)">'
+        +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">'
           +'<div style="position:relative;flex:2;min-width:150px">'
             +'<div style="display:flex;gap:4px">'
-            +'<input class="fc" placeholder="Serial No. รถ..." value="'+(a.serialNo||'')+'" '
-              +'style="font-size:13px;flex:1" '
-              +'oninput="_vhAssignItems['+pi+']['+ai+'].serialNo=this.value;_vhShowSerialDrop(this,'+pi+','+ai+')" '
-              +'onblur="setTimeout(function(){var d=document.getElementById(\'vhad_'+pi+'_'+ai+'\');if(d)d.style.display=\'none\';},200)">'
-            +'<button onclick="window._vhScanCallback=function(s){_vhAssignItems['+pi+']['+ai+'].serialNo=s;renderVehicleAssign('+JSON.stringify(items)+')};openQRScanner(\'vehicle\')" style="background:#1565c0;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:13px" title="Scan QR รถ">📷</button>'
+              +'<input class="fc" placeholder="Serial No. รถ..." value="'+(a.serialNo||'')+'" '
+                +'style="font-size:13px;flex:1" '
+                +'oninput="_vhAssignItems['+pi+']['+ai+'].serialNo=this.value;_vhShowSerialDrop(this,'+pi+','+ai+')" '
+                +'onblur="setTimeout(function(){var d=document.getElementById(\'vhad_'+pi+'_'+ai+'\');if(d)d.style.display=\'none\';},200)">'
+              +'<button onclick="window._vhScanCallback=function(s){_vhAssignItems['+pi+']['+ai+'].serialNo=s;renderVehicleAssign(window._vhLastItems)};openQRScanner(\'vehicle\')" style="background:#1565c0;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:13px" title="Scan QR">📷</button>'
             +'</div>'
             +'<div id="vhad_'+pi+'_'+ai+'" style="display:none;position:absolute;top:calc(100% + 2px);left:0;right:0;background:#fff;border:1px solid var(--g200);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:300;max-height:180px;overflow-y:auto;font-size:12px"></div>'
           +'</div>'
-          +'<input class="fc" type="number" min="0" max="'+it.qty+'" value="'+(a.qty||'')+'" placeholder="จำนวน" '
-            +'style="width:80px;font-size:13px;text-align:center" '
-            +'oninput="_vhAssignItems['+pi+']['+ai+'].qty=Number(this.value);renderVehicleAssign('+JSON.stringify(items)+')">'
+          +'<input class="fc" type="number" min="0" value="'+(a.qty||'')+'" placeholder="จำนวน" '
+            +'style="width:72px;font-size:13px;text-align:center" '
+            +'oninput="_vhAssignItems['+pi+']['+ai+'].qty=Number(this.value);renderVehicleAssign(window._vhLastItems)">'
           +'<input class="fc" value="'+(a.note||'')+'" placeholder="หมายเหตุ (เช่น เปลี่ยนหน้า)" '
-            +'style="flex:2;font-size:12px" '
+            +'style="flex:2;min-width:90px;font-size:12px" '
             +'oninput="_vhAssignItems['+pi+']['+ai+'].note=this.value">'
-          +(assigns.length>1?'<button onclick="_vhAssignItems['+pi+'].splice('+ai+',1);renderVehicleAssign('+JSON.stringify(items)+')" style="background:none;border:none;color:var(--g400);cursor:pointer;font-size:16px">✕</button>':'')
-          +'</div>';
-      }).join('')
-      +'<button onclick="_vhAssignItems['+pi+'].push({serialNo:\'\',qty:0,note:\'\'});renderVehicleAssign('+JSON.stringify(items)+')" '
-        +'style="font-size:12px;color:var(--gd);background:none;border:1px dashed var(--gd);border-radius:6px;padding:4px 12px;cursor:pointer;margin-top:2px">+ เพิ่มรถอีกคัน</button>'
+          +(assigns.length>1?'<button onclick="_vhAssignItems['+pi+'].splice('+ai+',1);renderVehicleAssign(window._vhLastItems)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;line-height:1" title="ลบ">✕</button>':'')
+        +'</div>'
+        +'<div style="display:flex;gap:8px;align-items:center">'
+          +'<span style="font-size:11px;color:var(--g400);white-space:nowrap">📷 รูปรถคันนี้:</span>'
+          +photoHtml
+        +'</div>'
+      +'</div>';
+    }).join('');
+
+    var partPhotoHtml = partPhoto
+      ? '<div style="position:relative;display:inline-block">'
+          +'<img src="'+partPhoto+'" style="width:80px;height:80px;object-fit:cover;border-radius:6px;border:2px solid var(--gm);cursor:pointer" onclick="openImgLightbox(\''+encodeURIComponent(partPhoto)+'\')">'
+          +'<button onclick="window._vhPartPhotos['+pi+']=null;renderVehicleAssign(window._vhLastItems)" style="position:absolute;top:-6px;right:-6px;background:var(--red);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;line-height:1">✕</button>'
+        +'</div>'
+      : '<label style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:#fff;border:1.5px dashed var(--g300);border-radius:8px;cursor:pointer;font-size:12px;color:var(--g400)">'
+          +'📷 ถ่าย/อัพรูปอะไหล่นี้'
+          +'<input type="file" accept="image/*" capture="environment" style="display:none" onchange="_onVhPartPhoto(event,'+pi+')">'
+        +'</label>';
+
+    return '<div style="margin-bottom:16px;padding:12px;background:#f8f9fa;border-radius:10px;border-left:4px solid '+(ok?'var(--gm)':'var(--g200)') +'">'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">'
+        +'<span style="font-size:12px;font-weight:700;color:var(--gd)">'+it.partNo+'</span>'
+        +'<span style="font-size:12px">'+(it.nameEN||it.nameTH||'')+'</span>'
+        +'<span style="font-size:11px;background:var(--g100);padding:2px 8px;border-radius:4px;color:var(--gd)">เบิกไป '+it.qty+' '+(it.unit||'ชิ้น')+'</span>'
+        +(ok?'<span style="font-size:11px;background:#e8f5e9;color:var(--gm);padding:2px 8px;border-radius:4px">✅ ครบ</span>'
+            :'<span style="font-size:11px;background:#fff3e0;color:#e65100;padding:2px 8px;border-radius:4px">⚠️ คงเหลือ '+remaining+' '+(it.unit||'ชิ้น')+'</span>')
+      +'</div>'
+      +'<div style="margin-bottom:10px;padding:8px;background:#fff;border-radius:8px;border:1px solid var(--g200)">'
+        +'<div style="font-size:12px;color:var(--g400);margin-bottom:6px">📷 รูปภาพรวมของอะไหล่นี้</div>'
+        +partPhotoHtml
+      +'</div>'
+      +rowsHtml
+      +'<button onclick="_vhAssignItems['+pi+'].push({serialNo:\'\',qty:0,note:\'\',photo:null});renderVehicleAssign(window._vhLastItems)" '
+        +'style="font-size:12px;color:var(--gd);background:none;border:1.5px dashed var(--gd);border-radius:8px;padding:5px 14px;cursor:pointer;margin-top:4px">+ เพิ่มรถอีกคัน</button>'
     +'</div>';
   }).join('');
 
   box.innerHTML = html;
+}
+
+// ── อ่านรูปเป็น base64 ────────────────────────────────────────
+function _readImgB64(file, cb){
+  var r = new FileReader();
+  r.onload = function(e){ cb(e.target.result); };
+  r.readAsDataURL(file);
+}
+
+// ── รูปต่อ Part No. ──────────────────────────────────────────
+function _onVhPartPhoto(event, pi){
+  var file = event.target.files[0];
+  if(!file) return;
+  _readImgB64(file, function(b64){
+    if(!window._vhPartPhotos) window._vhPartPhotos = {};
+    window._vhPartPhotos[pi] = b64;
+    renderVehicleAssign(window._vhLastItems);
+  });
+}
+
+// ── รูปต่อ S/N รถ ────────────────────────────────────────────
+function _onVhSerialPhoto(event, pi, ai){
+  var file = event.target.files[0];
+  if(!file) return;
+  _readImgB64(file, function(b64){
+    if(_vhAssignItems[pi] && _vhAssignItems[pi][ai]){
+      _vhAssignItems[pi][ai].photo = b64;
+      renderVehicleAssign(window._vhLastItems);
+    }
+  });
 }
 
 function _vhShowSerialDrop(inp, pi, ai){
@@ -5916,6 +5977,8 @@ function getVehicleAssignEntries(items){
         qty: Number(a.qty)||0,
         unit: it.unit||'ชิ้น',
         note: a.note||'',
+        photoSerial: a.photo||'',         // รูปต่อ S/N รถ
+        photoPartNo: (window._vhPartPhotos&&window._vhPartPhotos[pi])||'', // รูปต่อ Part
       });
     });
     if(totalAssigned !== (it.qty||0)){
