@@ -2443,26 +2443,23 @@ function loadApproval(){
   if(!CU) return;
   var isSup = CU.role === 'SUPERVISOR';
   var isMgr = CU.role === 'MANAGER' || CU.role === 'ADMIN';
-  // STOCK ไม่มีสิทธิ์อนุมัติ
   if(!isSup && !isMgr){
     var al=document.getElementById('apList');
     if(al) al.innerHTML='<div class="card tc tm" style="padding:32px">ไม่มีสิทธิ์ดูหน้านี้ค่ะ</div>';
     return;
   }
-  // ดึงเฉพาะรายการที่รออนุมัติตาม role
-  // Supervisor เห็นเฉพาะ PENDING_SUPERVISOR
-  // Manager เห็นทั้ง PENDING_SUPERVISOR และ PENDING_MANAGER
+
+  // Supervisor ดึงแค่ PENDING_SUPERVISOR
+  // Manager ดึงทั้ง PENDING_SUPERVISOR + PENDING_MANAGER (เพื่อติดตาม)
   var fetchPending;
   if(isSup){
     fetchPending = callAPI('getRequisitions',{status:'PENDING_SUPERVISOR'});
   } else {
-    // Manager: ดึงทั้งสอง status แล้ว merge
     fetchPending = Promise.all([
       callAPI('getRequisitions',{status:'PENDING_SUPERVISOR'}),
       callAPI('getRequisitions',{status:'PENDING_MANAGER'}),
     ]).then(function(results){
       var combined = (results[0].data||[]).concat(results[1].data||[]);
-      // sort by CreatedAt desc
       combined.sort(function(a,b){ return b.CreatedAt > a.CreatedAt ? 1 : -1; });
       return { success:true, data: combined };
     });
@@ -2470,7 +2467,6 @@ function loadApproval(){
 
   fetchPending.then(function(res){
     var list = res.data || [];
-    // เก็บ cache สำหรับ confirmNote
     window._REQS_MAP = {};
     list.forEach(function(r){ window._REQS_MAP[r.ReqID] = r; });
     var al=document.getElementById('apList');
@@ -2480,23 +2476,39 @@ function loadApproval(){
       return;
     }
     al.innerHTML=list.map(function(r){
-      // Manager เห็นปุ่มอนุมัติเฉพาะ PENDING_MANAGER
-      // Supervisor เห็นปุ่มอนุมัติเฉพาะ PENDING_SUPERVISOR
-      var canApprove = (isSup && r.StatusApproval==='PENDING_SUPERVISOR')
-                    || (isMgr && r.StatusApproval==='PENDING_MANAGER');
-      var approveBtn = canApprove
-        ? '<button class="btn bd bsm" onclick="openNoteMo(\'reject\',\''+r.ReqID+'\')">✕ ปฏิเสธ</button>'
-          +'<button class="btn bp bsm" onclick="openNoteMo(\'approve\',\''+r.ReqID+'\')">✓ อนุมัติ</button>'
-        : '<span class="chip chip-blu" style="font-size:12px">⏳ รอผจก.อนุมัติต่อ</span>';
-      return '<div class="qc">'
-        +'<div class="fb2"><div><strong>'+r.ReqID+'</strong> '+apChip(r.StatusApproval)+'</div><span class="tm" style="font-size:13px">'+r.OpenDate+'</span></div>'
+      var isPendingSup = r.StatusApproval === 'PENDING_SUPERVISOR';
+      var isPendingMgr = r.StatusApproval === 'PENDING_MANAGER';
+
+      // ปุ่มด้านขวา — แสดงตามสถานะ + role
+      var actionBtns = '';
+      if(isSup && isPendingSup){
+        // Supervisor อนุมัติ step นี้ได้
+        actionBtns =
+          '<button class="btn bd bsm" onclick="openNoteMo(\'reject\',\''+r.ReqID+'\')">✕ ปฏิเสธ</button>'
+         +'<button class="btn bp bsm" onclick="openNoteMo(\'approve\',\''+r.ReqID+'\')">✓ อนุมัติ</button>';
+      } else if(isMgr && isPendingMgr){
+        // Manager อนุมัติ step นี้ได้
+        actionBtns =
+          '<button class="btn bd bsm" onclick="openNoteMo(\'reject\',\''+r.ReqID+'\')">✕ ปฏิเสธ</button>'
+         +'<button class="btn bp bsm" onclick="openNoteMo(\'approve\',\''+r.ReqID+'\')">✓ อนุมัติ</button>';
+      } else if(isMgr && isPendingSup){
+        // Manager เห็นว่ายังรอหัวหน้าอยู่ — ติดตามสถานะเฉยๆ ไม่มีปุ่ม
+        actionBtns = '<span style="font-size:12px;color:var(--ora);font-weight:600">⏳ รอหัวหน้าช่างอนุมัติก่อน</span>';
+      }
+
+      return '<div class="qc '+(isPendingSup && isMgr ? '' : 'urg')+'">'
+        +'<div class="fb2">'
+        +'<div><strong>'+r.ReqID+'</strong> '+apChip(r.StatusApproval)+'</div>'
+        +'<span class="tm" style="font-size:13px">'+r.OpenDate+'</span>'
+        +'</div>'
         +'<div class="dg" style="grid-template-columns:repeat(3,1fr);gap:8px 16px;margin-top:8px">'
         +'<div class="di"><div class="dl">ผู้เบิก</div><div class="dv">'+r.RequesterName+'</div></div>'
         +'<div class="di"><div class="dl">Job</div><div class="dv">'+r.JobNo+'</div></div>'
-        +'<div class="di"><div class="dl">ลูกค้า</div><div class="dv">'+r.CustomerName+'</div></div></div>'
-        +'<div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">'
+        +'<div class="di"><div class="dl">ลูกค้า</div><div class="dv">'+r.CustomerName+'</div></div>'
+        +'</div>'
+        +'<div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end;align-items:center">'
         +'<button class="btn bo bsm" onclick="openDetail(\''+r.ReqID+'\')">ดูรายละเอียด</button>'
-        +approveBtn
+        +actionBtns
         +'</div></div>';
     }).join('');
   });
@@ -3150,7 +3162,7 @@ function openDetail(reqId){
       +tl(d.ClosedAt?'✓':'…',d.ClosedAt?'done':'wait','ปิดงาน'+(d.IMNumber?' (RL: '+d.IMNumber+')':''),d.ClosedAt?'เรียบร้อย':'รอดำเนินการ');
     var mf=document.getElementById('moFoot'), foot='';
     var isSup=CU.role==='SUPERVISOR'&&d.StatusApproval==='PENDING_SUPERVISOR';
-    var isMgr=['MANAGER','SUPERVISOR','STOCK','ADMIN'].indexOf(CU.role)>=0&&d.StatusApproval==='PENDING_MANAGER';
+    var isMgr=(CU.role==='MANAGER'||CU.role==='ADMIN')&&d.StatusApproval==='PENDING_MANAGER';
     if(isSup||isMgr) foot='<button class="btn bd" onclick="openNoteMo(\'reject\',\''+d.ReqID+'\');closeMo()">✕ ปฏิเสธ</button><button class="btn bp" onclick="openNoteMo(\'approve\',\''+d.ReqID+'\');closeMo()">✓ อนุมัติ</button>';
     var canAckRole = ['STOCK','MANAGER'].indexOf(CU.role)>=0;
     // (ลบปุ่ม "รับจัดของ" ออกจาก popup — ให้ไปจัดของที่หน้า "จัดอะไหล่" แทน)
@@ -3199,10 +3211,17 @@ function confirmNote(action, reqId){
     callAPI('approveRequisition',data).then(function(res){
       if(res.success){
         toast(res.message,'success');
-        setTimeout(function(){ go('approval'); }, 800);
+        // clear cache แล้ว reload หน้า approval ใหม่
+        _badgeCache = null;
+        _badgeLastFetch = 0;
+        setTimeout(function(){
+          loadApproval();
+          refreshBadges(true);
+        }, 800);
       } else if(res.message && res.message.indexOf('ดำเนินการไปแล้ว')>=0){
         toast('ดำเนินการแล้วค่ะ — กำลัง refresh...','info');
-        setTimeout(function(){ go('approval'); }, 800);
+        _badgeCache = null; _badgeLastFetch = 0;
+        setTimeout(function(){ loadApproval(); refreshBadges(true); }, 800);
       } else {
         toast(res.message||'เกิดข้อผิดพลาด','error');
       }
@@ -3212,7 +3231,7 @@ function confirmNote(action, reqId){
     data.rejectorName=CU.name;
     callAPI('rejectRequisition',data).then(function(res){
       toast(res.message,res.success?'success':'error');
-      if(res.success){ setTimeout(function(){ go('approval'); refreshBadges(true); }, 800); }
+      if(res.success){ _badgeCache=null; _badgeLastFetch=0; setTimeout(function(){ loadApproval(); refreshBadges(true); }, 800); }
     });
   }
 }
