@@ -1008,27 +1008,48 @@ textarea.fc{min-height:70px;resize:vertical;}
           <div style="font-size:11px;opacity:.8;margin-top:2px">ค้นหา Serial No. หรือสแกน QR Code รถ → ดูประวัติ + พิมพ์ Label</div>
         </div>
 
-        <!-- ค้นหา + Scan -->
-        <div class="card" style="padding:12px 14px;margin-bottom:10px">
-          <div style="display:flex;gap:8px">
-            <div style="flex:1;position:relative">
-              <input class="fc" id="vhSearch" placeholder="🔍 พิมพ์ Serial No. รถ..." oninput="onVHSearch()" autocomplete="off">
-              <div id="vhSearchDrop" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid var(--g200);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.12);z-index:400;max-height:280px;overflow-y:auto"></div>
-            </div>
-            <button class="btn bp bsm" onclick="loadVehicleHistory()">ค้นหา</button>
-            <button class="btn bsm" onclick="openQRScanner('vehiclehistory')" style="background:#1565c0;color:#fff;border-color:#1565c0;white-space:nowrap">📷 Scan QR</button>
-            <button class="btn bo bsm" onclick="openVehicleQRPrint()" style="white-space:nowrap">🖨️ พิมพ์ Label</button>
-          </div>
-          <!-- รายละเอียดรถที่เลือก + QR Code -->
-          <div id="vhCarInfo" style="display:none;margin-top:10px"></div>
+        <!-- Tab: ค้นหารถ / ค้นหาตามโครงการ -->
+        <div style="display:flex;gap:0;margin-bottom:10px;border-radius:10px;overflow:hidden;border:1.5px solid #1a237e">
+          <button id="vhTab1" onclick="switchVHTab(1)" style="flex:1;padding:9px;font-size:13px;font-weight:700;background:#1a237e;color:#fff;border:none;cursor:pointer">🔍 ค้นหาตาม S/N รถ</button>
+          <button id="vhTab2" onclick="switchVHTab(2)" style="flex:1;padding:9px;font-size:13px;font-weight:700;background:#fff;color:#1a237e;border:none;cursor:pointer">🏗️ ค้นหาตามโครงการ</button>
         </div>
 
-        <!-- ผลลัพธ์ -->
-        <div id="vhResultBox">
-          <div class="card tc tm" style="padding:40px;color:var(--g400)">
-            <div style="font-size:32px;margin-bottom:8px">🚗</div>
-            <div>ค้นหา Serial No. หรือสแกน QR Code รถเพื่อดูประวัติค่ะ</div>
+        <!-- Tab 1: ค้นหา S/N -->
+        <div id="vhTabPanel1">
+          <div class="card" style="padding:12px 14px;margin-bottom:10px">
+            <div style="display:flex;gap:8px">
+              <div style="flex:1;position:relative">
+                <input class="fc" id="vhSearch" placeholder="🔍 พิมพ์ Serial No. / เบอร์รถ / ลูกค้า / สถานที่..." oninput="onVHSearch()" autocomplete="off">
+                <div id="vhSearchDrop" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid var(--g200);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.12);z-index:400;max-height:280px;overflow-y:auto"></div>
+              </div>
+              <button class="btn bp bsm" onclick="loadVehicleHistory()">ค้นหา</button>
+              <button class="btn bsm" onclick="openQRScanner('vehiclehistory')" style="background:#1565c0;color:#fff;border-color:#1565c0;white-space:nowrap">📷 Scan QR</button>
+              <button class="btn bo bsm" onclick="openVehicleQRPrint()" style="white-space:nowrap">🖨️ พิมพ์ Label</button>
+            </div>
+            <div id="vhCarInfo" style="display:none;margin-top:10px"></div>
           </div>
+          <div id="vhResultBox">
+            <div class="card tc tm" style="padding:40px;color:var(--g400)">
+              <div style="font-size:32px;margin-bottom:8px">🚗</div>
+              <div>ค้นหา Serial No. หรือสแกน QR Code รถเพื่อดูประวัติค่ะ</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: ค้นหาตามโครงการ -->
+        <div id="vhTabPanel2" style="display:none">
+          <div class="card" style="padding:12px 14px;margin-bottom:10px">
+            <div style="display:flex;gap:8px;margin-bottom:10px">
+              <div style="flex:1;position:relative">
+                <input class="fc" id="vhProjSearch" placeholder="🔍 พิมพ์ชื่อโครงการ / ลูกค้า / สถานที่..." oninput="onVHProjSearch()" autocomplete="off">
+              </div>
+              <button class="btn bp bsm" onclick="onVHProjSearch()">ค้นหา</button>
+            </div>
+            <!-- Unique Location list -->
+            <div id="vhProjList" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"></div>
+          </div>
+          <!-- รายการรถในโครงการ -->
+          <div id="vhProjResult"></div>
         </div>
       </div>
 
@@ -5755,6 +5776,7 @@ function loadVehiclesDB(){
         Location:    String(v.Location||'').trim(),
         Status:      String(v.Status||'').trim(),
         Note:        String(v.Note||'').trim(),
+        Period:      String(v.Period||'').trim(),
       };
     }).filter(function(v){ return v.SerialNo; }); // กรองแถวว่าง
     return _vehiclesDB;
@@ -5858,24 +5880,40 @@ function selectVH(serialNo){
     if(info){
       info.style.display='block';
 
-      // สร้าง QR Code
-      var qrCanvas = document.createElement('canvas');
-      qrCanvas.id = 'vhQRCanvas';
+      // ── คำนวณ Period ──
+      var periodHtml = '';
+      if(car && car.Period){
+        var months = parseInt(car.Period)||0;
+        var days = Math.round(months * 30.44);
+        periodHtml = '<div><span style="color:var(--g400);font-size:11px">ระยะสัญญา</span>'
+          +'<div style="font-weight:700;color:#e65100">'+months+' เดือน (~'+days+' วัน)</div></div>';
+      }
+
       var qrHtml = '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">'
-        // ข้อมูลรถ
-        +'<div style="flex:1;min-width:160px;background:#e8eaf6;border-radius:8px;padding:10px 12px;font-size:13px">'
+        // ── ข้อมูลรถ ──
+        +'<div style="flex:1;min-width:200px;background:#e8eaf6;border-radius:10px;padding:12px 14px;font-size:13px">'
         +(car ? (
-          '<div style="display:flex;gap:12px;flex-wrap:wrap">'
-          +'<div><span style="color:var(--g400);font-size:11px">Serial No.</span><div style="font-weight:700;color:#1a237e">'+car.SerialNo+'</div></div>'
-          +(car.CarNo?'<div><span style="color:var(--g400);font-size:11px">เบอร์รถ</span><div style="font-weight:600">'+car.CarNo+'</div></div>':'')
+          '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px 16px">'
+          +'<div><span style="color:var(--g400);font-size:11px">Serial No.</span><div style="font-weight:700;color:#1a237e;font-size:14px">'+car.SerialNo+'</div></div>'
+          +(car.CarNo ? '<div><span style="color:var(--g400);font-size:11px">เบอร์รถ</span><div style="font-weight:600">'+car.CarNo+'</div></div>' : '<div></div>')
           +'<div><span style="color:var(--g400);font-size:11px">ประเภท</span><div style="font-weight:600">'+(car.VehicleType||'—')+'</div></div>'
           +'<div><span style="color:var(--g400);font-size:11px">สถานะ</span><div style="font-weight:600;color:#1a237e">'+(car.StatusType||'—')+'</div></div>'
-          +(car.Customer?'<div><span style="color:var(--g400);font-size:11px">ลูกค้า</span><div style="font-weight:600">'+car.Customer+'</div></div>':'')
-          +'<div><span style="color:var(--g400);font-size:11px">สถานที่</span><div style="font-weight:600">'+(car.Location||'—')+'</div></div>'
+          // ── ลูกค้า (ชื่อบริษัท) แยกจากสถานที่ ──
+          +'<div style="grid-column:1/-1;border-top:1px solid #c5cae9;padding-top:8px;margin-top:2px">'
+            +'<span style="color:var(--g400);font-size:11px">👤 ชื่อลูกค้า (บริษัท)</span>'
+            +'<div style="font-weight:700;color:#1a237e;font-size:13px">'+(car.Customer||'—')+'</div>'
+          +'</div>'
+          +'<div style="grid-column:1/-1">'
+            +'<span style="color:var(--g400);font-size:11px">📍 สถานที่/โครงการ</span>'
+            +'<div style="font-weight:700;color:#283593;font-size:13px">'+(car.Location||'—')+'</div>'
+          +'</div>'
+          // ── Period ──
+          +(periodHtml ? '<div style="grid-column:1/-1;background:#fff3e0;border-radius:6px;padding:6px 10px">'+periodHtml+'</div>' : '')
+          +(car.Note ? '<div style="grid-column:1/-1;font-size:12px;color:var(--g400)">📝 '+car.Note+'</div>' : '')
           +'</div>'
         ) : '<div style="color:var(--g400)">ไม่พบข้อมูลรถในระบบ</div>')
         +'</div>'
-        // QR Code
+        // ── QR Code ──
         +'<div style="text-align:center;flex-shrink:0">'
           +'<div id="vhQRBox" style="width:100px;height:100px;border:2px solid #1a237e;border-radius:8px;overflow:hidden;display:inline-block"></div>'
           +'<div style="font-size:11px;color:var(--g400);margin-top:4px">QR Code รถ</div>'
@@ -5884,9 +5922,9 @@ function selectVH(serialNo){
           +'</div>'
         +'</div>'
       +'</div>';
+
       info.innerHTML = qrHtml;
 
-      // generate QR
       setTimeout(function(){
         var qbox = document.getElementById('vhQRBox');
         if(qbox && typeof qrcode !== 'undefined'){
@@ -5902,6 +5940,108 @@ function selectVH(serialNo){
     }
     loadVehicleHistory();
   });
+}
+
+// ── Tab switch ────────────────────────────────────────────────
+function switchVHTab(n){
+  document.getElementById('vhTabPanel1').style.display = n===1?'':'none';
+  document.getElementById('vhTabPanel2').style.display = n===2?'':'none';
+  document.getElementById('vhTab1').style.background = n===1?'#1a237e':'#fff';
+  document.getElementById('vhTab1').style.color = n===1?'#fff':'#1a237e';
+  document.getElementById('vhTab2').style.background = n===2?'#1a237e':'#fff';
+  document.getElementById('vhTab2').style.color = n===2?'#fff':'#1a237e';
+  if(n===2) loadVHProjList();
+}
+
+// ── ค้นหาตามโครงการ ──────────────────────────────────────────
+var _vhProjSelected = null;
+function loadVHProjList(){
+  loadVehiclesDB().then(function(vehicles){
+    // สร้าง unique Location list
+    var locMap = {};
+    vehicles.forEach(function(v){
+      var loc = (v.Location||'').trim();
+      var cust = (v.Customer||'').trim();
+      if(!loc) return;
+      if(!locMap[loc]) locMap[loc] = {location:loc, customer:cust, count:0};
+      locMap[loc].count++;
+    });
+    var locs = Object.values(locMap).sort(function(a,b){ return a.location > b.location ? 1 : -1; });
+    var box = document.getElementById('vhProjList');
+    if(box){
+      box.innerHTML = locs.map(function(l){
+        return '<button onclick="selectVHProject(\''+encodeURIComponent(l.location)+'\')" '
+          +'style="padding:5px 12px;border-radius:20px;border:1.5px solid #c5cae9;background:#f0f4ff;color:#1a237e;font-size:12px;cursor:pointer;white-space:nowrap">'
+          +'📍 '+l.location+' <span style="color:var(--g400)">('+l.count+')</span>'
+          +'</button>';
+      }).join('');
+    }
+  });
+}
+
+function onVHProjSearch(){
+  var q = (document.getElementById('vhProjSearch').value||'').toLowerCase().trim();
+  loadVehiclesDB().then(function(vehicles){
+    var filtered = vehicles.filter(function(v){
+      return !q
+        || (v.Location||'').toLowerCase().indexOf(q)>=0
+        || (v.Customer||'').toLowerCase().indexOf(q)>=0;
+    });
+    renderVHProjResult(filtered, q ? '🔍 "'+q+'"' : 'ทั้งหมด');
+  });
+}
+
+function selectVHProject(locEncoded){
+  var loc = decodeURIComponent(locEncoded);
+  _vhProjSelected = loc;
+  if(document.getElementById('vhProjSearch'))
+    document.getElementById('vhProjSearch').value = loc;
+  loadVehiclesDB().then(function(vehicles){
+    var filtered = vehicles.filter(function(v){ return (v.Location||'')===loc; });
+    renderVHProjResult(filtered, '📍 '+loc);
+  });
+}
+
+function renderVHProjResult(vehicles, title){
+  var box = document.getElementById('vhProjResult');
+  if(!box) return;
+  if(!vehicles.length){
+    box.innerHTML='<div class="card tc" style="padding:32px;color:var(--g400)">ไม่พบรถในโครงการนี้</div>';
+    return;
+  }
+  // group by Location
+  var groups = {};
+  vehicles.forEach(function(v){
+    var loc = v.Location||'ไม่ระบุสถานที่';
+    if(!groups[loc]) groups[loc] = [];
+    groups[loc].push(v);
+  });
+  box.innerHTML = '<div class="card" style="padding:10px 14px;margin-bottom:10px">'
+    +'<div style="font-size:13px;font-weight:700;margin-bottom:10px;color:#1a237e">'+title+' — พบ '+vehicles.length+' คัน</div>'
+    +Object.keys(groups).map(function(loc){
+      var grp = groups[loc];
+      var cust = grp[0].Customer||'';
+      return '<div style="margin-bottom:14px">'
+        +'<div style="font-size:12px;font-weight:700;color:#283593;padding:4px 0;border-bottom:1px solid #e8eaf6;margin-bottom:6px">'
+          +'📍 '+loc+(cust?' <span style="font-weight:400;color:var(--g400)">| '+cust+'</span>':'')
+          +' <span style="color:var(--g400);font-weight:400">('+grp.length+' คัน)</span>'
+        +'</div>'
+        +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">'
+        +grp.map(function(v){
+          var months = parseInt(v.Period)||0;
+          return '<div onclick="switchVHTab(1);selectVH(\''+v.SerialNo+'\')" '
+            +'style="background:#f0f4ff;border:1.5px solid #c5cae9;border-radius:8px;padding:8px 10px;cursor:pointer">'
+            +'<div style="font-weight:700;color:#1a237e;font-size:13px">'+v.SerialNo+'</div>'
+            +(v.CarNo?'<div style="font-size:12px;color:var(--g400)">เบอร์ '+v.CarNo+'</div>':'')
+            +'<div style="font-size:11px;color:var(--g400);margin-top:2px">'+( v.VehicleType||'')+' | '+(v.StatusType||'')+''
+              +(months?' | <span style="color:#e65100">'+months+' เดือน</span>':'')
+            +'</div>'
+          +'</div>';
+        }).join('')
+        +'</div>'
+      +'</div>';
+    }).join('')
+  +'</div>';
 }
 
 function loadVehicleHistory(){
