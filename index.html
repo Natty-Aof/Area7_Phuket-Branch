@@ -1172,31 +1172,49 @@ textarea.fc{min-height:70px;resize:vertical;}
 
 <!-- ── CHANGE REQUEST MODAL ─────────────────────────────── -->
 <div id="changeReqModal" class="mo hidden" style="z-index:2000">
-  <div class="mow" style="max-width:480px">
+  <div class="mow" style="max-width:540px">
     <div class="moh">
       <div class="mot">🔑 ขออนุมัติแก้ไข</div>
       <button class="mcl" onclick="document.getElementById('changeReqModal').classList.add('hidden')">✕</button>
     </div>
     <div class="mob">
       <div class="fg">
-        <label class="fl">รายการที่ขอแก้ไข</label>
-        <input class="fc" id="crRefId" readonly style="background:#f5f5f5">
+        <label class="fl">ใบเบิกที่ขอแก้ไข</label>
+        <input class="fc" id="crRefId" readonly style="background:#f5f5f5;font-weight:700;color:var(--gd)">
       </div>
       <div class="fg">
         <label class="fl">ประเภทการแก้ไข <span class="rq">*</span></label>
-        <select class="fc" id="crType">
-          <option value="EDIT_INFO">✏️ แก้ไขข้อมูลใบเบิก (Job No., ลูกค้า ฯลฯ)</option>
-          <option value="EDIT_QTY">🔢 แก้ไขจำนวน (จ่ายจริง, คืนของ)</option>
+        <select class="fc" id="crType" onchange="onCRTypeChange()">
+          <option value="EDIT_JOB">✏️ แก้ไข Job No.</option>
+          <option value="EDIT_CUSTOMER">🏢 แก้ไขชื่อลูกค้า</option>
+          <option value="EDIT_SERIAL">🚗 แก้ไข Serial No. รถ</option>
+          <option value="EDIT_QTY">🔢 แก้ไขจำนวน</option>
+          <option value="EDIT_PURPOSE">📝 แก้ไขวัตถุประสงค์</option>
           <option value="CANCEL">❌ ยกเลิกใบเบิก</option>
-          <option value="OTHER">📝 อื่นๆ</option>
+          <option value="OTHER">💬 อื่นๆ</option>
         </select>
       </div>
-      <div class="fg">
-        <label class="fl">รายละเอียด / เหตุผล <span class="rq">*</span></label>
-        <textarea class="fc" id="crDesc" placeholder="อธิบายว่าต้องการแก้ไขอะไร และทำไม..." rows="4"></textarea>
+
+      <!-- Before / After fields (dynamic) -->
+      <div id="crBeforeAfterBox">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px">
+          <div class="fg" style="margin-bottom:0">
+            <label class="fl" style="color:var(--red)">📌 ค่าเดิม (Before)</label>
+            <input class="fc" id="crBefore" placeholder="ค่าปัจจุบัน...">
+          </div>
+          <div class="fg" style="margin-bottom:0">
+            <label class="fl" style="color:var(--gm)">✅ ค่าใหม่ที่ต้องการ (After)</label>
+            <input class="fc" id="crAfter" placeholder="ค่าที่ต้องการแก้เป็น...">
+          </div>
+        </div>
       </div>
-      <div style="background:#fff3e0;padding:10px 12px;border-radius:8px;font-size:12px;color:#e65100;margin-top:4px">
-        ⚠️ หลังอนุมัติ ต้องดำเนินการภายใน <strong>24 ชั่วโมง</strong>
+
+      <div class="fg">
+        <label class="fl">เหตุผล / รายละเอียดเพิ่มเติม <span class="rq">*</span></label>
+        <textarea class="fc" id="crDesc" placeholder="อธิบายเหตุผลที่ต้องการแก้ไข..." rows="3"></textarea>
+      </div>
+      <div style="background:#f3e5f5;padding:10px 12px;border-radius:8px;font-size:12px;color:#6a1b9a;margin-top:4px">
+        🔑 Manager จะได้รับแจ้งทาง email และจะแก้ข้อมูลให้อัตโนมัติเมื่ออนุมัติ
       </div>
     </div>
     <div class="mof">
@@ -6618,22 +6636,64 @@ function renderRptShortage(){
 
 var _crCurrentRefId = '';
 
+function onCRTypeChange(){
+  var type = (document.getElementById('crType')||{}).value;
+  var box = document.getElementById('crBeforeAfterBox');
+  if(!box) return;
+  if(type==='CANCEL'||type==='OTHER'){
+    box.style.display='none';
+  } else {
+    box.style.display='';
+    var labels={
+      EDIT_JOB:      ['Job No. ปัจจุบัน','Job No. ใหม่'],
+      EDIT_CUSTOMER: ['ชื่อลูกค้าปัจจุบัน','ชื่อลูกค้าใหม่'],
+      EDIT_SERIAL:   ['Serial No. ปัจจุบัน','Serial No. ใหม่'],
+      EDIT_QTY:      ['จำนวนปัจจุบัน','จำนวนที่ต้องการ'],
+      EDIT_PURPOSE:  ['วัตถุประสงค์ปัจจุบัน','วัตถุประสงค์ใหม่'],
+    };
+    var lb=labels[type]||['ค่าเดิม','ค่าใหม่'];
+    var fls=box.querySelectorAll('.fl');
+    if(fls[0]) fls[0].textContent='📌 '+lb[0]+' (Before)';
+    if(fls[1]) fls[1].textContent='✅ '+lb[1]+' (After)';
+    // auto-fill Before จาก req cache
+    var req=window._REQS_MAP&&window._REQS_MAP[_crCurrentRefId];
+    var beforeEl=document.getElementById('crBefore');
+    if(req && beforeEl){
+      var val='';
+      if(type==='EDIT_JOB') val=req.JobNo||'';
+      if(type==='EDIT_CUSTOMER') val=req.CustomerName||'';
+      if(type==='EDIT_SERIAL') val=req.SerialNos||'';
+      if(type==='EDIT_PURPOSE') val=req.Purpose||'';
+      if(val) beforeEl.value=val;
+    }
+  }
+}
+
 function openChangeReqModal(refId, refType){
   _crCurrentRefId = refId;
   document.getElementById('crRefId').value = refId||'—';
   document.getElementById('crDesc').value = '';
-  document.getElementById('crType').value = 'EDIT_INFO';
+  document.getElementById('crBefore').value = '';
+  document.getElementById('crAfter').value = '';
+  document.getElementById('crType').value = 'EDIT_JOB';
+  onCRTypeChange();
   document.getElementById('changeReqModal').classList.remove('hidden');
 }
 
 function submitChangeReq(){
   var desc = document.getElementById('crDesc').value.trim();
   if(!desc) return toast('กรุณาอธิบายรายละเอียดที่ต้องการแก้ไขค่ะ','error');
+  var type = document.getElementById('crType').value;
+  var before = (document.getElementById('crBefore')||{}).value||'';
+  var after  = (document.getElementById('crAfter')||{}).value||'';
+  if(type!=='CANCEL'&&type!=='OTHER'&&!after.trim()) return toast('กรุณากรอกค่าใหม่ที่ต้องการด้วยค่ะ','error');
   callAPI('createChangeRequest',{
     refId: _crCurrentRefId,
     refType: 'requisition',
-    requestType: document.getElementById('crType').value,
+    requestType: type,
     requestDesc: desc,
+    valueBefore: before,
+    valueAfter:  after,
   }).then(function(res){
     toast(res.message, res.success?'success':'error');
     if(res.success) document.getElementById('changeReqModal').classList.add('hidden');
@@ -6648,11 +6708,14 @@ function loadChangeReqPage(){
 
   callAPI('getChangeRequests',{}).then(function(res){
     var list = res.data||[];
-    // ใช้ role จาก CU หรือดึงจาก response
-    var myRole = (CU&&CU.role)||'';
+    var myRole  = (CU&&CU.role)||'';
     var myEmail = (CU&&CU.email)||'';
     var isManager = myRole==='MANAGER'||myRole==='ADMIN';
-    var crTypeLabel = {EDIT_INFO:'✏️ แก้ไขข้อมูล',EDIT_QTY:'🔢 แก้ไขจำนวน',CANCEL:'❌ ยกเลิก',OTHER:'📝 อื่นๆ'};
+    var crTypeLabel = {
+      EDIT_JOB:'✏️ แก้ Job No.',EDIT_CUSTOMER:'🏢 แก้ลูกค้า',EDIT_SERIAL:'🚗 แก้ Serial No.',
+      EDIT_QTY:'🔢 แก้จำนวน',EDIT_PURPOSE:'📝 แก้วัตถุประสงค์',
+      EDIT_INFO:'✏️ แก้ไขข้อมูล',CANCEL:'❌ ยกเลิก',OTHER:'💬 อื่นๆ'
+    };
     var statusLabel = {PENDING:'⏳ รออนุมัติ',APPROVED:'✅ อนุมัติแล้ว',REJECTED:'❌ ไม่อนุมัติ',DONE:'🏁 ดำเนินการแล้ว'};
     var statusColor = {PENDING:'#e65100',APPROVED:'var(--gm)',REJECTED:'var(--red)',DONE:'var(--g400)'};
 
@@ -6661,55 +6724,70 @@ function loadChangeReqPage(){
       return;
     }
 
-    var html='<div class="card" style="padding:0;overflow:hidden"><div class="tw"><table class="it"><thead><tr>'
-      +'<th>เลขที่คำขอ</th><th>รายการอ้างอิง</th><th>ประเภท</th>'
-      +'<th>ผู้ขอ</th><th>วันที่ขอ</th><th>สถานะ</th><th style="text-align:center">จัดการ</th>'
-      +'</tr></thead><tbody>'
-      +list.map(function(cr){
-        var sc = statusColor[cr.Status]||'#999';
-        var sl = statusLabel[cr.Status]||cr.Status;
-        var dt = cr.RequestedAt ? new Date(cr.RequestedAt).toLocaleDateString('th-TH') : '—';
-        var actionBtn = '';
-        if(isManager && cr.Status==='PENDING'){
-          actionBtn='<button class="btn bp bsm" onclick="openCRApprove(\''+cr.CRNo+'\')" style="font-size:11px">✅ พิจารณา</button>';
-        } else if(cr.Status==='APPROVED' && cr.RequestedBy===myEmail){
-          actionBtn='<button class="btn bo bsm" onclick="alert(\'ฟีเจอร์แก้ไขจริงจะเปิดใช้งานเร็วๆ นี้ค่ะ\')" style="font-size:11px;background:#6a1b9a;color:#fff;border-color:#6a1b9a">🔑 ดำเนินการ</button>';
-        }
-        return '<tr>'
-          +'<td style="font-size:12px;font-weight:700">'+cr.CRNo+'</td>'
-          +'<td style="font-size:12px;color:var(--gd)">'+( cr.RefID||'—')+'</td>'
-          +'<td><span class="chip chip-grn" style="font-size:11px">'+(crTypeLabel[cr.RequestType]||cr.RequestType)+'</span></td>'
-          +'<td style="font-size:12px">'+(cr.RequestedByName||cr.RequestedBy)+'</td>'
-          +'<td style="font-size:12px">'+dt+'</td>'
-          +'<td><span style="font-size:12px;font-weight:600;color:'+sc+'">'+sl+'</span></td>'
-          +'<td style="text-align:center">'+actionBtn+'</td>'
-          +'</tr>'
-          +'<tr><td colspan="7" style="padding:6px 12px;background:#fafafa;font-size:12px;color:#555">📝 '+(cr.RequestDesc||'—')+(cr.ApproveNote?'&nbsp;&nbsp;<span style="color:var(--red)">หมายเหตุ Manager: '+cr.ApproveNote+'</span>':'')+'</td></tr>';
-      }).join('')
-      +'</tbody></table></div></div>';
-    box.innerHTML=html;
+    var html = list.map(function(cr){
+      var sc  = statusColor[cr.Status]||'#999';
+      var sl  = statusLabel[cr.Status]||cr.Status;
+      var dt  = cr.RequestedAt ? new Date(cr.RequestedAt).toLocaleDateString('th-TH') : '—';
+      var typeLabel = crTypeLabel[cr.RequestType]||cr.RequestType;
+
+      // Before / After display
+      var beforeAfterHtml = '';
+      if(cr.ValueBefore || cr.ValueAfter){
+        beforeAfterHtml = '<div style="display:flex;gap:8px;margin:6px 0;flex-wrap:wrap">'
+          +(cr.ValueBefore?'<span style="background:#ffebee;color:#b71c1c;padding:3px 10px;border-radius:6px;font-size:11px">📌 เดิม: <strong>'+cr.ValueBefore+'</strong></span>':'')
+          +(cr.ValueAfter?'<span style="background:#e8f5e9;color:#1b5e20;padding:3px 10px;border-radius:6px;font-size:11px">✅ ใหม่: <strong>'+cr.ValueAfter+'</strong></span>':'')
+        +'</div>';
+      }
+
+      // Action buttons
+      var actionHtml = '';
+      if(isManager && cr.Status==='PENDING'){
+        actionHtml = '<div style="display:flex;gap:8px;margin-top:10px">'
+          +'<button class="btn bd bsm" onclick="doCRDecision(\''+cr.CRNo+'\',false)">✕ ไม่อนุมัติ</button>'
+          +'<button class="btn bp bsm" style="background:#6a1b9a;border-color:#6a1b9a" onclick="doCRDecision(\''+cr.CRNo+'\',true)">✅ อนุมัติ</button>'
+        +'</div>';
+      } else if(cr.Status==='APPROVED' && cr.RequestedBy===myEmail){
+        actionHtml = '<div style="margin-top:6px;font-size:12px;color:var(--gm)">✅ อนุมัติแล้ว — ระบบอัปเดตข้อมูลให้อัตโนมัติ</div>';
+      }
+
+      return '<div class="card" style="padding:12px 14px;margin-bottom:8px;border-left:4px solid '+(cr.Status==='PENDING'?'#e65100':cr.Status==='APPROVED'?'var(--gm)':'var(--g300)')+'">'
+        +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">'
+          +'<strong style="font-size:13px;color:var(--gd)">'+cr.CRNo+'</strong>'
+          +'<span style="font-size:12px;color:var(--gd)">→ '+( cr.RefID||'—')+'</span>'
+          +'<span style="font-size:11px;background:#f3e5f5;color:#6a1b9a;padding:2px 8px;border-radius:8px">'+typeLabel+'</span>'
+          +'<span style="margin-left:auto;font-size:12px;font-weight:700;color:'+sc+'">'+sl+'</span>'
+          +'<span style="font-size:11px;color:var(--g400)">'+dt+'</span>'
+        +'</div>'
+        +'<div style="font-size:12px;color:var(--g400);margin-bottom:4px">ผู้ขอ: <strong>'+(cr.RequestedByName||cr.RequestedBy)+'</strong></div>'
+        +beforeAfterHtml
+        +'<div style="font-size:12px;color:#555;margin-top:4px">📝 '+(cr.RequestDesc||'—')+'</div>'
+        +(cr.ApproveNote?'<div style="font-size:12px;color:var(--red);margin-top:4px">💬 Manager: '+cr.ApproveNote+'</div>':'')
+        +actionHtml
+      +'</div>';
+    }).join('');
+
+    box.innerHTML = '<div class="card" style="padding:10px 14px;margin-bottom:10px;background:#f3e5f5;border-left:4px solid #6a1b9a">'
+      +'<div style="font-size:13px;font-weight:600;color:#6a1b9a">🔑 คำขออนุมัติแก้ไข — '+list.length+' รายการ</div>'
+      +'<div style="font-size:12px;color:#7b1fa2;margin-top:2px">เมื่อ Manager อนุมัติ ระบบจะแก้ข้อมูลในใบเบิกให้อัตโนมัติค่ะ</div>'
+    +'</div>'
+    + html;
   });
 }
 
-// ── Modal อนุมัติ/ปฏิเสธ ─────────────────────────────────────
-function openCRApprove(crNo){
-  var note = '';
-  var choice = confirm('อนุมัติคำขอ '+crNo+' ?\n\nกด OK = อนุมัติ\nกด Cancel = ไม่อนุมัติ');
-  note = prompt('หมายเหตุ (ไม่บังคับ):','') || '';
-  if(choice){
-    callAPI('approveChangeRequest',{crNo:crNo,note:note}).then(function(res){
-      toast(res.message,res.success?'success':'error');
-      if(res.success){ refreshBadges(true); loadChangeReqPage(); }
-    });
-  } else {
-    if(note!==null){
-      callAPI('rejectChangeRequest',{crNo:crNo,note:note}).then(function(res){
-        toast(res.message,res.success?'success':'error');
-        if(res.success){ refreshBadges(true); loadChangeReqPage(); }
-      });
-    }
-  }
+function doCRDecision(crNo, approve){
+  var note = window.prompt((approve?'หมายเหตุการอนุมัติ (ไม่บังคับ):':'เหตุผลที่ไม่อนุมัติ (ไม่บังคับ):')||'','') ;
+  if(note === null) return; // cancel
+  var action = approve ? 'approveChangeRequest' : 'rejectChangeRequest';
+  callAPI(action,{crNo:crNo,note:note}).then(function(res){
+    toast(res.message, res.success?'success':'error');
+    if(res.success){ refreshBadges(true); loadChangeReqPage(); }
+  });
 }
+
+function openCRApprove(crNo){
+  doCRDecision(crNo, true);
+}
+
 
 
 var _scntItems = [];
