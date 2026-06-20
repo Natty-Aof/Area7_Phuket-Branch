@@ -317,7 +317,15 @@ textarea.fc{min-height:70px;resize:vertical;}
           </div>
           <div class="fr">
             <div class="fg"><label class="fl">JOB NO.<span class="rq">*</span></label><div style="position:relative"><input class="fc" id="nJob" placeholder="กรอก Job No." oninput="onJobInput(this)" autocomplete="off"><div id="jobSuggest" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:500;background:#fff;border:1.5px solid var(--gm);border-top:none;border-radius:0 0 var(--rs) var(--rs);max-height:180px;overflow-y:auto;box-shadow:var(--shm)"></div></div><div id="jobDupWarn" style="display:none;color:var(--red);font-size:12px;margin-top:4px">⚠️ Job No. นี้มีใบเบิกอยู่แล้ว — ยังสามารถเปิดใบเบิกใหม่ได้สำหรับ Job เดิม</div></div>
-            <div class="fg"><label class="fl">ชื่อลูกค้า</label><input class="fc" id="nCust" placeholder="กรอกชื่อลูกค้า"></div>
+            <div class="fg"><label class="fl">ชื่อลูกค้า <span style="font-size:10px;color:var(--g400);font-weight:400">— พิมพ์ชื่อโรงแรม/บริษัท/โครงการ ระบบจะค้นหาให้</span></label>
+              <div style="position:relative">
+                <input class="fc" id="nCust" placeholder="เช่น อมารี, NH, LS Pavillion, อโณมา..." oninput="onCustInput(this)" autocomplete="off">
+                <div id="custSuggest" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:500;background:#fff;border:1.5px solid var(--gm);border-top:none;border-radius:0 0 8px 8px;max-height:240px;overflow-y:auto;box-shadow:0 6px 20px rgba(0,0,0,.12)"></div>
+              </div>
+              <div id="custConfirmBox" style="display:none;margin-top:4px;background:#e8f5e9;padding:6px 10px;border-radius:6px;font-size:12px;color:#1b5e20">
+                ✅ ชื่อบริษัท: <strong id="custConfirmName"></strong>
+              </div>
+            </div>
           </div>
           <div class="fr">
             <div class="fg"><label class="fl">ช่างผู้เบิก</label><input class="fc" id="nReq" readonly></div>
@@ -2427,8 +2435,10 @@ function submitReq(){
   if(!CU) return toast('กรุณาเข้าสู่ระบบก่อนค่ะ','error');
   var job=document.getElementById('nJob').value.trim();
   if(!job) return toast('กรุณากรอก Job No.','error');
-  var cust=document.getElementById('nCust').value.trim();
-  if(!cust) return toast('กรุณากรอกชื่อลูกค้า','error');
+  var custDisplay = document.getElementById('nCust').value.trim();
+  if(!custDisplay) return toast('กรุณากรอกชื่อลูกค้า','error');
+  // ใช้ชื่อบริษัทจริง (formal) ถ้าเลือกจาก dropdown, ไม่งั้นใช้ที่พิมพ์
+  var cust = _custSelectedFormal || custDisplay;
   var pp=Array.from(document.querySelectorAll('#purposeGrid input:checked')).map(function(c){return c.value;});
   if(!pp.length) return toast('กรุณาเลือกวัตถุประสงค์','error');
   var items=getItems();
@@ -3923,6 +3933,69 @@ function onJobInput(input){
 
 // ── VEHICLE MODEL SUGGEST ────────────────────────────────────
 var _modelHistory = ['Club Car Precedent','Club Car Tempo','Club Car Onward','Club Car DS','Club Car Villager','Club Car Transporter'];
+
+// ── Customer Autocomplete (ใน Create form) ───────────────────
+var _custSelectedFormal = '';
+
+function onCustInput(inp){
+  var q = (inp.value||'').toLowerCase().trim();
+  var dd = document.getElementById('custSuggest');
+  var cb = document.getElementById('custConfirmBox');
+  if(!dd) return;
+  _custSelectedFormal = '';
+  if(cb) cb.style.display='none';
+  if(!q || q.length < 2){ dd.style.display='none'; return; }
+
+  loadVehiclesDB().then(function(vehicles){
+    var map = {};
+    vehicles.forEach(function(v){
+      var cust = (v.Customer||'').trim();
+      var loc  = (v.Location||'').trim();
+      if(!cust && !loc) return;
+      var key = cust+'||'+loc;
+      if(!map[key]) map[key] = {customer:cust, location:loc, count:0};
+      map[key].count++;
+    });
+    var results = Object.values(map).filter(function(m){
+      return m.customer.toLowerCase().indexOf(q)>=0
+          || m.location.toLowerCase().indexOf(q)>=0;
+    }).sort(function(a,b){ return b.count-a.count; }).slice(0,8);
+
+    if(!results.length){ dd.style.display='none'; return; }
+    dd.innerHTML = results.map(function(m){
+      var display = m.location || m.customer;
+      var sub     = m.location ? m.customer : '';
+      return '<div onmousedown="_pickCust(\''+encodeURIComponent(m.customer)+'\',\''+encodeURIComponent(display)+'\')" '
+        +'style="padding:9px 12px;cursor:pointer;border-bottom:0.5px solid #f5f5f5" '
+        +'onmouseover="this.style.background=\'#f0fff4\'" onmouseout="this.style.background=\'\'">'
+        +'<div style="font-weight:600;font-size:13px;color:var(--gd)">'+display+'</div>'
+        +(sub?'<div style="font-size:11px;color:var(--g400)">บริษัท: '+sub+' | '+m.count+' คัน</div>'
+             :'<div style="font-size:11px;color:var(--g400)">'+m.count+' คัน</div>')
+      +'</div>';
+    }).join('');
+    dd.style.display='block';
+  });
+}
+
+function _pickCust(customerEnc, displayEnc){
+  var customer = decodeURIComponent(customerEnc);
+  var display  = decodeURIComponent(displayEnc);
+  _custSelectedFormal = customer;
+  var inp=document.getElementById('nCust');
+  var dd=document.getElementById('custSuggest');
+  var cb=document.getElementById('custConfirmBox');
+  var cn=document.getElementById('custConfirmName');
+  if(inp) inp.value = display;
+  if(dd)  dd.style.display='none';
+  if(cb && cn){
+    if(customer && customer !== display){
+      cn.textContent = customer;
+      cb.style.display='block';
+    } else {
+      cb.style.display='none';
+    }
+  }
+}
 
 function onModelInput(inp){
   var val = inp.value.trim().toLowerCase();
