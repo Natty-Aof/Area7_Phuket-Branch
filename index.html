@@ -681,7 +681,7 @@ textarea.fc{min-height:70px;resize:vertical;}
               </div>
             </div>
             <button class="btn bsm" onclick="openQRScanner('stockcard')" style="min-width:110px;background:#1565c0;color:#fff;border-color:#1565c0;white-space:nowrap">📷 Scan QR</button>
-            <button class="btn bp" onclick="openSCForm()" style="min-width:100px">+ บันทึก</button>
+            <button class="btn bp" id="scAddBtn" onclick="openSCForm()" style="min-width:100px">+ บันทึก</button>
           </div>
         </div>
 
@@ -2170,7 +2170,25 @@ function initApp(){
   if(un) un.textContent=CU.name;
   if(ur) ur.textContent=roleLabel(CU.role);
   if(ue) ue.textContent=CU.email;
-  if(['SUPERVISOR','MANAGER'].indexOf(CU.role)>=0){
+  // ── สิทธิ์ตาม Role ──────────────────────────────────────────
+  var isTech = CU.role === 'TECHNICIAN';
+  var isStock = CU.role === 'STOCK';
+  var isMgr   = CU.role === 'MANAGER' || CU.role === 'ADMIN';
+  var isSup   = CU.role === 'SUPERVISOR';
+
+  // Stock Card: ช่างดูได้ แต่กดบันทึก/ลบไม่ได้
+  var scAddBtn = document.getElementById('scAddBtn');
+  if(scAddBtn) scAddBtn.style.display = isTech ? 'none' : '';
+
+  // นับสต็อก: เฉพาะ Stock และ Manager
+  var nSC = document.getElementById('nStockCount');
+  if(nSC) nSC.style.display = (isStock||isMgr) ? '' : 'none';
+
+  // คำขอแก้ไข: ทุก role ที่ login แล้วเห็นได้
+  var crMenu = document.getElementById('nChangeReq');
+  if(crMenu) crMenu.classList.remove('hidden');
+
+  if(['SUPERVISOR','MANAGER','ADMIN'].indexOf(CU.role)>=0){
     var na=document.getElementById('nApproval'),ba=document.getElementById('bnAp');
     if(na) na.classList.remove('hidden');
     if(ba) ba.classList.remove('hidden');
@@ -2648,7 +2666,7 @@ function renderListFromCache(){
     else grpOpen.push(r);
   });
 
-  var canDel = CU && (CU.role==='MANAGER'||CU.role==='ADMIN');
+  var canDel = CU && (CU.role==='MANAGER'||CU.role==='ADMIN'||CU.role==='STOCK') && CU.role!=='TECHNICIAN';
 
   function rowHtml(r, rowBg){
     var daysOld = r.PickedUpAt ? Math.floor((now-new Date(r.PickedUpAt).getTime())/(24*3600*1000)) : null;
@@ -7644,7 +7662,7 @@ function _buildSCTable(p, realEntries, el){
     'OUT_OTHER':'background:#fff3e0;color:#e65100',
   };
 
-  var canDel = CU && (CU.role==='MANAGER'||CU.role==='ADMIN');
+  var canDel = CU && (CU.role==='MANAGER'||CU.role==='ADMIN'||CU.role==='STOCK') && CU.role!=='TECHNICIAN';
 
   var tableHtml = '<div style="overflow-x:auto">'
     +'<table style="width:100%;border-collapse:collapse;font-size:12px">'
