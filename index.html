@@ -1762,7 +1762,7 @@ function onGSI(resp){
   var p = parseJWT(resp.credential);
   var emailLower = (p.email||'').toLowerCase();
 
-  // ── ตรวจ BG_EMAIL_ROLES ก่อน (hardcode สำหรับคนสำคัญ) ──
+  // ── ตรวจ BG_EMAIL_ROLES ก่อน (hardcode สำหรับ admin สำคัญ) ──
   var matchKey = Object.keys(BG_EMAIL_ROLES).find(function(k){
     return k.toLowerCase() === emailLower;
   });
@@ -1773,21 +1773,33 @@ function onGSI(resp){
     return;
   }
 
-  // ── ทุก email (รวม @beyond-green.co.th) ดึง role จาก Sheet Users ──
+  // ── ดึง role จาก Sheet Users ──
   callAPI('getUserRole', {}, p.email).then(function(res){
-    if(res && res.role && res.role !== 'UNKNOWN'){
+    if(res && res.success && res.role && res.role !== 'DENIED'){
       CU = {email:p.email, name:res.name||p.name||p.email.split('@')[0], role:res.role};
       initApp();
       return;
     }
-    // ถ้าไม่มีใน Sheet → @beyond-green.co.th ได้ TECHNICIAN, อื่นๆ denied
-    if(emailLower.endsWith('@beyond-green.co.th')){
-      CU = { email:p.email, name:p.name||p.email.split('@')[0], role:'TECHNICIAN' };
-      initApp();
-    } else {
-      toast('ไม่มีสิทธิ์เข้าใช้งานระบบค่ะ','error');
-    }
+    // ไม่มีใน Sheet Users → ไม่ให้เข้า
+    var msg = (res && res.message) || 'คุณไม่มีสิทธิ์เข้าใช้งานระบบนี้ค่ะ';
+    showAccessDenied(p.email, msg);
   });
+}
+
+function showAccessDenied(email, msg){
+  var loginBox = document.getElementById('loginBox');
+  if(loginBox){
+    loginBox.innerHTML = '<div style="text-align:center;padding:20px">'
+      +'<div style="font-size:48px;margin-bottom:12px">🚫</div>'
+      +'<div style="font-size:16px;font-weight:700;color:#b71c1c;margin-bottom:8px">ไม่มีสิทธิ์เข้าใช้งาน</div>'
+      +'<div style="font-size:13px;color:#555;margin-bottom:4px">'+msg+'</div>'
+      +'<div style="font-size:12px;color:var(--g400);margin-bottom:16px">'+email+'</div>'
+      +'<div style="font-size:12px;background:#fff3e0;padding:10px 14px;border-radius:8px;color:#e65100">'
+        +'กรุณาติดต่อ Admin เพื่อเพิ่มบัญชีของคุณในระบบค่ะ'
+      +'</div>'
+      +'<button class="btn bo" style="margin-top:16px;font-size:13px" onclick="location.reload()">🔄 ลองใหม่</button>'
+    +'</div>';
+  }
 }
 
 function parseJWT(t){
@@ -3468,11 +3480,12 @@ function submitJob(){
 function loadProfile(){
   if(!CU) return;
   callAPI('getSignature',{email:CU.email}).then(function(res){
+    var sig = res.signatureBase64 || res.data || '';
     var box=document.getElementById('curSigBox');
-    if(res.success&&res.signatureBase64){
+    if(res.success && sig){
       var img=document.getElementById('curSigImg');
-      if(img) img.src=res.signatureBase64;
-      CU.sig=res.signatureBase64;
+      if(img) img.src=sig;
+      CU.sig=sig;
       if(box) box.classList.remove('hidden');
     } else {
       if(box) box.classList.add('hidden');
@@ -3698,15 +3711,15 @@ function buildPrintData(reqId){
     if(!res.success){toast('โหลดข้อมูลไม่ได้','error');return null;}
     var d=res.data;
     return Promise.all([
-      d.RequesterEmail?callAPI('getSignature',{email:d.RequesterEmail}):Promise.resolve({}),
-      d.SupervisorEmail?callAPI('getSignature',{email:d.SupervisorEmail}):Promise.resolve({}),
-      d.ManagerEmail?callAPI('getSignature',{email:d.ManagerEmail}):Promise.resolve({}),
+      d.RequesterEmail?callAPI('getSignature',{email:d.RequesterEmail}):Promise.resolve({signatureBase64:''}),
+      d.SupervisorEmail?callAPI('getSignature',{email:d.SupervisorEmail}):Promise.resolve({signatureBase64:''}),
+      d.ManagerEmail?callAPI('getSignature',{email:d.ManagerEmail}):Promise.resolve({signatureBase64:''}),
     ]).then(function(sigs){
       return {reqId:d.ReqID,jobNo:d.JobNo,customer:d.CustomerName,date:d.OpenDate,technician:d.RequesterName,coWorkers:d.CoWorkers||'',serial:d.SerialNos||'',purpose:d.Purpose||'',
         items:(d.Items||d.items||[]).map(function(i){return {partNo:i.PartNo||'',desc:i.NameEN||i.NameTH||'',qty:i.Qty||'',issued:i.Qty||'',note:i.Note||''};}),
-        techSig:sigs[0].signatureBase64||'',techName:d.RequesterName||'',techDate:d.OpenDate||'',
-        supSig:sigs[1].signatureBase64||'',supName:d.SupervisorEmail?'หัวหน้าช่าง':'',supDate:d.SupervisorApprovedAt?new Date(d.SupervisorApprovedAt).toLocaleDateString('th-TH'):'',
-        mgrSig:sigs[2].signatureBase64||'',mgrName:d.ManagerEmail?'ณัฐรีญา':'',mgrDate:d.ManagerApprovedAt?new Date(d.ManagerApprovedAt).toLocaleDateString('th-TH'):'',
+        techSig:sigs[0].signatureBase64||sigs[0].data||'',techName:d.RequesterName||'',techDate:d.OpenDate||'',
+        supSig:sigs[1].signatureBase64||sigs[1].data||'',supName:d.SupervisorEmail?'หัวหน้าช่าง':'',supDate:d.SupervisorApprovedAt?new Date(d.SupervisorApprovedAt).toLocaleDateString('th-TH'):'',
+        mgrSig:sigs[2].signatureBase64||sigs[2].data||'',mgrName:d.ManagerEmail?'ณัฐรีญา':'',mgrDate:d.ManagerApprovedAt?new Date(d.ManagerApprovedAt).toLocaleDateString('th-TH'):'',
       };
     });
   });
