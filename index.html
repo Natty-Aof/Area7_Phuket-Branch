@@ -2597,7 +2597,6 @@ function renderListFromCache(){
   }
 
   var now = Date.now();
-  // แบ่งกลุ่ม
   var grpOld=[], grpOpen=[], grpPending=[], grpClosed=[];
   rows.forEach(function(r){
     var isClosed = r.StatusStock==='CLOSED';
@@ -2611,66 +2610,55 @@ function renderListFromCache(){
 
   var canDel = CU && (CU.role==='MANAGER'||CU.role==='ADMIN');
 
-  function _miniChip(s, type){
-    var bs = 'font-size:10px;padding:2px 6px;border-radius:8px;white-space:nowrap;display:inline-block;max-width:88px;overflow:hidden;text-overflow:ellipsis;';
-    if(type==='ap'){
-      var m={PENDING_SUPERVISOR:'⏳ รอหน.',PENDING_MANAGER:'⏳ รอผจก.',APPROVED:'✓ อนุมัติ',REJECTED:'✕ ปฏิเสธ'};
-      var c={PENDING_SUPERVISOR:'#7b3f00',PENDING_MANAGER:'#0d47a1',APPROVED:'#1b5e20',REJECTED:'#b71c1c'};
-      var bg={PENDING_SUPERVISOR:'#fff3e0',PENDING_MANAGER:'#e3f2fd',APPROVED:'#e8f5e9',REJECTED:'#ffebee'};
-      return '<span style="'+bs+'background:'+(bg[s]||'#f5f5f5')+';color:'+(c[s]||'#555')+'">'+(m[s]||s)+'</span>';
-    } else {
-      var m2={PENDING:'รอจัด',STOCK_NOTIFIED:'แจ้งแล้ว',ACKNOWLEDGED:'Stock จัด',PICKED_UP:'รับแล้ว',PENDING_CLEARANCE:'รอ Stock',CLEARED:'ปิดแล้ว',CLOSED:'ปิดแล้ว',REJECTED:'ปฏิเสธ'};
-      var c2={PENDING:'#555',STOCK_NOTIFIED:'#0d47a1',ACKNOWLEDGED:'#7b3f00',PICKED_UP:'#0d47a1',PENDING_CLEARANCE:'#b71c1c',CLEARED:'#1b5e20',CLOSED:'#1b5e20',REJECTED:'#b71c1c'};
-      var bg2={PENDING:'#f5f5f5',STOCK_NOTIFIED:'#e3f2fd',ACKNOWLEDGED:'#fff3e0',PICKED_UP:'#e3f2fd',PENDING_CLEARANCE:'#ffebee',CLEARED:'#e8f5e9',CLOSED:'#e8f5e9',REJECTED:'#ffebee'};
-      return '<span style="'+bs+'background:'+(bg2[s]||'#f5f5f5')+';color:'+(c2[s]||'#555')+'">'+(m2[s]||s)+'</span>';
-    }
-  }
-  function rowHtml(r, bgOverride){
+  function rowHtml(r, rowBg){
     var daysOld = r.PickedUpAt ? Math.floor((now-new Date(r.PickedUpAt).getTime())/(24*3600*1000)) : null;
     var dateStr = (r.OpenDate||r.CreatedAt||'').replace('T',' ').slice(0,10);
-    var bg = bgOverride || '';
-    var canDel2 = CU && (CU.role==='MANAGER'||CU.role==='ADMIN');
-    var cols = '150px 180px 100px 72px 42px 90px 90px 64px';
-    return '<div style="display:grid;grid-template-columns:'+cols+';gap:0;align-items:center;padding:7px 10px;border-bottom:0.5px solid var(--g200);font-size:12px;background:'+bg+'" onmouseover="this.style.background=\'var(--g50,#f8f9fa)\'" onmouseout="this.style.background=\''+bg+'\'">'
-      +'<div style="font-weight:700;color:var(--gd);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:4px">'+r.ReqID+'</div>'
-      +'<div style="min-width:0;overflow:hidden;padding-right:4px"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px">'+r.CustomerName+'</div><div style="font-size:10px;color:var(--g400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(r.RequesterName||'')+'</div></div>'
-      +'<div style="color:var(--g400);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:4px">'+r.JobNo+'</div>'
-      +'<div style="font-size:11px;color:var(--g400);white-space:nowrap">'+dateStr.slice(5)+'</div>'
-      +'<div style="font-size:11px;color:'+(daysOld!=null&&daysOld>7?'#e65100':'var(--g400)')+';text-align:center">'+( daysOld!=null ? daysOld+'d' : '—')+'</div>'
-      +'<div style="overflow:hidden">'+_miniChip(r.StatusApproval,'ap')+'</div>'
-      +'<div style="overflow:hidden">'+_miniChip(r.StatusStock,'st')+'</div>'
-      +'<div style="display:flex;gap:3px;align-items:center;justify-content:flex-end">'
-        +'<button class="btn bo bsm" style="padding:2px 7px;font-size:11px" onclick="openDetail(\''+r.ReqID+'\')" >ดู</button>'
-        +(canDel2?'<button class="btn bd bsm del-req-btn" style="padding:2px 5px;font-size:11px" data-rid="'+r.ReqID+'">🗑️</button>':'')
-      +'</div>'
-    +'</div>';
+    return '<tr style="background:'+(rowBg||'')+'">'
+      +'<td style="padding:7px 10px;font-weight:600;color:var(--gd);font-size:12px;white-space:nowrap">'+r.ReqID+'</td>'
+      +'<td style="padding:7px 10px;font-size:12px;white-space:nowrap">'+dateStr+'</td>'
+      +'<td style="padding:7px 10px;font-size:12px;color:var(--g400);white-space:nowrap">'+r.JobNo+'</td>'
+      +'<td style="padding:7px 10px;font-size:12px"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px">'+(r.RequesterName||'')+'</div></td>'
+      +'<td style="padding:7px 10px;font-size:12px"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">'+r.CustomerName+'</div></td>'
+      +'<td style="padding:7px 10px;white-space:nowrap">'+apChip(r.StatusApproval)+'</td>'
+      +'<td style="padding:7px 10px;white-space:nowrap">'+stChip(r.StatusStock)+'</td>'
+      +'<td style="padding:7px 8px;white-space:nowrap;text-align:right">'
+        +'<button class="btn bo bsm" style="padding:2px 8px;font-size:11px" onclick="openDetail(\'' + r.ReqID + '\')">ดู</button>'
+        +(canDel?' <button class="btn bd bsm del-req-btn" style="padding:2px 6px;font-size:11px" data-rid="'+r.ReqID+'">🗑️</button>':'')
+      +'</td>'
+    +'</tr>';
   }
 
-
-  function section(label, items){
+  function section(label, items, rowBg){
     if(!items.length) return '';
-    return '<div style="padding:5px 12px;font-size:11px;font-weight:600;color:var(--g400);background:var(--g100,#f5f5f5);border-top:1px solid var(--g200);border-bottom:0.5px solid var(--g200)">'
-      +label+' ('+items.length+')</div>'
-      +items.map(function(r){ return rowHtml(r,''); }).join('');
+    return '<tr><td colspan="8" style="padding:4px 10px;font-size:11px;font-weight:600;color:var(--g400);background:var(--g100,#f5f5f5);border-top:1px solid var(--g200)">'+label+' ('+items.length+')</td></tr>'
+      +items.map(function(r){ return rowHtml(r, rowBg||''); }).join('');
   }
 
-  var thHtml = '<div style="display:grid;grid-template-columns:150px 180px 100px 72px 42px 90px 90px 64px;gap:0;padding:6px 10px;font-size:11px;font-weight:600;color:var(--g400);background:var(--g100,#f5f5f5);border-bottom:1px solid var(--g200)">'
-    +'<div>เลขที่</div><div>ลูกค้า / ผู้เบิก</div><div>Job No.</div><div>วันที่</div><div>วัน</div><div>อนุมัติ</div><div>Stock</div><div></div>'
-  +'</div>';
-
-  var oldSection = grpOld.length
-    ? '<div style="padding:5px 12px;font-size:11px;font-weight:700;color:#b71c1c;background:#fff3e0;border-bottom:0.5px solid #ffe0b2;border-top:1px solid var(--g200)">⚠️ ค้างนาน > 7 วัน ('+grpOld.length+')</div>'
+  var oldRows = grpOld.length
+    ? '<tr><td colspan="8" style="padding:4px 10px;font-size:11px;font-weight:700;color:#b71c1c;background:#fff3e0;border-top:1px solid var(--g200)">⚠️ ค้างนาน > 7 วัน ('+grpOld.length+')</td></tr>'
       + grpOld.map(function(r){ return rowHtml(r,'#fffbf0'); }).join('')
     : '';
 
-  body.innerHTML = thHtml
-    + oldSection
+  body.innerHTML = '<div class="tw"><table style="width:100%">'
+    +'<thead><tr style="background:var(--g100,#f5f5f5)">'
+      +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--g400);white-space:nowrap">เลขที่</th>'
+      +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--g400);white-space:nowrap">วันที่</th>'
+      +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--g400);white-space:nowrap">Job No.</th>'
+      +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--g400);white-space:nowrap">ผู้เบิก</th>'
+      +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--g400);white-space:nowrap">ลูกค้า</th>'
+      +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--g400);white-space:nowrap">สถานะอนุมัติ</th>'
+      +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--g400);white-space:nowrap">สถานะ Stock</th>'
+      +'<th></th>'
+    +'</tr></thead>'
+    +'<tbody>'
+    + oldRows
     + section('🔴 รอ Stock ตรวจสอบ', grpPending)
     + section('🟡 ยังไม่คืนของ', grpOpen)
     + section('✅ ปิดงานแล้ว', grpClosed)
-    + '<div style="padding:8px 12px;font-size:12px;color:var(--g400);border-top:1px solid var(--g200)">แสดง '+rows.length+' รายการ</div>';
+    +'</tbody>'
+    +'<tfoot><tr><td colspan="8" style="padding:7px 10px;font-size:12px;color:var(--g400);border-top:1px solid var(--g200)">แสดง '+rows.length+' รายการ</td></tr></tfoot>'
+    +'</table></div>';
 
-  // rebind delete buttons
   body.querySelectorAll('.del-req-btn').forEach(function(btn){
     btn.onclick = function(){ deleteReq(btn.dataset.rid); };
   });
@@ -5764,25 +5752,6 @@ function waitForParts(fn, maxWait){
 
 
 // ── SLOW MOVING REPORT ────────────────────────────────────
-function setRptType(type){
-  _rptType = type;
-  var btns = {
-    'requisition':'rptBtnReq','stock':'rptBtnStock',
-    'parts':'rptBtnParts','technician':'rptBtnTech','slowmove':'rptBtnSlow'
-  };
-  Object.keys(btns).forEach(function(t){
-    var btn = document.getElementById(btns[t]);
-    if(btn) btn.className = 'btn bsm ' + (t===type ? 'bp' : 'bo');
-  });
-  var slowDiv = document.getElementById('rptSlowMove');
-  var sumDiv  = document.getElementById('rptSummary');
-  if(type === 'slowmove'){
-    if(slowDiv) slowDiv.classList.remove('hidden');
-    if(sumDiv)  sumDiv.classList.add('hidden');
-  } else {
-    if(slowDiv) slowDiv.classList.add('hidden');
-  }
-}
 
 function showSlowMove(months){
   // ── Active state — ใช้ data-months แทน indexOf text ────────
@@ -7327,13 +7296,6 @@ function loadSCRWarehouse(){
   });
 }
 
-function filterSCRList(){
-  var q = (document.getElementById('scrSearchInput').value||'').trim().toLowerCase();
-  var filtered = q ? _scrAllRows.filter(function(r){
-    return r.partNo.toLowerCase().indexOf(q)>=0 || (r.nameEN||'').toLowerCase().indexOf(q)>=0;
-  }) : _scrAllRows;
-  renderSCRTable(filtered);
-}
 
 function renderSCRTable(rows){
   var box = document.getElementById('scrSummaryBox');
@@ -9370,21 +9332,6 @@ function deleteCurrentReq(){
 }
 
 // แก้ deleteStockEntry ให้ใช้ renderSCForPart แทน loadStockCard
-function deleteStockEntry(entryId){
-  if(!CU||CU.role!=='MANAGER') return toast('เฉพาะผู้จัดการเท่านั้นค่ะ','error');
-  if(!confirm('ยืนยันลบรายการ '+entryId+' ?')) return;
-  // ลบออกจาก _scDemoEntries
-  if(window._scDemoEntries){
-    window._scDemoEntries = window._scDemoEntries.filter(function(e){
-      return e.EntryID !== entryId;
-    });
-  }
-  callAPI('deleteStockCardEntry',{id:entryId}).then(function(res){
-    toast(res.success ? 'ลบแล้วค่ะ ✅' : (res.message||'เกิดข้อผิดพลาด'),
-          res.success ? 'success' : 'error');
-    if(res.success){ renderSCForPart(); }
-  });
-}
 
 // ── SESSION RESTORE: กด Back แล้วไม่ต้อง Login ใหม่ ──────────
 // วางไว้ท้ายสุด เพื่อให้ทุก function ถูก declare ก่อน
