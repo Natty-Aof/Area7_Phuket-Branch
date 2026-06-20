@@ -7565,119 +7565,141 @@ function _buildSCTable(p, realEntries, el){
   var allEntries = [];
   var baseStock = (p._baseStock!==undefined ? p._baseStock : p.inStock) || 0;
 
-  // ยอดยกมา ( INIT)
   allEntries.push({
-    EntryID: 'INIT-'+p.partNo, Date: '06/06/2569', Type: 'INIT',
-    DocNo: 'STOCK-INIT-06-06-69', Requester: 'ระบบ (ยอดยกมา)', JobNo: '—',
-    Customer: 'Parts Requisition System - Phuket Branch',
-    Purpose: 'ยอดยกมาจากการนับ Stock จริง ณ วันที่ 6/6/69',
-    QtyIn: baseStock, QtyOut: 0, QtyDefect: 0, Balance: baseStock,
-    Unit: p.unit||'ชิ้น', Note: 'ยอดเริ่มต้นระบบ',
-    _sortKey: '0000-00-00',
+    EntryID:'INIT-'+p.partNo, Date:'06/06/2569', Type:'INIT',
+    DocNo:'STOCK-INIT-06-06-69', Requester:'ระบบ (ยอดยกมา)', JobNo:'—',
+    Customer:'—', Purpose:'ยอดยกมาจากการนับ Stock จริง ณ วันที่ 6/6/69',
+    QtyIn:baseStock, QtyOut:0, QtyDefect:0, Balance:baseStock,
+    Unit:p.unit||'ชิ้น', Note:'ยอดเริ่มต้นระบบ', _sortKey:'0000-00-00',
   });
 
-  // เรียงตามเวลา (เก่า→ใหม่) เพื่อคำนวณ running balance
   realEntries.sort(function(a,b){ return (a.CreatedAt||'') > (b.CreatedAt||'') ? 1 : -1; });
-
   var runBalance = baseStock;
+  var totalIn=0, totalOut=0, totalDef=0;
+
   realEntries.forEach(function(e){
-    var qIn  = parseFloat(e.QtyIn)||0;
-    var qOut = parseFloat(e.QtyOut)||0;
-    var qDef = parseFloat(e.QtyDefect)||0;
-    var isDefect = (e.Type==='DEFECT_RETURN') || qDef>0;
-    var isSCR = (e.PartNo||'').indexOf('SCR')===0;
-    // ของเสีย SCR → ไม่กระทบ balance ของ part หลัก
-    if(!isSCR){ runBalance += qIn - qOut; }
+    var qIn=parseFloat(e.QtyIn)||0, qOut=parseFloat(e.QtyOut)||0, qDef=parseFloat(e.QtyDefect)||0;
+    var isSCR=(e.PartNo||'').indexOf('SCR')===0;
+    if(!isSCR){ runBalance += qIn - qOut; totalIn+=qIn; totalOut+=qOut; totalDef+=qDef; }
     allEntries.push({
-      EntryID: e.EntryID, Date: e.Date||(e.CreatedAt?new Date(e.CreatedAt).toLocaleDateString('th-TH'):'—'),
-      Type: e.Type, DocNo: e.DocNo||'—', Requester: e.Requester||e.CreatedBy||'—',
-      JobNo: e.JobNo||'—', Customer: e.Customer||'—', Purpose: e.Purpose||e.Note||'—',
-      QtyIn: qIn, QtyOut: qOut, QtyDefect: qDef,
-      Balance: isSCR ? qDef : Math.max(0, runBalance),
-      Unit: e.Unit||p.unit||'ชิ้น', Note: e.Note||'',
+      EntryID:e.EntryID, Date:e.Date||(e.CreatedAt?new Date(e.CreatedAt).toLocaleDateString('th-TH'):'—'),
+      Type:e.Type, DocNo:e.DocNo||'—', Requester:e.Requester||e.CreatedBy||'—',
+      JobNo:e.JobNo||'—', Customer:e.Customer||'—', Purpose:e.Purpose||e.Note||'—',
+      QtyIn:qIn, QtyOut:qOut, QtyDefect:qDef,
+      Balance:isSCR ? qDef : Math.max(0,runBalance),
+      Unit:e.Unit||p.unit||'ชิ้น', Note:e.Note||'', isSCR:isSCR,
     });
   });
 
-  // filter ตาม tab
   var filtered = allEntries;
-  if(_scPartTab === 'in'){
-    filtered = allEntries.filter(function(e){ return (e.QtyIn>0) || e.Type==='INIT'; });
-  } else if(_scPartTab === 'out'){
-    filtered = allEntries.filter(function(e){ return e.QtyOut>0 || e.QtyDefect>0; });
-  }
+  if(_scPartTab==='in')  filtered=allEntries.filter(function(e){ return e.QtyIn>0||e.Type==='INIT'; });
+  if(_scPartTab==='out') filtered=allEntries.filter(function(e){ return e.QtyOut>0||e.QtyDefect>0; });
+
+  // ── Summary bar ──
+  var currentBal = runBalance;
+  var balColor = currentBal<=0?'color:#b71c1c':currentBal<=5?'color:#e65100':'color:#1b5e20';
+  var summaryHtml = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px;border-bottom:0.5px solid var(--g200)">'
+    +'<div style="background:var(--g50,#f8f9fa);border-radius:8px;padding:10px 12px;text-align:center">'
+      +'<div style="font-size:20px;font-weight:500;'+balColor+'">'+currentBal+'</div>'
+      +'<div style="font-size:11px;color:var(--g400);margin-top:2px">คงเหลือ</div></div>'
+    +'<div style="background:#f0fff4;border-radius:8px;padding:10px 12px;text-align:center">'
+      +'<div style="font-size:20px;font-weight:500;color:#1b5e20">+'+totalIn+'</div>'
+      +'<div style="font-size:11px;color:var(--g400);margin-top:2px">รับเข้าทั้งหมด</div></div>'
+    +'<div style="background:#fff8f0;border-radius:8px;padding:10px 12px;text-align:center">'
+      +'<div style="font-size:20px;font-weight:500;color:#e65100">-'+totalOut+'</div>'
+      +'<div style="font-size:11px;color:var(--g400);margin-top:2px">จ่ายออกทั้งหมด</div></div>'
+    +'<div style="background:#fff5f5;border-radius:8px;padding:10px 12px;text-align:center">'
+      +'<div style="font-size:20px;font-weight:500;color:#b71c1c">'+totalDef+'</div>'
+      +'<div style="font-size:11px;color:var(--g400);margin-top:2px">ของเสีย (SCR)</div></div>'
+  +'</div>';
 
   if(!filtered.length){
-    el.innerHTML = '<div class="card tc tm" style="padding:32px">ยังไม่มีความเคลื่อนไหวค่ะ</div>';
+    el.innerHTML='<div style="padding:32px;text-align:center;color:var(--g400)">ยังไม่มีความเคลื่อนไหวค่ะ</div>';
     return;
   }
 
-  var typeLabel = {
-    'INIT':          '🏁 ยอดยกมา',
-    'IN':            '📥 รับเข้า',
-    'RETURN_GOOD':   '↩️ รับคืน (ของดี)',
-    'RETURN':        '↩️ รับคืน',
-    'ADJUST':        '⚖️ ปรับยอด',
-    'DEFECT':        '🔴 ของเสีย/ชำรุด',
-    'DEFECT_RETURN': '🔴 ช่างคืนของเสีย',
-    'OUT_SALE':      '🛒 ขาย',
-    'OUT_REQ':       '📋 ใบเบิก',
-    'OUT_RENTAL':    '🚗 รถเช่า',
-    'OUT_CONTRACT':  '🚌 รถสัมปทาน',
-    'OUT_ACCIDENT':  '⚠️ เคลมอุบัติ',
-    'OUT_WARRANTY':  '🔧 Warranty',
-    'OUT_BRANCH':    '🏢 ส่งสาขา',
-    'OUT_HQ':        '🏛️ คืน สนญ.',
-    'OUT_OTHER':     '📌 นอกเขต',
+  var typeLabel={
+    'INIT':'🏁 ยอดยกมา','IN':'📥 รับเข้า','RETURN_GOOD':'↩️ รับคืน (ของดี)','RETURN':'↩️ รับคืน',
+    'ADJUST':'⚖️ ปรับยอด','DEFECT':'🔴 ของเสีย/ชำรุด','DEFECT_RETURN':'🔴 ช่างคืนของเสีย',
+    'OUT_SALE':'🛒 ขาย','OUT_REQ':'📋 ใบเบิก','OUT_RENTAL':'🚗 รถเช่า',
+    'OUT_CONTRACT':'🚌 รถสัมปทาน','OUT_ACCIDENT':'⚠️ เคลมอุบัติ','OUT_WARRANTY':'🔧 Warranty',
+    'OUT_BRANCH':'🏢 ส่งสาขา','OUT_HQ':'🏛️ คืน สนญ.','OUT_OTHER':'📌 อื่นๆ',
   };
-  var typeChipClass = {
-    'INIT':'chip-grn','IN':'chip-grn','RETURN_GOOD':'chip-grn','RETURN':'chip-grn',
-    'ADJUST':'chip-blu',
-    'DEFECT':'chip-red','DEFECT_RETURN':'chip-red',
-    'OUT_SALE':'chip-red','OUT_REQ':'chip-gld','OUT_RENTAL':'chip-red',
-    'OUT_CONTRACT':'chip-red','OUT_ACCIDENT':'chip-red','OUT_WARRANTY':'chip-red',
-    'OUT_BRANCH':'chip-red','OUT_HQ':'chip-gry','OUT_OTHER':'chip-red'
+  var typeStyle={
+    'INIT':     'background:#f5f5f5;color:#555',
+    'IN':       'background:#e8f5e9;color:#1b5e20',
+    'RETURN_GOOD':'background:#e3f2fd;color:#0d47a1',
+    'RETURN':   'background:#e3f2fd;color:#0d47a1',
+    'ADJUST':   'background:#f3e5f5;color:#6a1b9a',
+    'DEFECT':   'background:#ffebee;color:#b71c1c',
+    'DEFECT_RETURN':'background:#ffebee;color:#b71c1c',
+    'OUT_REQ':  'background:#fff3e0;color:#e65100',
+    'OUT_RENTAL':'background:#fff3e0;color:#e65100',
+    'OUT_CONTRACT':'background:#fff3e0;color:#e65100',
+    'OUT_ACCIDENT':'background:#fff3e0;color:#e65100',
+    'OUT_WARRANTY':'background:#fff3e0;color:#e65100',
+    'OUT_SALE': 'background:#fff3e0;color:#e65100',
+    'OUT_BRANCH':'background:#fff3e0;color:#e65100',
+    'OUT_HQ':   'background:#f5f5f5;color:#555',
+    'OUT_OTHER':'background:#fff3e0;color:#e65100',
   };
 
-  var canDel = CU && CU.role === 'MANAGER';
-  var html = '<div class="card" style="padding:0;overflow:hidden;border-radius:0 0 var(--r) var(--r)">'
-    +'<div class="tw"><table class="it" style="font-size:12px"><thead><tr>'
-    +'<th style="width:80px">วันที่</th>'
-    +'<th>ประเภท</th>'
-    +'<th>เลขเอกสาร</th>'
-    +'<th>ผู้เบิก/บันทึก</th>'
-    +'<th>Job No.</th>'
-    +'<th>ลูกค้า/สาขา</th>'
-    +'<th>วัตถุประสงค์</th>'
-    +'<th style="text-align:center;color:var(--gm)">เข้า</th>'
-    +'<th style="text-align:center;color:var(--red)">ออก</th>'
-    +'<th style="text-align:center;font-weight:700">คงเหลือ</th>'
-    +'<th>หมายเหตุ</th>'
-    +(canDel ? '<th></th>' : '')
+  var canDel = CU && (CU.role==='MANAGER'||CU.role==='ADMIN');
+
+  var tableHtml = '<div style="overflow-x:auto">'
+    +'<table style="width:100%;border-collapse:collapse;font-size:12px">'
+    +'<thead><tr style="background:var(--g100,#f5f5f5)">'
+    +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:500;color:var(--g400);white-space:nowrap;border-bottom:1px solid var(--g200)">วันที่</th>'
+    +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:500;color:var(--g400);border-bottom:1px solid var(--g200)">ประเภท</th>'
+    +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:500;color:var(--g400);border-bottom:1px solid var(--g200)">เอกสารอ้างอิง</th>'
+    +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:500;color:var(--g400);border-bottom:1px solid var(--g200)">ผู้เบิก/บันทึก</th>'
+    +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:500;color:var(--g400);border-bottom:1px solid var(--g200)">ลูกค้า</th>'
+    +'<th style="padding:7px 10px;text-align:center;font-size:11px;font-weight:500;color:#1b5e20;border-bottom:1px solid var(--g200)">เข้า</th>'
+    +'<th style="padding:7px 10px;text-align:center;font-size:11px;font-weight:500;color:#e65100;border-bottom:1px solid var(--g200)">ออก</th>'
+    +'<th style="padding:7px 10px;text-align:center;font-size:11px;font-weight:500;color:#b71c1c;border-bottom:1px solid var(--g200)">เสีย</th>'
+    +'<th style="padding:7px 10px;text-align:right;font-size:11px;font-weight:500;color:var(--gd);border-bottom:1px solid var(--g200)">คงเหลือ</th>'
+    +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:500;color:var(--g400);border-bottom:1px solid var(--g200)">หมายเหตุ</th>'
+    +(canDel?'<th style="border-bottom:1px solid var(--g200)"></th>':'')
     +'</tr></thead><tbody>';
 
-  filtered.forEach(function(e, i){
-    var isInit = e.Type === 'INIT';
-    var rowStyle = isInit ? 'background:#f0faf5;' : (i%2===0?'':'background:#fafafa;');
-    var balColor = e.Balance <= 0 ? 'color:var(--red);' : e.Balance <= 5 ? 'color:#e65100;' : 'color:var(--gm);';
-    var chip = '<span class="chip '+(typeChipClass[e.Type]||'chip-gry')+'" style="font-size:11px">'+(typeLabel[e.Type]||e.Type)+'</span>';
-    html += '<tr style="'+rowStyle+'">'
-      +'<td style="white-space:nowrap">'+e.Date+'</td>'
-      +'<td>'+chip+'</td>'
-      +'<td style="font-weight:600;color:var(--gd)">'+e.DocNo+'</td>'
-      +'<td>'+e.Requester+'</td>'
-      +'<td>'+e.JobNo+'</td>'
-      +'<td>'+e.Customer+'</td>'
-      +'<td style="max-width:150px;white-space:normal">'+e.Purpose+'</td>'
-      +'<td style="text-align:center;font-weight:700;color:var(--gm)">'+(e.QtyIn>0 ? '+'+e.QtyIn+' '+e.Unit : '—')+'</td>'
-      +'<td style="text-align:center;font-weight:700;color:var(--red)">'+(e.QtyOut>0 ? '-'+e.QtyOut+' '+e.Unit : '—')+'</td>'
-      +'<td style="text-align:center;font-size:15px;font-weight:700;'+balColor+'">'+e.Balance+'</td>'
-      +'<td style="color:var(--g400)">'+( e.Note||'—')+'</td>'
-      +(canDel&&!isInit ? '<td><button class="del-sc-btn btn bd" style="padding:2px 6px;font-size:11px" data-id="'+e.EntryID+'">🗑️</button></td>' : (canDel?'<td></td>':''))
-      +'</tr>';
+  filtered.forEach(function(e){
+    var isInit = e.Type==='INIT';
+    var balColor2 = e.Balance<=0?'color:#b71c1c':e.Balance<=5?'color:#e65100':'color:#1b5e20';
+    var chipStyle = typeStyle[e.Type]||'background:#f5f5f5;color:#555';
+    var chip = '<span style="'+chipStyle+';font-size:10px;padding:2px 7px;border-radius:10px;white-space:nowrap;display:inline-block">'+(typeLabel[e.Type]||e.Type)+'</span>';
+    var rowBg = isInit ? 'background:#f0fff4' : '';
+    tableHtml += '<tr style="border-bottom:0.5px solid var(--g200);'+rowBg+'" onmouseover="this.style.background=\'var(--g50,#f8f9fa)\'" onmouseout="this.style.background=\''+rowBg+'\'">'
+      +'<td style="padding:8px 10px;white-space:nowrap;color:var(--g400);font-size:11px">'+e.Date+'</td>'
+      +'<td style="padding:8px 10px">'+chip+'</td>'
+      +'<td style="padding:8px 10px;font-weight:600;color:var(--gd);font-size:11px;white-space:nowrap">'+e.DocNo+'</td>'
+      +'<td style="padding:8px 10px;font-size:12px">'+e.Requester+'</td>'
+      +'<td style="padding:8px 10px;font-size:12px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+e.Customer+'</td>'
+      +'<td style="padding:8px 10px;text-align:center;font-weight:500;color:#1b5e20">'+(e.QtyIn>0?'+'+e.QtyIn+' '+e.Unit:'—')+'</td>'
+      +'<td style="padding:8px 10px;text-align:center;font-weight:500;color:#e65100">'+(e.QtyOut>0?'-'+e.QtyOut+' '+e.Unit:'—')+'</td>'
+      +'<td style="padding:8px 10px;text-align:center;font-weight:500;color:#b71c1c">'+(e.QtyDefect>0?e.QtyDefect+' '+e.Unit:'—')+'</td>'
+      +'<td style="padding:8px 10px;text-align:right;font-size:14px;font-weight:500;'+balColor2+'">'+e.Balance+'</td>'
+      +'<td style="padding:8px 10px;font-size:11px;color:var(--g400);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(e.Note||'—')+'</td>'
+      +(canDel&&!isInit?'<td style="padding:4px 6px"><button class="del-sc-btn btn bd" style="padding:2px 6px;font-size:11px" data-id="'+e.EntryID+'">🗑️</button></td>':(canDel?'<td></td>':''))
+    +'</tr>';
   });
 
-  html += '</tbody></table></div></div>';
-  el.innerHTML = html;
+  tableHtml += '</tbody>'
+    +'<tfoot><tr style="background:var(--g100,#f5f5f5);font-weight:500">'
+    +'<td colspan="5" style="padding:7px 10px;font-size:12px;color:var(--g400)">รวม '+filtered.length+' รายการ</td>'
+    +'<td style="padding:7px 10px;text-align:center;font-size:12px;color:#1b5e20;font-weight:700">+'+totalIn+'</td>'
+    +'<td style="padding:7px 10px;text-align:center;font-size:12px;color:#e65100;font-weight:700">-'+totalOut+'</td>'
+    +'<td style="padding:7px 10px;text-align:center;font-size:12px;color:#b71c1c;font-weight:700">'+totalDef+'</td>'
+    +'<td style="padding:7px 10px;text-align:right;font-size:14px;font-weight:700;'+balColor+'">'+currentBal+'</td>'
+    +'<td colspan="'+(canDel?2:1)+'"></td>'
+    +'</tr></tfoot>'
+  +'</table></div>';
+
+  el.innerHTML = summaryHtml + tableHtml;
+
+  // rebind delete buttons
+  el.querySelectorAll('.del-sc-btn').forEach(function(btn){
+    btn.onclick = function(){ deleteStockEntry(btn.dataset.id); };
+  });
 }
 
 // ── พิมพ์ Stock Card ─────────────────────────────────────────
