@@ -10140,6 +10140,8 @@ function openNewInspection(){
   var body = document.getElementById('insModalBody');
   if(!body){ toast('ไม่พบ modal ค่ะ','error'); return; }
   try {
+  // build form
+  body.innerHTML = '<div style="padding:16px">'
 
     // Header info
     +'<div style="background:#e0f2f1;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:12px;color:#004d40;font-weight:600">FM-BR-008 Rev.02 | บริษัท บียอนด์ กรีน จำกัด</div>'
