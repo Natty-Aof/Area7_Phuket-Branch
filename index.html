@@ -1372,23 +1372,23 @@ textarea.fc{min-height:70px;resize:vertical;}
         </select>
       </div>
 
-      <!-- ── เลขที่เอกสาร (auto prefix) ──────────────── -->
+      <!-- ── เลขที่เอกสาร ──────────────────────────── -->
       <div class="fr" id="soDocNoArea">
         <div class="fg" id="soQuoteNoRow">
-          <label class="fl" id="soQuoteNoLabel">เลขที่ใบเสนอราคา <span class="rq">*</span></label>
-          <div style="display:flex;align-items:center;gap:0">
-            <span id="soDocPrefix" style="background:#f0faf5;border:1px solid var(--g200);border-right:none;border-radius:var(--r) 0 0 var(--r);padding:8px 10px;font-size:13px;font-weight:700;color:var(--gd);white-space:nowrap">PTPK69-</span>
-            <input class="fc" id="soQuoteNo" placeholder="เลขที่" style="border-radius:0 var(--r) var(--r) 0;min-width:120px" oninput="updateSODocPreview()">
-          </div>
+          <label class="fl" id="soQuoteNoLabel">เลขที่ใบเสนอราคา / เอกสาร <span class="rq">*</span></label>
+          <input class="fc" id="soQuoteNo" placeholder="เช่น PTPK69-269030437" oninput="updateSODocPreview()">
           <div id="soDocPreview" style="font-size:11px;color:var(--g400);margin-top:3px"></div>
         </div>
-        <div class="fg" id="soDPARow">
-          <label class="fl">เลขที่ DPA (ใบส่งของ SAP)</label>
-          <div style="display:flex;align-items:center;gap:0">
-            <span id="soDPAPrefix" style="background:#f0faf5;border:1px solid var(--g200);border-right:none;border-radius:var(--r) 0 0 var(--r);padding:8px 10px;font-size:13px;font-weight:700;color:var(--gd);white-space:nowrap">DPAPK69-</span>
-            <input class="fc" id="soDPANo" placeholder="เลขที่" style="border-radius:0 var(--r) var(--r) 0;min-width:120px">
-          </div>
+        <div class="fg">
+          <label class="fl">เลขที่ PO (ถ้ามี)</label>
+          <input class="fc" id="soPONo" placeholder="เช่น PO-2569-001">
         </div>
+      </div>
+
+      <!-- ── เลขที่ DPA ──────────────────────────────── -->
+      <div class="fg" id="soDPARow">
+        <label class="fl">เลขที่ DPA (ใบส่งของ SAP)</label>
+        <input class="fc" id="soDPANo" placeholder="เช่น DPAPK69-269030340">
       </div>
 
       <!-- ── ข้อมูลลูกค้า ──────────────────────────── -->
@@ -5751,10 +5751,11 @@ function submitSOForm(){
   var num      = numEl ? numEl.value.trim() : '';
   if(!num) return toast('กรุณาระบุเลขที่เอกสารค่ะ','error');
 
-  var fullDocNo  = pfx + num;
-  var dpaPrefix  = (document.getElementById('soDPAPrefix')||{}).textContent||'';
-  var dpaNum     = (document.getElementById('soDPANo')||{}).value||'';
-  var fullDPANo  = dpaNum ? dpaPrefix + dpaNum : '';
+  // ถ้า user กรอกเต็มเลขอยู่แล้ว (มี prefix ซ้ำ) ใช้ที่ user กรอกเลย
+  var fullDocNo = num; // ไม่บวก prefix อัตโนมัติอีก
+  var dpaNum    = (document.getElementById('soDPANo')||{}).value.trim()||'';
+  var fullDPANo = dpaNum; // ไม่บวก prefix
+  var poNo      = (document.getElementById('soPONo')||{}).value.trim()||'';
   var custName   = _soCustFormal || (document.getElementById('soCustName')||{}).value.trim()||'';
   var delivAddr  = (document.getElementById('soDeliveryAddr')||{}).value.trim()||'';
   var noteVal    = (document.getElementById('soNote')||{}).value.trim()||'';
@@ -5791,6 +5792,7 @@ function submitSOForm(){
     orderType:    type,
     docNo:        fullDocNo,
     dpaNo:        fullDPANo,
+    poNo:         poNo,
     custName:     custName,
     deliveryAddr: delivAddr,
     note:         noteVal,
@@ -5891,6 +5893,16 @@ function viewSODetail(soNo){
             +'<div style="grid-column:1/-1"><div style="font-size:11px;color:var(--g400)">ลูกค้า / ปลายทาง</div><div style="font-weight:600">'+(o.CustName||o.CustomerName||'—')+'</div></div>'
             +(o.DeliveryAddr?'<div style="grid-column:1/-1"><div style="font-size:11px;color:var(--g400)">ที่อยู่จัดส่ง</div><div>'+o.DeliveryAddr+'</div></div>':'')
             +(o.Note?'<div style="grid-column:1/-1"><div style="font-size:11px;color:var(--g400)">หมายเหตุ</div><div>'+o.Note+'</div></div>':'')
+          // ── Approval History ──
+          +'<div style="grid-column:1/-1;border-top:0.5px solid var(--g200);padding-top:10px;margin-top:4px">'
+            +'<div style="font-size:11px;font-weight:600;color:var(--g400);margin-bottom:6px">📋 ประวัติการอนุมัติ</div>'
+            +'<div style="display:flex;flex-direction:column;gap:6px;font-size:12px">'
+              +'<div>✏️ เปิดโดย: <strong>'+(o.CreatedBy||'—')+'</strong>'+(o.CreatedAt?' เมื่อ '+new Date(o.CreatedAt).toLocaleString('th-TH'):'')+'</div>'
+              +(o.ApprovedBy?'<div style="color:#1b5e20">✅ อนุมัติโดย: <strong>'+o.ApprovedBy+'</strong>'+(o.ApprovedAt?' เมื่อ '+new Date(o.ApprovedAt).toLocaleString('th-TH'):'')+'</div>':'')
+              +(o.RejectedBy?'<div style="color:#b71c1c">❌ ไม่อนุมัติโดย: <strong>'+o.RejectedBy+'</strong>'+(o.RejectedNote?' เหตุผล: '+o.RejectedNote:'')+'</div>':'')
+              +(!o.ApprovedBy&&!o.RejectedBy?'<div style="color:#e65100">⏳ รอ Manager อนุมัติ</div>':'')
+            +'</div>'
+          +'</div>'
           +'</div>'
           +'<div style="font-size:12px;font-weight:600;color:var(--gd);margin-bottom:6px">รายการอะไหล่ ('+items.length+' รายการ)</div>'
           +'<div class="tw"><table style="width:100%;border-collapse:collapse">'
@@ -5905,6 +5917,9 @@ function viewSODetail(soNo){
           +'</table></div>'
         +'</div>'
         +'<div class="mof">'
+          +(CU&&(CU.role==='MANAGER'||CU.role==='ADMIN')
+            ? '<button class="btn bd" onclick="deleteSOFromDetail(\''+soNo+'\')" style="margin-right:auto">🗑️ ลบรายการ</button>'
+            : '')
           +'<button class="btn bo" onclick="document.getElementById(\'soDetailViewModal\').remove()">ปิด</button>'
         +'</div>'
       +'</div>';
@@ -6256,6 +6271,18 @@ function exportInventoryExcel(){
 }
 
 // ── SALES ORDER DISPATCH ────────────────────────────────
+function deleteSOFromDetail(soNo){
+  if(!confirm('ลบรายการ '+soNo+' จริงไหมคะ? ไม่สามารถกู้คืนได้')) return;
+  callAPI('deleteSalesOrder',{soNo:soNo}).then(function(res){
+    toast(res.success?'ลบแล้วค่ะ ✅':'❌ '+(res.message||'เกิดข้อผิดพลาด'), res.success?'success':'error');
+    if(res.success){
+      var m = document.getElementById('soDetailViewModal');
+      if(m) m.remove();
+      initSales();
+    }
+  });
+}
+
 function approveSO(soNo){
   if(!confirm('อนุมัติรายการ '+soNo+' ให้ Stock จัดของได้เลยไหมคะ?')) return;
   callAPI('updateSalesOrder',{soNo:soNo, status:'PENDING_STOCK_DISPATCH', approvedBy:CU&&CU.email}).then(function(res){
