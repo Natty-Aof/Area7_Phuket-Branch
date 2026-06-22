@@ -2849,17 +2849,22 @@ function switchStockTab(tab){
 }
 
 function loadStock(){
-  callAPI('getRequisitions',{}).then(function(res){
-    var all = res.data||[];
+  Promise.all([
+    callAPI('getRequisitions',{}),
+    callAPI('getSalesOrders',{status:'approved'}),
+  ]).then(function(results){
+    var all = results[0].data||[];
+    var soApproved = (results[1].data||[]);
     var sl=document.getElementById('stList');
     if(!sl) return;
-
     // รอจัด = อนุมัติแล้ว + StatusStock เป็น PENDING เท่านั้น
     var pending = all.filter(function(r){
       return r.StatusApproval==='APPROVED'
         && (r.StatusStock==='PENDING'||!r.StatusStock);
     });
     // จัดแล้ว = ACKNOWLEDGED ขึ้นไป (Stock จัดแล้ว รอช่างรับ / ปิดงาน)
+    // เพิ่ม Sales Orders ที่อนุมัติแล้ว รอจัด
+    var soList = _stockTab==='pending' ? soApproved : [];
     var done = all.filter(function(r){
       return r.StatusApproval==='APPROVED'
         && (r.StatusStock==='ACKNOWLEDGED'||r.StatusStock==='PICKED_UP'
@@ -6285,9 +6290,9 @@ function deleteSOFromDetail(soNo){
 
 function approveSO(soNo){
   if(!confirm('อนุมัติรายการ '+soNo+' ให้ Stock จัดของได้เลยไหมคะ?')) return;
-  callAPI('updateSalesOrder',{soNo:soNo, status:'PENDING_STOCK_DISPATCH', approvedBy:CU&&CU.email}).then(function(res){
-    toast(res.success?'✅ อนุมัติแล้ว Stock จัดของได้เลยค่ะ':'❌ '+(res.message||'เกิดข้อผิดพลาด'), res.success?'success':'error');
-    if(res.success){ initSales(); }
+  callAPI('approveSalesOrder',{soNo:soNo, approvedBy:CU&&CU.email}).then(function(res){
+    toast(res.success?'✅ อนุมัติแล้ว แจ้ง Stock ทางอีเมลแล้วค่ะ':'❌ '+(res.message||'เกิดข้อผิดพลาด'), res.success?'success':'error');
+    if(res.success){ switchSOTab('approved'); }
   });
 }
 
