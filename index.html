@@ -5852,7 +5852,12 @@ function viewSODetail(soNo){
     if(!res.success||!res.data) return toast('ไม่พบข้อมูลค่ะ','error');
     var o = res.data;
     var typeLabels = {SALE:'🛒 ขายอะไหล่',BRANCH:'🏢 ส่งสาขา',HQ_RETURN:'🏛️ คืน สนญ.',INTERNAL:'🔧 ภายใน',SALE_INTERNAL:'🔧 เบิกภายใน'};
-    var statusLabels = {PENDING_MANAGER:'⏳ รอ Manager อนุมัติ',PENDING_STOCK:'🛒 รอจัด',PENDING_STOCK_DISPATCH:'✅ อนุมัติแล้ว รอจัด',DISPATCHED:'📦 จัดแล้ว',DONE:'✅ เสร็จ',REJECTED:'❌ ไม่อนุมัติ'};
+    var statusLabels = {
+      PENDING_MANAGER:'⏳ รอ Manager อนุมัติ',
+      PENDING_STOCK:'⏳ รอ Manager อนุมัติ',
+      PENDING_STOCK_DISPATCH:'✅ อนุมัติแล้ว รอจัด',
+      DISPATCHED:'📦 จัดแล้ว',DONE:'✅ เสร็จ',REJECTED:'❌ ไม่อนุมัติ'
+    };
     var items = (o.Items||o.items||[]);
     var rows = items.map(function(it){
       return '<tr>'
@@ -5904,6 +5909,8 @@ function viewSODetail(soNo){
         +'</div>'
       +'</div>';
     document.body.appendChild(modal);
+    // แสดง modal
+    modal.style.display = 'flex';
   });
 }
 
