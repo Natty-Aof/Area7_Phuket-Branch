@@ -279,6 +279,7 @@ textarea.fc{min-height:70px;resize:vertical;}
       <div style="height:1px;background:rgba(255,255,255,.15);margin:8px 12px"></div>
       <div class="ni" data-pg="stockcard" onclick="go('stockcard')"><span class="ic">🗂️</span> Stock Card</div>
       <div class="ni" data-pg="vehiclehistory" onclick="go('vehiclehistory')"><span class="ic">🚗</span> ประวัติรถ</div>
+      <div class="ni" data-pg="inspection" onclick="go('inspection')"><span class="ic">📋</span> ใบตรวจสภาพรถ</div>
       <div class="ni" data-pg="stockcount" onclick="go('stockcount')" id="nStockCount"><span class="ic">🔢</span> นับสต็อก</div>
       <div class="ni hidden" id="nChangeReq" data-pg="changereq" onclick="go('changereq')"><span class="ic">🔑</span> คำขอแก้ไข<span class="badge" id="crBadge">0</span></div>
       <div class="ni" data-pg="sales" onclick="go('sales')"><span class="ic">🛒</span> ขาย/เบิกจ่ายภายใน</div>
@@ -866,6 +867,26 @@ textarea.fc{min-height:70px;resize:vertical;}
       <!-- ═══════════════════════════════════════════════════ -->
       <!-- STOCK COUNT PAGE (นับสต็อก)                        -->
       <!-- ═══════════════════════════════════════════════════ -->
+
+      <!-- ── INSPECTION PAGE ──────────────────────────────── -->
+      <div id="pg-inspection" class="hidden">
+        <div class="card" style="padding:14px 16px;margin-bottom:10px;background:linear-gradient(135deg,#004d40,#00695c);color:#fff;display:flex;align-items:center;gap:12px">
+          <div style="flex:1">
+            <div style="font-size:15px;font-weight:700">📋 ใบตรวจสอบสภาพรถไฟฟ้า ก่อนส่ง/รับคืน</div>
+            <div style="font-size:11px;opacity:.8;margin-top:2px">FM-BR-008 Rev.02 | Beyond Green Co., Ltd.</div>
+          </div>
+          <button onclick="openNewInspection()" style="background:#fff;color:#004d40;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer">+ สร้างใบตรวจใหม่</button>
+        </div>
+        <!-- Tabs -->
+        <div class="card" style="padding:10px 14px;margin-bottom:0;border-radius:var(--r) var(--r) 0 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button id="insTabAll"    class="btn bgd bsm" onclick="switchInsTab('all')"    style="font-size:12px">📋 ทั้งหมด</button>
+          <button id="insTabSend"   class="btn bo bsm"  onclick="switchInsTab('send')"   style="font-size:12px">🚗 ส่งรถ</button>
+          <button id="insTabReturn" class="btn bo bsm"  onclick="switchInsTab('return')" style="font-size:12px">↩️ รับคืน</button>
+          <button id="insTabPeriod" class="btn bo bsm"  onclick="switchInsTab('period')" style="font-size:12px">🔄 Periodic</button>
+        </div>
+        <div id="insList" style="background:#fff;border-radius:0 0 var(--r) var(--r);border:0.5px solid var(--g200)"></div>
+      </div>
+
       <div id="pg-stockcount" class="hidden">
 
         <!-- Header -->
@@ -1135,6 +1156,7 @@ textarea.fc{min-height:70px;resize:vertical;}
   <div class="msi" onclick="go('report');closeMore()"><span>📊</span> รายงาน</div>
   <div class="msi" onclick="go('stockcard');closeMore()"><span>🗂️</span> Stock Card</div>
   <div class="msi" onclick="go('vehiclehistory');closeMore()"><span>🚗</span> ประวัติรถ</div>
+  <div class="msi" onclick="go('inspection');closeMore()"><span>📋</span> ใบตรวจสภาพรถ</div>
   <div class="msi" onclick="go('stockcount');closeMore()"><span>🔢</span> นับสต็อก</div>
   <div class="msi" onclick="go('inventory');closeMore()"><span>📦</span> ยอดคงเหลือ</div>
   <div class="msi" onclick="go('print');closeMore()"><span>🖨️</span> พิมพ์ใบเบิก</div>
@@ -2296,6 +2318,7 @@ function go(page){
   if(page==='profile') loadProfile();
   if(page==='report') loadReportPage();
   if(page==='changereq') loadChangeReqPage();
+  if(page==='inspection') loadInspectionPage();
   if(page==='vehiclehistory'){
     // preload vehicles ทันที เพื่อให้ค้นหาได้เร็ว
     loadVehiclesDB();
@@ -10023,11 +10046,532 @@ function deleteCurrentReq(){
     }
   } catch(e){ console.warn('Session restore error:', e); }
 })();
+
+
+// ══════════════════════════════════════════════════════════
+// INSPECTION PAGE
+// ══════════════════════════════════════════════════════════
+var _insTab = 'all';
+var _insCache = [];
+
+var INS_CHECKLIST_GENERAL = [
+  '1. บอดีหน้า','2. บอดีหลัง','3. เสาหลังคา-หลังคา','4. เสาและพวงมาลัย',
+  '5. แผงหน้าคอนโซล','6. เบาะนั่ง','7. เบาะพิง','8. กันชนหน้า-หลัง',
+  '9. กันกระแทกด้านข้าง','10. แป้นเบรก-แป้นคันเร่ง','11. ยางปูพื้น',
+  '12. ชุดรัดถุงกอล์ฟ','13. ยางและกะทะล้อ','14. สวิทช์กุญแจ',
+  '15. สวิทช์เดินหน้า-ถอยหลัง','16. จุดเต้าชาร์จ','17. แบตเตอรี่',
+  '18. สายไฟพ่วงแบตเตอรี่','19. สายเบรก','20. ตรวจเช็คกาบข้าง-ซ้าย ขวา',
+  '21. ตรวจเช็คสายไฟ','22. ตรวจเช็คฉากอลูมิเนียม','23. ตะขอเกี่ยวเหล็กหรือเจโบลท์',
+];
+
+var INS_CHECKLIST_PROGRAM = [
+  'ระบบความเร็ว: 1. ความเร็ว SET 1','ระบบความเร็ว: 2. ความเร็ว SET 2',
+  'ระบบความเร็ว: 3. ความเร็ว SET 3','ระบบความเร็ว: 4. ความเร็ว SET 4',
+  'ระบบความหน่วง: 1. ความหน่วง SET 0','ระบบความหน่วง: 2. ความหน่วง SET 1',
+  'ระบบความหน่วง: 3. ความหน่วง SET 2',
+  'ปัญหาและข้อผิดพลาด: 1. ไม่มี / ON FAULT','ปัญหาและข้อผิดพลาด: 2.',
+  'การทดสอบ: 1. ระบบเบรก/หยุดรถ','การทดสอบ: 2. ระบบบังคับเลี้ยวซ้าย-ขวา',
+  'การทดสอบ: 3. ระบบคันเร่ง/ความเร็ว','การทดสอบ: 4. เสียงดังผิดปกติขณะวิ่ง',
+  'การทดสอบ: 5. ทดสอบระบบการชาร์จไฟ',
+];
+
+var INS_CHECKLIST_OPTION = [
+  '1. Standard Light','2. Deluxe Light','3. ชาร์เจอร์ (Charger)',
+  '4. Internal Charger','5. USB Port','6. กระจกเต็มบาน','7. กระจกครึ่งบาน',
+  '8. กระจกมองข้างซ้าย-ขวา','9. กระจกมองหลัง','10. กระจกมองหลัง 5 Panel',
+  '11. กระบอกทราย','12. ฝาครอบล้อ','13. ไฟแสดงแบตเตอรี่','14. ชุดสัญญาณไฟเลี้ยว',
+  '15. ผ้าคลุมกันฝน','16. Sticker Logo','17. Sticker Number','18. กระติกน้ำ',
+  '19. Caddy Stand','20. Candy Stand-Local','21. ชุดคลุมถุงกอล์ฟ','22. ชุดคราด',
+  '23. ที่เขี่ยบุหรี่','24. กล่องล้างลูกกอล์ฟ','25. Information Holder',
+  '26. Fold Down Seat','27. Cargo Box','28. Stake Side Kit','29. Black Cargo',
+  '30. VAN BOX ตู้โล่ง','31. VAN BOX ตู้ 1 ชั้น','32. VAN BOX ตู้ 2 ชั้น',
+  '33. VAN BOX ตู้ 3 ชั้น','34. ชุดยกสูง 6 นิ้ว','35. ล้ออลูมิเนียม 10 นิ้ว',
+  '36. กันชนหน้า','37. ที่วางแก้วลายไม้','38. พวงมาลัยลายไม้','39. ตะแกรงกันของท้ายรถ',
+  '40. บันไดข้าง','41.','42.','43.','44.','45.','46.','47.','48.',
+];
+
+function switchInsTab(tab){
+  _insTab = tab;
+  ['All','Send','Return','Period'].forEach(function(t){
+    var btn = document.getElementById('insTab'+t);
+    if(btn) btn.className = tab===t.toLowerCase() ? 'btn bgd bsm' : 'btn bo bsm';
+  });
+  renderInsList();
+}
+
+function loadInspectionPage(){
+  callAPI('getInspections',{}).then(function(res){
+    _insCache = res.data||[];
+    renderInsList();
+  });
+}
+
+function renderInsList(){
+  var el = document.getElementById('insList');
+  if(!el) return;
+  var list = _insCache;
+  if(_insTab==='send')   list = list.filter(function(r){ return r.InspType==='PRE_DELIVERY'; });
+  if(_insTab==='return') list = list.filter(function(r){ return r.InspType==='POST_RETURN'; });
+  if(_insTab==='period') list = list.filter(function(r){ return r.InspType==='PERIODIC'; });
+
+  var typeLabel = {PRE_DELIVERY:'🚗 ส่งรถ',POST_RETURN:'↩️ รับคืน',PERIODIC:'🔄 Periodic'};
+  var statusLabel = {DRAFT:'✏️ ฉบับร่าง',COMPLETED:'✅ เสร็จสมบูรณ์'};
+
+  if(!list.length){
+    el.innerHTML='<div style="padding:40px;text-align:center;color:var(--g400)">ไม่มีรายการค่ะ<br><button class="btn bp" onclick="openNewInspection()" style="margin-top:12px;background:#004d40;border-color:#004d40">+ สร้างใบตรวจใหม่</button></div>';
+    return;
+  }
+
+  el.innerHTML = list.map(function(r){
+    return '<div style="padding:12px 16px;border-bottom:0.5px solid var(--g200);display:flex;align-items:center;gap:12px">'
+      +'<div style="flex:1">'
+        +'<div style="font-weight:600;font-size:13px">'+r.FormNo+'</div>'
+        +'<div style="font-size:12px;color:var(--g400);margin-top:2px">'
+          +(typeLabel[r.InspType]||r.InspType)+' | '+r.SerialNo+' | '+(r.CustomerName||'—')+' | '+r.InspDate
+        +'</div>'
+      +'</div>'
+      +'<span style="font-size:11px;padding:2px 10px;border-radius:10px;background:'+(r.Status==='COMPLETED'?'#e8f5e9':'#fff8e1')+';color:'+(r.Status==='COMPLETED'?'#1b5e20':'#e65100')+'">'+(statusLabel[r.Status]||r.Status)+'</span>'
+      +'<button class="btn bo bsm" onclick="openInspView(\''+r.FormNo+'\')">' + 'ดู/ปริ้น</button>'
+    +'</div>';
+  }).join('');
+}
+
+function openNewInspection(){
+  var body = document.getElementById('insModalBody');
+  if(!body) return;
+
+  // build form
+  body.innerHTML = '<div style="padding:16px">'
+
+    // Header info
+    +'<div style="background:#e0f2f1;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:12px;color:#004d40;font-weight:600">FM-BR-008 Rev.02 | บริษัท บียอนด์ กรีน จำกัด</div>'
+
+    // Type selector
+    +'<div class="fg"><label class="fl">ประเภทใบตรวจ <span class="rq">*</span></label>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      +'<label style="display:flex;align-items:center;gap:6px;padding:8px 14px;border:1.5px solid var(--g200);border-radius:8px;cursor:pointer;font-size:13px"><input type="radio" name="insType" value="PRE_DELIVERY" checked> 🚗 ส่งรถไฟฟ้า</label>'
+      +'<label style="display:flex;align-items:center;gap:6px;padding:8px 14px;border:1.5px solid var(--g200);border-radius:8px;cursor:pointer;font-size:13px"><input type="radio" name="insType" value="POST_RETURN"> ↩️ รับคืนรถไฟฟ้า</label>'
+      +'<label style="display:flex;align-items:center;gap:6px;padding:8px 14px;border:1.5px solid var(--g200);border-radius:8px;cursor:pointer;font-size:13px"><input type="radio" name="insType" value="PERIODIC"> 🔄 Periodic (3 เดือน)</label>'
+    +'</div></div>'
+
+    // ข้อมูลรถ
+    +'<div style="background:#f5f5f5;border-radius:8px;padding:12px 14px;margin:10px 0">'
+    +'<div style="font-size:12px;font-weight:700;color:#004d40;margin-bottom:10px">🚗 ข้อมูลรถ</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+      +'<div class="fg"><label class="fl">Serial No. รถ <span class="rq">*</span></label>'
+        +'<div style="position:relative"><input class="fc" id="insSerial" placeholder="เช่น TB1630-000025" oninput="onInsSerialInput(this)" autocomplete="off">'
+        +'<div id="insSerialDrop" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:600;background:#fff;border:1.5px solid var(--gm);border-top:none;border-radius:0 0 8px 8px;max-height:180px;overflow-y:auto;box-shadow:0 6px 20px rgba(0,0,0,.12)"></div>'
+        +'</div></div>'
+      +'<div class="fg"><label class="fl">เบอร์รถ / Car No.</label><input class="fc" id="insCarNo" placeholder="เช่น 01" readonly style="background:#f0f0f0"></div>'
+      +'<div class="fg"><label class="fl">รุ่นรถ / Model</label><input class="fc" id="insModel" placeholder="เช่น Precedent 2 Seater" readonly style="background:#f0f0f0"></div>'
+      +'<div class="fg"><label class="fl">สีรถ</label><input class="fc" id="insColor" placeholder="เช่น White"></div>'
+      +'<div class="fg"><label class="fl">ชื่อโครงการ / ลูกค้า</label><input class="fc" id="insCustomer" placeholder="ชื่อโครงการ" readonly style="background:#f0f0f0"></div>'
+      +'<div class="fg"><label class="fl">สถานที่ส่ง</label><input class="fc" id="insLocation" placeholder="สถานที่" readonly style="background:#f0f0f0"></div>'
+      +'<div class="fg"><label class="fl">JOB NO.</label><input class="fc" id="insJobNo" placeholder="Job No."></div>'
+      +'<div class="fg"><label class="fl">วันที่ส่ง/รับรถ <span class="rq">*</span></label><input class="fc" type="date" id="insDate"></div>'
+    +'</div></div>'
+
+    // ประเภทการใช้
+    +'<div class="fg"><label class="fl">ประเภทการใช้งาน</label>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
+      +['ขาย/SALE','ทดลอง/DEMO','เช่า/RENT','สต๊อก/STOCK','สัมปทาน/CONCESSION','อื่นๆ/OTHER'].map(function(t){
+        return '<label style="font-size:12px;display:flex;align-items:center;gap:4px"><input type="checkbox" name="insUsage" value="'+t+'"> '+t+'</label>';
+      }).join('')
+    +'</div></div>'
+
+    // Serial อุปกรณ์ไฟฟ้า
+    +'<div style="background:#e8eaf6;border-radius:8px;padding:12px 14px;margin:10px 0">'
+    +'<div style="font-size:12px;font-weight:700;color:#1a237e;margin-bottom:10px">⚡ SERIAL NO. FOR ELECTRICAL PART</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+      +'<div class="fg"><label class="fl">DC MOTOR NO.</label><input class="fc" id="insMotor" placeholder="Serial No."></div>'
+      +'<div class="fg"><label class="fl">CONTROLLER NO.</label><input class="fc" id="insController" placeholder="Serial No."></div>'
+      +'<div class="fg"><label class="fl">ONBOARD NO.</label><input class="fc" id="insOnboard" placeholder="Serial No."></div>'
+      +'<div class="fg"><label class="fl">SOLENOID NO.</label><input class="fc" id="insSolenoid" placeholder="Serial No."></div>'
+      +'<div class="fg"><label class="fl">CHARGER NO.</label><input class="fc" id="insCharger" placeholder="Serial No."></div>'
+      +'<div class="fg"><label class="fl">TRANSAXLE NO.</label><input class="fc" id="insTransaxle" placeholder="Serial No."></div>'
+    +'</div>'
+    // Battery
+    +'<div style="margin-top:10px;padding-top:10px;border-top:0.5px solid #c5cae9">'
+    +'<div style="font-size:12px;font-weight:600;color:#1a237e;margin-bottom:8px">🔋 BATTERY</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'
+      +'<div class="fg"><label class="fl">ยี่ห้อ Battery</label><input class="fc" id="insBatBrand" placeholder="เช่น Trojan"></div>'
+      +'<div class="fg"><label class="fl">โค้ดแบต</label><input class="fc" id="insBatCode" placeholder="รหัส"></div>'
+      +'<div class="fg"><label class="fl">Volts รวม</label><input class="fc" id="insBatTotal" placeholder="เช่น 48V" type="number"></div>'
+    +'</div>'
+    +'<div style="font-size:11px;font-weight:600;color:#1a237e;margin:6px 0 4px">Volt แยกลูก (วัดเฉพาะก่อนส่งมอบ):</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px">'
+    +Array.from({length:24},function(_,i){
+      return '<div style="text-align:center"><div style="font-size:10px;color:#555">ลูกที่ '+(i+1)+'</div>'
+        +'<input class="fc" id="insBat'+(i+1)+'" placeholder="-" style="text-align:center;font-size:11px;padding:4px"></div>';
+    }).join('')
+    +'</div>'
+    +'</div>'
+    +'<div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+      +'<div class="fg"><label class="fl">ทะเบียนทรัพย์สินแบตเตอรี่</label><input class="fc" id="insBatAsset" placeholder="รหัสทรัพย์สิน"></div>'
+      +'<div class="fg"><label class="fl">ทะเบียนทรัพย์สินชาร์เจอร์</label><input class="fc" id="insChgAsset" placeholder="รหัสทรัพย์สิน"></div>'
+    +'</div>'
+    +'</div>'
+
+    // Checklist General
+    +'<div style="margin:10px 0">'
+    +'<div style="font-size:12px;font-weight:700;color:#004d40;margin-bottom:8px;padding:6px 10px;background:#e0f2f1;border-radius:6px">✅ รายละเอียดการตรวจสอบ</div>'
+    +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">'
+    +'<thead><tr style="background:#004d40;color:#fff">'
+      +'<th style="padding:6px 8px;text-align:left;width:35%">ตรวจสอบทั่วไป</th>'
+      +'<th style="padding:6px 8px;text-align:center;width:8%">ปกติ</th>'
+      +'<th style="padding:6px 8px;text-align:center;width:8%">ไม่ปกติ</th>'
+      +'<th style="padding:6px 8px;text-align:left;width:34%">ตรวจสอบตั้งค่าโปรแกรม</th>'
+      +'<th style="padding:6px 8px;text-align:center;width:7%">ปกติ</th>'
+      +'<th style="padding:6px 8px;text-align:center;width:8%">ไม่ปกติ</th>'
+    +'</tr></thead><tbody>'
+    +function(){
+      var maxRows = Math.max(INS_CHECKLIST_GENERAL.length, INS_CHECKLIST_PROGRAM.length);
+      var rows = '';
+      for(var i=0;i<maxRows;i++){
+        var g = INS_CHECKLIST_GENERAL[i]||'';
+        var p = INS_CHECKLIST_PROGRAM[i]||'';
+        rows += '<tr style="border-bottom:0.5px solid var(--g200);background:'+(i%2===0?'#fff':'#f8f9fa')+'">'
+          +'<td style="padding:5px 8px">'+g+'</td>'
+          +'<td style="text-align:center"><input type="radio" name="insG'+i+'" value="ok"></td>'
+          +'<td style="text-align:center"><input type="radio" name="insG'+i+'" value="ng"></td>'
+          +'<td style="padding:5px 8px;font-size:10.5px">'+p+'</td>'
+          +'<td style="text-align:center">'+(p?'<input type="radio" name="insP'+i+'" value="ok">':'')+'</td>'
+          +'<td style="text-align:center">'+(p?'<input type="radio" name="insP'+i+'" value="ng">':'')+'</td>'
+        +'</tr>';
+      }
+      return rows;
+    }()
+    +'</tbody></table></div>'
+
+    // Option Checklist
+    +'<div style="font-size:12px;font-weight:700;color:#1a237e;margin:10px 0 8px;padding:6px 10px;background:#e8eaf6;border-radius:6px">🔧 Option / อุปกรณ์เสริม</div>'
+    +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">'
+    +'<thead><tr style="background:#1a237e;color:#fff">'
+      +'<th style="padding:5px 8px;text-align:left;width:25%">Option</th>'
+      +'<th style="padding:5px 8px;text-align:center;width:8%">ปกติ</th>'
+      +'<th style="padding:5px 8px;text-align:center;width:8%">ไม่ปกติ</th>'
+      +'<th style="padding:5px 8px;text-align:left;width:25%">Option</th>'
+      +'<th style="padding:5px 8px;text-align:center;width:8%">ปกติ</th>'
+      +'<th style="padding:5px 8px;text-align:center;width:8%">ไม่ปกติ</th>'
+      +'<th style="padding:5px 8px;text-align:left;width:10%">Option</th>'
+      +'<th style="padding:5px 8px;text-align:center;width:4%">ปกติ</th>'
+      +'<th style="padding:5px 8px;text-align:center;width:4%">ไม่ปกติ</th>'
+    +'</tr></thead><tbody>'
+    +function(){
+      var rows = '';
+      var perCol = Math.ceil(INS_CHECKLIST_OPTION.length/3);
+      for(var i=0;i<perCol;i++){
+        var a=INS_CHECKLIST_OPTION[i]||'';
+        var b=INS_CHECKLIST_OPTION[i+perCol]||'';
+        var c=INS_CHECKLIST_OPTION[i+perCol*2]||'';
+        var ai=i, bi=i+perCol, ci=i+perCol*2;
+        rows += '<tr style="border-bottom:0.5px solid var(--g200);background:'+(i%2===0?'#fff':'#f8f9fa')+'">'
+          +'<td style="padding:4px 8px;font-size:10.5px">'+a+'</td>'
+          +'<td style="text-align:center">'+(a?'<input type="radio" name="insO'+ai+'" value="ok">':'')+'</td>'
+          +'<td style="text-align:center">'+(a?'<input type="radio" name="insO'+ai+'" value="ng">':'')+'</td>'
+          +'<td style="padding:4px 8px;font-size:10.5px">'+b+'</td>'
+          +'<td style="text-align:center">'+(b?'<input type="radio" name="insO'+bi+'" value="ok">':'')+'</td>'
+          +'<td style="text-align:center">'+(b?'<input type="radio" name="insO'+bi+'" value="ng">':'')+'</td>'
+          +'<td style="padding:4px 8px;font-size:10.5px">'+c+'</td>'
+          +'<td style="text-align:center">'+(c?'<input type="radio" name="insO'+ci+'" value="ok">':'')+'</td>'
+          +'<td style="text-align:center">'+(c?'<input type="radio" name="insO'+ci+'" value="ng">':'')+'</td>'
+        +'</tr>';
+      }
+      return rows;
+    }()
+    +'</tbody></table></div>'
+
+    // หมายเหตุ
+    +'<div class="fg" style="margin-top:10px"><label class="fl">หมายเหตุ</label><textarea class="fc" id="insRemark" rows="2" placeholder="หมายเหตุเพิ่มเติม..."></textarea></div>'
+
+    // Signatures
+    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px;padding:12px;background:#f5f5f5;border-radius:8px">'
+      +['ช่างเทคนิค','หัวหน้าช่าง','ผู้อนุมัติ (ผจก.)'].map(function(role,idx){
+        var sigSrc = (idx===0&&CU&&CU.sig)?CU.sig:'';
+        return '<div style="text-align:center">'
+          +'<div style="font-size:11px;font-weight:600;color:var(--gd);margin-bottom:6px">'+role+'</div>'
+          +'<div style="border:0.5px solid var(--g200);border-radius:6px;min-height:60px;background:#fff;display:flex;align-items:center;justify-content:center">'
+          +(sigSrc?'<img src="'+sigSrc+'" style="height:50px;max-width:100%">'
+                  :'<span style="font-size:11px;color:var(--g400)">ลายเซ็น</span>')
+          +'</div>'
+          +'<div class="fg" style="margin-top:6px"><label class="fl" style="font-size:10px">วันที่</label><input class="fc" type="date" id="insSigDate'+idx+'" style="font-size:11px"></div>'
+        +'</div>';
+      }).join('')
+    +'</div>'
+
+    +'</div>'
+    +'</div>';
+
+  // set default date
+  var today = new Date().toISOString().slice(0,10);
+  document.getElementById('inspectionModal').classList.remove('hidden');
+  setTimeout(function(){
+    var d = document.getElementById('insDate');
+    if(d) d.value = today;
+    ['insSigDate0','insSigDate1','insSigDate2'].forEach(function(id){
+      var el = document.getElementById(id);
+      if(el) el.value = today;
+    });
+  },50);
+}
+
+function onInsSerialInput(inp){
+  var q = (inp.value||'').trim().toLowerCase();
+  var dd = document.getElementById('insSerialDrop');
+  if(!q||q.length<2){ if(dd) dd.style.display='none'; return; }
+  loadVehiclesDB().then(function(v){
+    var res = v.filter(function(x){ return x.SerialNo.toLowerCase().indexOf(q)>=0||String(x.CarNo||'').toLowerCase().indexOf(q)>=0; }).slice(0,10);
+    if(!res.length){ dd.style.display='none'; return; }
+    dd.innerHTML = res.map(function(x){
+      return '<div onmousedown="_pickInsSerial(\''+encodeURIComponent(JSON.stringify(x))+'\')"\
+  style="padding:9px 12px;cursor:pointer;border-bottom:0.5px solid #f5f5f5;font-size:12px">'
+        +'<strong>'+x.SerialNo+'</strong>'+(x.CarNo?' ['+x.CarNo+']':'')
+        +'<div style="font-size:11px;color:var(--g400)">'+(x.Location||'—')+' | '+(x.Customer||x.VehicleType||'')+'</div>'
+      +'</div>';
+    }).join('');
+    dd.style.display='block';
+  });
+}
+
+function _pickInsSerial(enc){
+  var v = JSON.parse(decodeURIComponent(enc));
+  var fields = {insSerial:v.SerialNo,insCarNo:v.CarNo,insModel:v.Model,insCustomer:v.Customer,insLocation:v.Location};
+  Object.keys(fields).forEach(function(id){ var el=document.getElementById(id); if(el) el.value=fields[id]||''; });
+  var dd = document.getElementById('insSerialDrop');
+  if(dd) dd.style.display='none';
+}
+
+function closeInspModal(){
+  document.getElementById('inspectionModal').classList.add('hidden');
+}
+
+function saveInspection(asDraft){
+  var type = (document.querySelector('input[name="insType"]:checked')||{}).value||'PRE_DELIVERY';
+  var serial = (document.getElementById('insSerial')||{}).value.trim();
+  if(!serial) return toast('กรุณาระบุ Serial No. รถค่ะ','error');
+
+  // collect checklist
+  var general={}, program={}, option={};
+  INS_CHECKLIST_GENERAL.forEach(function(_,i){
+    var v = (document.querySelector('input[name="insG'+i+'"]:checked')||{}).value||'';
+    if(v) general[i]=v;
+  });
+  INS_CHECKLIST_PROGRAM.forEach(function(_,i){
+    var v = (document.querySelector('input[name="insP'+i+'"]:checked')||{}).value||'';
+    if(v) program[i]=v;
+  });
+  INS_CHECKLIST_OPTION.forEach(function(_,i){
+    var v = (document.querySelector('input[name="insO'+i+'"]:checked')||{}).value||'';
+    if(v) option[i]=v;
+  });
+
+  var bat = Array.from({length:24},function(_,i){
+    return (document.getElementById('insBat'+(i+1))||{}).value||'';
+  });
+
+  var data = {
+    inspType: type,
+    serialNo: serial,
+    carNo:       (document.getElementById('insCarNo')||{}).value,
+    model:       (document.getElementById('insModel')||{}).value,
+    color:       (document.getElementById('insColor')||{}).value,
+    customerName:(document.getElementById('insCustomer')||{}).value,
+    location:    (document.getElementById('insLocation')||{}).value,
+    jobNo:       (document.getElementById('insJobNo')||{}).value,
+    inspDate:    (document.getElementById('insDate')||{}).value,
+    usage:       Array.from(document.querySelectorAll('input[name="insUsage"]:checked')).map(function(c){return c.value;}).join(','),
+    motorNo:     (document.getElementById('insMotor')||{}).value,
+    controllerNo:(document.getElementById('insController')||{}).value,
+    onboardNo:   (document.getElementById('insOnboard')||{}).value,
+    solenoidNo:  (document.getElementById('insSolenoid')||{}).value,
+    chargerNo:   (document.getElementById('insCharger')||{}).value,
+    transaxleNo: (document.getElementById('insTransaxle')||{}).value,
+    batBrand:    (document.getElementById('insBatBrand')||{}).value,
+    batCode:     (document.getElementById('insBatCode')||{}).value,
+    batTotal:    (document.getElementById('insBatTotal')||{}).value,
+    batCells:    bat.join(','),
+    batAsset:    (document.getElementById('insBatAsset')||{}).value,
+    chgAsset:    (document.getElementById('insChgAsset')||{}).value,
+    remark:      (document.getElementById('insRemark')||{}).value,
+    checkGeneral:JSON.stringify(general),
+    checkProgram:JSON.stringify(program),
+    checkOption: JSON.stringify(option),
+    status:      asDraft ? 'DRAFT' : 'COMPLETED',
+    techSig:     CU&&CU.sig||'',
+  };
+
+  callAPI('createInspection',data).then(function(res){
+    toast(res.message, res.success?'success':'error');
+    if(res.success){
+      closeInspModal();
+      loadInspectionPage();
+      if(!asDraft) openInspView(res.formNo);
+    }
+  });
+}
+
+function openInspView(formNo){
+  callAPI('getInspectionDetail',{formNo:formNo}).then(function(res){
+    if(!res.success||!res.data) return toast('ไม่พบข้อมูลค่ะ','error');
+    var r = res.data;
+    var general = JSON.parse(r.CheckGeneral||'{}');
+    var program = JSON.parse(r.CheckProgram||'{}');
+    var option  = JSON.parse(r.CheckOption||'{}');
+    var typeLabel = {PRE_DELIVERY:'ส่งรถไฟฟ้า',POST_RETURN:'รับคืนรถไฟฟ้า',PERIODIC:'ตรวจ Periodic'};
+    var bat = (r.BatCells||'').split(',');
+
+    function chk(v){ return v==='ok'?'✅':v==='ng'?'❌':'☐'; }
+
+    var printHTML = '<div style="font-family:sans-serif;font-size:11px;color:#000;padding:8px">'
+      // Header
+      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;border-bottom:1.5px solid #004d40;padding-bottom:8px">'
+        +'<img src="'+document.querySelector('.sb-logo img').src+'" style="height:40px;object-fit:contain">'
+        +'<div style="flex:1;text-align:center"><div style="font-size:15px;font-weight:700;color:#004d40">ใบตรวจสอบสภาพรถไฟฟ้า ก่อนส่ง/รับคืน</div>'
+          +'<div style="font-size:11px;color:#555">บริษัท บียอนด์ กรีน จำกัด</div></div>'
+        +'<div style="font-size:10px;text-align:right;color:#555">'+r.FormNo+'<br>FM-BR-008 Rev.02</div>'
+      +'</div>'
+
+      // ข้อมูลรถ
+      +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px 12px;margin-bottom:8px;border:0.5px solid #ccc;padding:8px;border-radius:6px">'
+        +'<div><span style="color:#555;font-size:10px">ชื่อ/โครงการ</span><div style="font-weight:700">'+r.CustomerName+'</div></div>'
+        +'<div><span style="color:#555;font-size:10px">สถานที่ส่ง</span><div style="font-weight:600">'+r.Location+'</div></div>'
+        +'<div><span style="color:#555;font-size:10px">JOB</span><div style="font-weight:600">'+r.JobNo+'</div></div>'
+        +'<div><span style="color:#555;font-size:10px">รุ่นรถ / MODEL</span><div style="font-weight:600">'+r.Model+'</div></div>'
+        +'<div><span style="color:#555;font-size:10px">หมายเลขรถ / S/N</span><div style="font-weight:700;color:#1a237e">'+r.SerialNo+'</div></div>'
+        +'<div><span style="color:#555;font-size:10px">สีรถ</span><div>'+r.Color+'</div></div>'
+        +'<div><span style="color:#555;font-size:10px">ทะเบียนทรัพย์สิน</span><div>'+r.BatAsset+'</div></div>'
+        +'<div><span style="color:#555;font-size:10px">วันที่ส่ง/รับรถ</span><div style="font-weight:600">'+r.InspDate+'</div></div>'
+        +'<div style="display:flex;gap:12px;align-items:center"><span style="font-size:10px">ประเภท: </span>'
+          +(r.InspType==='PRE_DELIVERY'?'<strong>☑ ส่งรถ</strong> ☐ รับคืน':'☐ ส่งรถ <strong>☑ รับคืน</strong>')+'</div>'
+      +'</div>'
+
+      // Usage
+      +'<div style="margin-bottom:6px;font-size:10px">ประเภทการใช้งาน: '+(r.Usage||'').split(',').map(function(u){ return u?'☑ '+u:''; }).join(' ')+'</div>'
+
+      // Electrical
+      +'<div style="border:0.5px solid #c5cae9;border-radius:6px;padding:8px;margin-bottom:8px;background:#f8f9ff">'
+      +'<div style="font-size:11px;font-weight:700;color:#1a237e;margin-bottom:6px">⚡ SERIAL NO. FOR ELECTRICAL PART</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px 10px;font-size:10px">'
+        +'<div>DC MOTOR NO.: <strong>'+r.MotorNo+'</strong></div>'
+        +'<div>CONTROLLER NO.: <strong>'+r.ControllerNo+'</strong></div>'
+        +'<div>ONBOARD NO.: <strong>'+r.OnboardNo+'</strong></div>'
+        +'<div>SOLENOID NO.: <strong>'+r.SolenoidNo+'</strong></div>'
+        +'<div>CHARGER NO.: <strong>'+r.ChargerNo+'</strong></div>'
+        +'<div>TRANSAXLE NO.: <strong>'+r.TransaxleNo+'</strong></div>'
+      +'</div>'
+      +'<div style="margin-top:6px;font-size:10px">ยี่ห้อ BATTERY: <strong>'+r.BatBrand+'</strong> โค้ดแบต: <strong>'+r.BatCode+'</strong> Volts รวม: <strong>'+r.BatTotal+'V</strong></div>'
+      +'<div style="display:grid;grid-template-columns:repeat(8,1fr);gap:2px;margin-top:4px">'
+      +bat.map(function(v,i){ return '<div style="text-align:center;border:0.5px solid #ddd;padding:2px;border-radius:3px"><div style="font-size:8px;color:#888">'+( i+1)+'</div><div style="font-size:9px;font-weight:600">'+(v||'-')+'</div></div>'; }).join('')
+      +'</div>'
+      +'<div style="margin-top:4px;font-size:10px">ทะเบียนทรัพย์สินแบตฯ: <strong>'+r.BatAsset+'</strong> | ชาร์เจอร์: <strong>'+r.ChgAsset+'</strong></div>'
+      +'</div>'
+
+      // Checklist table
+      +'<div style="overflow-x:auto;margin-bottom:8px"><table style="width:100%;border-collapse:collapse;font-size:10px">'
+      +'<thead><tr style="background:#004d40;color:#fff">'
+        +'<th style="padding:4px 6px;text-align:left;width:36%">ตรวจสอบทั่วไป</th>'
+        +'<th style="padding:4px 6px;text-align:center;width:6%">ปกติ</th><th style="padding:4px 6px;text-align:center;width:6%">ไม่ปกติ</th>'
+        +'<th style="padding:4px 6px;text-align:left;width:36%">ตรวจสอบตั้งค่าโปรแกรม</th>'
+        +'<th style="padding:4px 6px;text-align:center;width:6%">ปกติ</th><th style="padding:4px 6px;text-align:center;width:6%">ไม่ปกติ</th>'
+      +'</tr></thead><tbody>'
+      +function(){
+        var max=Math.max(INS_CHECKLIST_GENERAL.length,INS_CHECKLIST_PROGRAM.length);
+        var rows='';
+        for(var i=0;i<max;i++){
+          var g=INS_CHECKLIST_GENERAL[i]||'', p=INS_CHECKLIST_PROGRAM[i]||'';
+          rows+='<tr style="border-bottom:0.5px solid #e0e0e0;background:'+(i%2===0?'#fff':'#f5f5f5')+'">'
+            +'<td style="padding:3px 6px">'+g+'</td>'
+            +'<td style="text-align:center">'+(general[i]==='ok'?'✅':'')+'</td>'
+            +'<td style="text-align:center">'+(general[i]==='ng'?'❌':'')+'</td>'
+            +'<td style="padding:3px 6px">'+p+'</td>'
+            +'<td style="text-align:center">'+(program[i]==='ok'?'✅':'')+'</td>'
+            +'<td style="text-align:center">'+(program[i]==='ng'?'❌':'')+'</td>'
+          +'</tr>';
+        }
+        return rows;
+      }()
+      +'</tbody></table></div>'
+
+      // Option
+      +'<div style="overflow-x:auto;margin-bottom:8px"><table style="width:100%;border-collapse:collapse;font-size:10px">'
+      +'<thead><tr style="background:#1a237e;color:#fff">'
+        +'<th style="padding:4px 6px;text-align:left;width:28%">Option</th><th style="padding:4px 6px;width:5%">✅</th><th style="padding:4px 6px;width:5%">❌</th>'
+        +'<th style="padding:4px 6px;text-align:left;width:28%">Option</th><th style="padding:4px 6px;width:5%">✅</th><th style="padding:4px 6px;width:5%">❌</th>'
+        +'<th style="padding:4px 6px;text-align:left;width:18%">Option</th><th style="padding:4px 6px;width:3%">✅</th><th style="padding:4px 6px;width:3%">❌</th>'
+      +'</tr></thead><tbody>'
+      +function(){
+        var pc=Math.ceil(INS_CHECKLIST_OPTION.length/3);
+        var rows='';
+        for(var i=0;i<pc;i++){
+          var a=INS_CHECKLIST_OPTION[i]||'',b=INS_CHECKLIST_OPTION[i+pc]||'',c=INS_CHECKLIST_OPTION[i+pc*2]||'';
+          rows+='<tr style="border-bottom:0.5px solid #e0e0e0;background:'+(i%2===0?'#fff':'#f5f5f5')+'">'
+            +'<td style="padding:3px 6px">'+a+'</td><td style="text-align:center">'+(option[i]==='ok'?'✅':'')+'</td><td style="text-align:center">'+(option[i]==='ng'?'❌':'')+'</td>'
+            +'<td style="padding:3px 6px">'+b+'</td><td style="text-align:center">'+(option[i+pc]==='ok'?'✅':'')+'</td><td style="text-align:center">'+(option[i+pc]==='ng'?'❌':'')+'</td>'
+            +'<td style="padding:3px 6px">'+c+'</td><td style="text-align:center">'+(option[i+pc*2]==='ok'?'✅':'')+'</td><td style="text-align:center">'+(option[i+pc*2]==='ng'?'❌':'')+'</td>'
+          +'</tr>';
+        }
+        return rows;
+      }()
+      +'</tbody></table></div>'
+
+      // Remark
+      +(r.Remark?'<div style="margin-bottom:8px;font-size:10px"><strong>หมายเหตุ:</strong> '+r.Remark+'</div>':'')
+
+      // Signatures
+      +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px;border-top:0.5px solid #ccc;padding-top:10px">'
+        +['ช่างเทคนิค','หัวหน้าช่าง','ผู้อนุมัติ (ผจก.)'].map(function(role,idx){
+          return '<div style="text-align:center">'
+            +'<div style="min-height:50px;border-bottom:0.5px solid #888;margin-bottom:4px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:2px">'
+            +(r.TechSig&&idx===0?'<img src="'+r.TechSig+'" style="height:44px;max-width:100%">':'')
+            +'</div>'
+            +'<div style="font-size:10px;font-weight:600">'+role+':</div>'
+            +'<div style="font-size:10px;border-bottom:0.5px solid #888;min-height:16px;margin-top:2px"></div>'
+            +'<div style="font-size:9px;color:#555;margin-top:2px">วันที่: ___________</div>'
+          +'</div>';
+        }).join('')
+      +'</div>'
+    +'</div>';
+
+    var printBody = document.getElementById('inspPrintBody');
+    if(printBody) printBody.innerHTML = printHTML;
+    document.getElementById('inspectionPrintModal').classList.remove('hidden');
+  });
+}
+
 </script>
 
 <!-- ── STOCK CARD FORM MODAL ──────────────────────── -->
 <!-- ── SALES ORDER FORM MODAL ──────────────────────── -->
 <!-- ── QR SCANNER MODAL ──────────────────────────── -->
 <!-- ── QR PRINT MODAL ────────────────────────────── -->
+
+<!-- ── INSPECTION FORM MODAL ──────────────────────────── -->
+<div id="inspectionModal" class="mo hidden" style="z-index:3000">
+  <div class="mow" style="max-width:900px;max-height:92vh;overflow-y:auto">
+    <div class="moh" style="background:#004d40;color:#fff;position:sticky;top:0;z-index:10;border-radius:var(--r) var(--r) 0 0">
+      <div class="mot" id="insModalTitle" style="color:#fff">📋 ใบตรวจสอบสภาพรถไฟฟ้า</div>
+      <button class="mcl" style="color:#fff" onclick="closeInspModal()">✕</button>
+    </div>
+    <div class="mob" id="insModalBody" style="padding:0"></div>
+    <div class="mof" style="position:sticky;bottom:0;background:#fff;border-top:1px solid var(--g200);z-index:10">
+      <button class="btn bo" onclick="closeInspModal()">ยกเลิก</button>
+      <button class="btn bo" onclick="saveInspection(true)">💾 บันทึกฉบับร่าง</button>
+      <button class="btn bp" style="background:#004d40;border-color:#004d40" onclick="saveInspection(false)">✅ บันทึกและดูเอกสาร</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── INSPECTION PRINT WINDOW ─────────────────────────── -->
+<div id="inspectionPrintModal" class="mo hidden" style="z-index:4000">
+  <div class="mow" style="max-width:900px;max-height:95vh;overflow-y:auto">
+    <div style="display:flex;gap:8px;padding:12px 16px;background:#004d40;color:#fff;position:sticky;top:0;z-index:10;border-radius:var(--r) var(--r) 0 0">
+      <div style="flex:1;font-weight:700">📋 ใบตรวจสอบสภาพรถไฟฟ้า — พร้อมปริ้น</div>
+      <button onclick="window.print()" style="background:#fff;color:#004d40;border:none;border-radius:6px;padding:6px 16px;font-weight:700;cursor:pointer">🖨️ ปริ้น</button>
+      <button onclick="document.getElementById('inspectionPrintModal').classList.add('hidden')" style="background:none;border:1px solid rgba(255,255,255,.5);color:#fff;border-radius:6px;padding:6px 12px;cursor:pointer">ปิด</button>
+    </div>
+    <div id="inspPrintBody" style="background:#fff;padding:16px"></div>
+  </div>
+</div>
+
 </body>
 </html>
