@@ -5694,20 +5694,16 @@ function submitSOForm(){
     })
     .then(function(res){
       if(res && res.success){
-        toast(res.message||'ส่งให้ Stock จัดแล้วค่ะ ✅','success');
+        toast(res.message||'บันทึกใบขายแล้วค่ะ ✅','success');
         closeModal('soFormModal');
         initSales();
-      } else if(res && res.message && (res.message.indexOf('Unknown action')>=0 || res.message.indexOf('Error')>=0)){
-        // Apps Script ยังไม่รองรับ → client-side
-        doSave(true);
       } else {
-        toast((res&&res.message)||'เกิดข้อผิดพลาดค่ะ','error');
+        toast((res&&res.message)||'เกิดข้อผิดพลาดค่ะ กรุณาลองใหม่','error');
       }
     })
     .catch(function(e){
-      // Apps Script ไม่ตอบ หรือ error → client-side fallback
-      console.warn('SO API error:', e.message, '→ using client-side');
-      doSave(true);
+      console.error('SO API error:', e);
+      toast('ไม่สามารถเชื่อมต่อ Server ได้ค่ะ กรุณาลองใหม่อีกครั้ง','error');
     })
     .finally(function(){
       if(submitBtn){ submitBtn.disabled=false; submitBtn.textContent='📤 ส่งให้ Stock จัด'; }
