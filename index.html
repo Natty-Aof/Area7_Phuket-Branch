@@ -10138,10 +10138,8 @@ function renderInsList(){
 
 function openNewInspection(){
   var body = document.getElementById('insModalBody');
-  if(!body) return;
-
-  // build form
-  body.innerHTML = '<div style="padding:16px">'
+  if(!body){ toast('ไม่พบ modal ค่ะ','error'); return; }
+  try {
 
     // Header info
     +'<div style="background:#e0f2f1;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:12px;color:#004d40;font-weight:600">FM-BR-008 Rev.02 | บริษัท บียอนด์ กรีน จำกัด</div>'
@@ -10304,7 +10302,9 @@ function openNewInspection(){
 
   // set default date
   var today = new Date().toISOString().slice(0,10);
-  document.getElementById('inspectionModal').classList.remove('hidden');
+  var modal = document.getElementById('inspectionModal');
+  modal.classList.remove('hidden');
+  modal.style.display = 'flex';
   setTimeout(function(){
     var d = document.getElementById('insDate');
     if(d) d.value = today;
@@ -10313,6 +10313,7 @@ function openNewInspection(){
       if(el) el.value = today;
     });
   },50);
+  } catch(err){ toast('เกิดข้อผิดพลาด: '+err.message,'error'); console.error(err); }
 }
 
 function onInsSerialInput(inp){
@@ -10342,7 +10343,9 @@ function _pickInsSerial(enc){
 }
 
 function closeInspModal(){
-  document.getElementById('inspectionModal').classList.add('hidden');
+  var modal = document.getElementById('inspectionModal');
+  modal.classList.add('hidden');
+  modal.style.display = '';
 }
 
 function saveInspection(asDraft){
