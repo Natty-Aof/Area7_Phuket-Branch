@@ -1047,9 +1047,12 @@ textarea.fc{min-height:70px;resize:vertical;}
       <!-- VEHICLE HISTORY PAGE                               -->
       <!-- ═══════════════════════════════════════════════════ -->
       <div id="pg-vehiclehistory" class="hidden">
-        <div class="card" style="padding:14px 16px;margin-bottom:10px;background:linear-gradient(135deg,#1a237e,#283593);color:#fff">
-          <div style="font-size:15px;font-weight:700">🚗 ประวัติการซ่อม/เปลี่ยนอะไหล่ตาม Serial No.</div>
-          <div style="font-size:11px;opacity:.8;margin-top:2px">ค้นหา Serial No. หรือสแกน QR Code รถ → ดูประวัติ + พิมพ์ Label</div>
+        <div class="card" style="padding:14px 16px;margin-bottom:10px;background:linear-gradient(135deg,#1a237e,#283593);color:#fff;display:flex;align-items:center;gap:12px">
+          <div style="flex:1">
+            <div style="font-size:15px;font-weight:700">🚗 ประวัติการซ่อม/เปลี่ยนอะไหล่ตาม Serial No.</div>
+            <div style="font-size:11px;opacity:.8;margin-top:2px">ค้นหา Serial No. หรือสแกน QR Code รถ → ดูประวัติ + พิมพ์ Label</div>
+          </div>
+          <button onclick="openBatchQRPrint()" style="background:#fff;color:#1a237e;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">🖨️ ปริ้น QR ทีเดียว</button>
         </div>
 
         <!-- Tab: ค้นหารถ / ค้นหาตามโครงการ -->
@@ -6412,6 +6415,114 @@ function loadVehiclesDB(){
 }
 
 // ── พิมพ์ QR Code รถ ─────────────────────────────────────────
+// ── Batch QR Print ───────────────────────────────────────────
+function openBatchQRPrint(){
+  loadVehiclesDB().then(function(vehicles){
+    // สร้าง unique Location list
+    var locs = {};
+    vehicles.forEach(function(v){
+      var loc = (v.Location||'').trim();
+      if(!loc) return;
+      if(!locs[loc]) locs[loc] = 0;
+      locs[loc]++;
+    });
+    var locList = Object.keys(locs).sort(function(a,b){ return locs[b]-locs[a]; });
+
+    var modal = document.createElement('div');
+    modal.id = 'batchQRModal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:4000;display:flex;align-items:center;justify-content:center;padding:16px';
+    modal.innerHTML = '<div style="background:#fff;border-radius:12px;padding:20px;max-width:420px;width:100%">'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">'
+        +'<div style="font-size:16px;font-weight:700;color:#1a237e;flex:1">🖨️ ปริ้น QR Code ทีเดียว</div>'
+        +'<button onclick="document.getElementById(\'batchQRModal\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--g400)">✕</button>'
+      +'</div>'
+      +'<div style="margin-bottom:12px">'
+        +'<label style="font-size:13px;font-weight:600;color:var(--gd);display:block;margin-bottom:6px">เลือกโครงการ <span style="color:var(--red)">*</span></label>'
+        +'<select id="batchQRLoc" class="fc" style="font-size:13px">'
+          +'<option value="">— เลือกโครงการ —</option>'
+          +locList.map(function(l){ return '<option value="'+l+'">'+l+' ('+locs[l]+' คัน)</option>'; }).join('')
+        +'</select>'
+      +'</div>'
+      +'<div style="margin-bottom:16px;background:#f0f4ff;border-radius:8px;padding:10px 12px;font-size:12px;color:#1a237e">'
+        +'📋 จะปริ้น <strong>24 QR ต่อหน้า A4</strong> (4×6 grid) พร้อม Serial No. เบอร์รถ โครงการ และโลโก้ Beyond Green'
+      +'</div>'
+      +'<div style="display:flex;gap:8px;justify-content:flex-end">'
+        +'<button onclick="document.getElementById(\'batchQRModal\').remove()" class="btn bo">ยกเลิก</button>'
+        +'<button onclick="doBatchQRPrint()" class="btn bp" style="background:#1a237e;border-color:#1a237e">🖨️ สร้างหน้าปริ้น</button>'
+      +'</div>'
+    +'</div>';
+    document.body.appendChild(modal);
+  });
+}
+
+function doBatchQRPrint(){
+  var loc = (document.getElementById('batchQRLoc')||{}).value||'';
+  if(!loc) return toast('กรุณาเลือกโครงการก่อนค่ะ','error');
+
+  loadVehiclesDB().then(function(vehicles){
+    var filtered = vehicles.filter(function(v){ return (v.Location||'').trim()===loc; });
+    if(!filtered.length) return toast('ไม่พบรถในโครงการนี้ค่ะ','error');
+
+    // สร้าง QR HTML สำหรับปริ้น
+    var labelsHtml = filtered.map(function(v){
+      var sn = v.SerialNo||'';
+      var carNo = v.CarNo ? 'เบอร์ '+v.CarNo : '';
+      // QR จะ generate ด้วย qrcode.js
+      return '<div class="qr-label" data-sn="'+sn+'">'
+        +'<div class="qr-logo">🌿 BEYOND GREEN</div>'
+        +'<div class="qr-box" id="qrb_'+sn.replace(/[^a-zA-Z0-9]/g,'_')+'"></div>'
+        +'<div class="qr-sn">'+sn+'</div>'
+        +(carNo?'<div class="qr-sub">'+carNo+'</div>':'')
+        +'<div class="qr-loc">'+loc+'</div>'
+      +'</div>';
+    }).join('');
+
+    var printWin = window.open('','_blank','width=900,height=700');
+    printWin.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>QR Labels — '+loc+'</title>'
+      +'<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"><\/script>'
+      +'<style>'
+        +'*{box-sizing:border-box;margin:0;padding:0}'
+        +'body{font-family:sans-serif;background:#fff;padding:8mm}'
+        +'@page{size:A4;margin:8mm}'
+        +'.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4mm}'
+        +'.qr-label{border:0.5px solid #ccc;border-radius:4px;padding:4px;text-align:center;page-break-inside:avoid;display:flex;flex-direction:column;align-items:center;gap:2px}'
+        +'.qr-logo{font-size:7px;font-weight:700;color:#1a237e;letter-spacing:0.5px}'
+        +'.qr-box img{width:100%;height:auto}'
+        +'.qr-sn{font-size:7.5px;font-weight:700;color:#1a237e;word-break:break-all}'
+        +'.qr-sub{font-size:6.5px;color:#555}'
+        +'.qr-loc{font-size:6px;color:#888;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}'
+        +'@media print{body{padding:0}.no-print{display:none}button{display:none}}'
+      +'</style></head><body>'
+      +'<div class="no-print" style="padding:12px;background:#1a237e;color:#fff;display:flex;align-items:center;gap:12px;margin-bottom:12px;border-radius:8px">'
+        +'<div style="flex:1;font-size:14px;font-weight:700">QR Labels — '+loc+' ('+filtered.length+' คัน)</div>'
+        +'<button onclick="window.print()" style="background:#fff;color:#1a237e;border:none;padding:8px 20px;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer">🖨️ ปริ้น</button>'
+        +'<button onclick="window.close()" style="background:none;border:1px solid rgba(255,255,255,.5);color:#fff;padding:8px 14px;border-radius:6px;font-size:13px;cursor:pointer">ปิด</button>'
+      +'</div>'
+      +'<div class="grid">'+labelsHtml+'</div>'
+      +'<script>'
+        +'window.onload = function(){'
+          +'var labels = document.querySelectorAll(".qr-label");'
+          +'labels.forEach(function(lb){'
+            +'var sn = lb.getAttribute("data-sn");'
+            +'var box = lb.querySelector(".qr-box");'
+            +'if(!box||!sn) return;'
+            +'try{'
+              +'var qr = qrcode(0,"M");'
+              +'qr.addData(sn);'
+              +'qr.make();'
+              +'box.innerHTML = qr.createImgTag(2,0);'
+              +'box.querySelector("img").style.cssText="width:100%;height:auto";'
+            +'}catch(e){ box.innerHTML="<div style=\\"font-size:8px\\">"+sn+"</div>"; }'
+          +'});'
+        +'};'
+      +'<\/script>'
+      +'</body></html>');
+    printWin.document.close();
+
+    document.getElementById('batchQRModal').remove();
+  });
+}
+
 function printVehicleQR(serialNo){
   var car = _vehiclesDB.find(function(v){ return v.SerialNo===serialNo; })||{SerialNo:serialNo};
   var win = window.open('','_blank','width=400,height=300');
