@@ -1394,8 +1394,12 @@ textarea.fc{min-height:70px;resize:vertical;}
       <!-- ── ข้อมูลลูกค้า ──────────────────────────── -->
       <div class="fr" id="soCustArea">
         <div class="fg">
-          <label class="fl">ชื่อบริษัท / ลูกค้า <span class="rq">*</span></label>
-          <input class="fc" id="soCustName" placeholder="เช่น บริษัท XXX จำกัด">
+          <label class="fl">ชื่อบริษัท / ลูกค้า <span class="rq">*</span> <span style="font-size:10px;color:var(--g400);font-weight:400">— พิมพ์เพื่อค้นหา</span></label>
+          <div style="position:relative">
+            <input class="fc" id="soCustName" placeholder="พิมพ์ชื่อบริษัท / โครงการ..." oninput="onSOCustInput(this)" autocomplete="off">
+            <span id="soCustIcon" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none"></span>
+            <div id="soCustSuggest" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:600;background:#fff;border:1.5px solid var(--gm);border-top:none;border-radius:0 0 8px 8px;max-height:200px;overflow-y:auto;box-shadow:0 6px 20px rgba(0,0,0,.12)"></div>
+          </div>
         </div>
         <div class="fg">
           <label class="fl">สถานที่จัดส่ง</label>
@@ -5345,6 +5349,67 @@ function renderInventory(data){
 // ══════════════════════════════════════════════════════════════
 // SALES ORDER FUNCTIONS
 // ══════════════════════════════════════════════════════════════
+var _soCustSelected = false;
+var _soCustFormal = '';
+
+function onSOCustInput(inp){
+  var q = (inp.value||'').trim();
+  var dd = document.getElementById('soCustSuggest');
+  var icon = document.getElementById('soCustIcon');
+  if(!dd) return;
+  _soCustSelected = false;
+  _soCustFormal = '';
+  if(icon) icon.textContent = q ? '🔍' : '';
+  if(!q || q.length < 1){ dd.style.display='none'; return; }
+
+  loadVehiclesDB().then(function(vehicles){
+    var map = {};
+    vehicles.forEach(function(v){
+      var loc  = (v.Location||'').trim();
+      var cust = (v.Customer||'').trim();
+      if(!loc && !cust) return;
+      var key = cust || loc;
+      if(!map[key]) map[key] = {display:loc||cust, customer:cust, count:0};
+      map[key].count++;
+    });
+    var ql = q.toLowerCase();
+    var results = Object.values(map).filter(function(m){
+      return m.display.toLowerCase().indexOf(ql)>=0 || m.customer.toLowerCase().indexOf(ql)>=0;
+    }).sort(function(a,b){ return b.count-a.count; }).slice(0,8);
+
+    if(!results.length){
+      dd.innerHTML='<div style="padding:10px 12px;font-size:12px;color:var(--g400)">ไม่พบในระบบ — พิมพ์เองได้ค่ะ</div>';
+      dd.style.display='block';
+      return;
+    }
+    dd.innerHTML = results.map(function(m){
+      var hl = m.display.replace(new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<strong style="color:var(--gd)">$1</strong>');
+      return '<div onmousedown="_pickSOCust(\''+encodeURIComponent(m.customer)+'\',\''+encodeURIComponent(m.display)+'\')" '
+        +'style="padding:9px 12px;cursor:pointer;border-bottom:0.5px solid #f5f5f5;font-size:13px" '
+        +'onmouseover="this.style.background=\'#f0fff4\'" onmouseout="this.style.background=\'\'">'
+        +hl+(m.customer&&m.customer!==m.display?'<div style="font-size:11px;color:var(--g400)">'+m.customer+'</div>':'')
+      +'</div>';
+    }).join('');
+    dd.style.display='block';
+  });
+}
+
+function _pickSOCust(customerEnc, displayEnc){
+  var customer = decodeURIComponent(customerEnc);
+  var display  = decodeURIComponent(displayEnc);
+  _soCustFormal = customer || display;
+  _soCustSelected = true;
+  var inp  = document.getElementById('soCustName');
+  var dd   = document.getElementById('soCustSuggest');
+  var icon = document.getElementById('soCustIcon');
+  if(inp)  inp.value = customer || display; // ใช้ชื่อบริษัทจริง
+  if(dd)   dd.style.display='none';
+  if(icon) icon.textContent='✅';
+  // auto-fill delivery addr ถ้ายังว่าง
+  var addrEl = document.getElementById('soDeliveryAddr');
+  if(addrEl && !addrEl.value && display !== customer) addrEl.value = display;
+}
+
 function toggleSOTypeMenu(){
   var m = document.getElementById('soTypeMenu');
   if(m) m.style.display = m.style.display==='none' ? 'block' : 'none';
@@ -5447,9 +5512,12 @@ function openNewSales(orderType){
   var noteEl = document.getElementById('soApprovalNote');
   if(noteEl) noteEl.innerHTML = '📋 รายการนี้จะส่งให้ <strong>Manager อนุมัติ</strong> ก่อนดำเนินการค่ะ';
 
-  ['soQuoteNo','soPONo','soCustName','soDeliveryAddr','soNote','soDPANo'].forEach(function(id){
-    var el=document.getElementById(id); if(el) el.value='';
-  });
+  _soCustSelected = false;
+  _soCustFormal = '';
+  var soCustIcon = document.getElementById('soCustIcon');
+  if(soCustIcon) soCustIcon.textContent='';
+  var soCustDD = document.getElementById('soCustSuggest');
+  if(soCustDD) soCustDD.style.display='none';
   var prev = document.getElementById('soDocPreview');
   if(prev) prev.textContent = '';
 
@@ -5687,7 +5755,7 @@ function submitSOForm(){
   var dpaPrefix  = (document.getElementById('soDPAPrefix')||{}).textContent||'';
   var dpaNum     = (document.getElementById('soDPANo')||{}).value||'';
   var fullDPANo  = dpaNum ? dpaPrefix + dpaNum : '';
-  var custName   = (document.getElementById('soCustName')||{}).value.trim()||'';
+  var custName   = _soCustFormal || (document.getElementById('soCustName')||{}).value.trim()||'';
   var delivAddr  = (document.getElementById('soDeliveryAddr')||{}).value.trim()||'';
   var noteVal    = (document.getElementById('soNote')||{}).value.trim()||'';
 
@@ -5781,14 +5849,61 @@ function submitSOForm(){
 
 function viewSODetail(soNo){
   callAPI('getSalesOrderDetail',{soNo:soNo}).then(function(res){
-    if(!res.success||!res.data) return toast('ไม่พบข้อมูล','error');
-    var o=res.data;
-    var rows = (o.items||[]).map(function(it){
-      return '<tr><td>'+it.PartNo+'</td><td>'+(it.NameEN||'-')+'</td>'
-        +'<td style="text-align:center">'+it.Qty+' '+(it.Unit||'ชิ้น')+'</td>'
-        +'<td>'+(it.SerialNo||'-')+'</td><td>'+(it.Note||'-')+'</td></tr>';
+    if(!res.success||!res.data) return toast('ไม่พบข้อมูลค่ะ','error');
+    var o = res.data;
+    var typeLabels = {SALE:'🛒 ขายอะไหล่',BRANCH:'🏢 ส่งสาขา',HQ_RETURN:'🏛️ คืน สนญ.',INTERNAL:'🔧 ภายใน',SALE_INTERNAL:'🔧 เบิกภายใน'};
+    var statusLabels = {PENDING_MANAGER:'⏳ รอ Manager อนุมัติ',PENDING_STOCK:'🛒 รอจัด',PENDING_STOCK_DISPATCH:'✅ อนุมัติแล้ว รอจัด',DISPATCHED:'📦 จัดแล้ว',DONE:'✅ เสร็จ',REJECTED:'❌ ไม่อนุมัติ'};
+    var items = (o.Items||o.items||[]);
+    var rows = items.map(function(it){
+      return '<tr>'
+        +'<td style="padding:7px 10px;font-size:12px">'+it.PartNo+'</td>'
+        +'<td style="padding:7px 10px;font-size:12px">'+(it.NameEN||'—')+'</td>'
+        +'<td style="padding:7px 10px;text-align:center;font-size:12px">'+it.Qty+' '+(it.Unit||'ชิ้น')+'</td>'
+        +'<td style="padding:7px 10px;font-size:12px">'+(it.SerialNo||'—')+'</td>'
+        +'<td style="padding:7px 10px;font-size:12px;color:var(--g400)">'+(it.Note||'—')+'</td>'
+      +'</tr>';
     }).join('');
-    alert('ใบ '+soNo+'\nใบเสนอราคา: '+(o.DocNo||o.QuoteNo||'—')+'\nPO: '+(o.PONo||'-')+'\nลูกค้า: '+((o.CustName||o.CustomerName||'—')||'-')+'\nรายการ: '+o.items.length+' รายการ');
+
+    // สร้าง modal แบบ dynamic
+    var existing = document.getElementById('soDetailViewModal');
+    if(existing) existing.remove();
+    var modal = document.createElement('div');
+    modal.id = 'soDetailViewModal';
+    modal.className = 'mo';
+    modal.style.zIndex = '3000';
+    modal.innerHTML =
+      '<div class="mow" style="max-width:700px">'
+        +'<div class="moh">'
+          +'<div class="mot">📋 '+soNo+'</div>'
+          +'<button class="mcl" onclick="document.getElementById(\'soDetailViewModal\').remove()">✕</button>'
+        +'</div>'
+        +'<div class="mob">'
+          +'<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px 20px;margin-bottom:14px">'
+            +'<div><div style="font-size:11px;color:var(--g400)">ประเภท</div><div style="font-weight:600">'+(typeLabels[o.OrderType]||o.OrderType||'—')+'</div></div>'
+            +'<div><div style="font-size:11px;color:var(--g400)">สถานะ</div><div style="font-weight:600">'+(statusLabels[o.Status]||o.Status||'—')+'</div></div>'
+            +'<div><div style="font-size:11px;color:var(--g400)">เลขที่เอกสาร</div><div style="font-weight:600">'+(o.DocNo||'—')+'</div></div>'
+            +'<div><div style="font-size:11px;color:var(--g400)">PO</div><div style="font-weight:600">'+(o.PONo||'—')+'</div></div>'
+            +'<div style="grid-column:1/-1"><div style="font-size:11px;color:var(--g400)">ลูกค้า / ปลายทาง</div><div style="font-weight:600">'+(o.CustName||o.CustomerName||'—')+'</div></div>'
+            +(o.DeliveryAddr?'<div style="grid-column:1/-1"><div style="font-size:11px;color:var(--g400)">ที่อยู่จัดส่ง</div><div>'+o.DeliveryAddr+'</div></div>':'')
+            +(o.Note?'<div style="grid-column:1/-1"><div style="font-size:11px;color:var(--g400)">หมายเหตุ</div><div>'+o.Note+'</div></div>':'')
+          +'</div>'
+          +'<div style="font-size:12px;font-weight:600;color:var(--gd);margin-bottom:6px">รายการอะไหล่ ('+items.length+' รายการ)</div>'
+          +'<div class="tw"><table style="width:100%;border-collapse:collapse">'
+            +'<thead><tr style="background:var(--g100)">'
+              +'<th style="padding:6px 10px;text-align:left;font-size:11px;color:var(--g400)">Part No.</th>'
+              +'<th style="padding:6px 10px;text-align:left;font-size:11px;color:var(--g400)">ชื่อ</th>'
+              +'<th style="padding:6px 10px;text-align:center;font-size:11px;color:var(--g400)">จำนวน</th>'
+              +'<th style="padding:6px 10px;text-align:left;font-size:11px;color:var(--g400)">Serial</th>'
+              +'<th style="padding:6px 10px;text-align:left;font-size:11px;color:var(--g400)">หมายเหตุ</th>'
+            +'</tr></thead>'
+            +'<tbody>'+rows+'</tbody>'
+          +'</table></div>'
+        +'</div>'
+        +'<div class="mof">'
+          +'<button class="btn bo" onclick="document.getElementById(\'soDetailViewModal\').remove()">ปิด</button>'
+        +'</div>'
+      +'</div>';
+    document.body.appendChild(modal);
   });
 }
 
