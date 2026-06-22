@@ -923,12 +923,25 @@ textarea.fc{min-height:70px;resize:vertical;}
 
       <div id="pg-sales" class="hidden">
         <div class="card" style="padding:12px 16px;margin-bottom:0;border-radius:var(--r) var(--r) 0 0">
-          <div style="display:flex;gap:8px;align-items:center">
-            <button id="soTabPending" class="btn bgd bsm" onclick="switchSOTab('pending')" style="min-width:120px">🛒 รอจัด <span id="soBadgePend" class="badge" style="background:#fff;color:var(--gd)">0</span></button>
-            <button id="soTabDone"    class="btn bo bsm"  onclick="switchSOTab('done')"    style="min-width:120px">✅ จัดแล้ว</button>
+          <!-- Tabs -->
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+            <button id="soTabPending"  class="btn bgd bsm" onclick="switchSOTab('pending')"  style="font-size:12px">🛒 รอ Manager อนุมัติ <span id="soBadgePend" class="badge" style="background:#fff;color:var(--gd)">0</span></button>
+            <button id="soTabApproved" class="btn bo bsm"  onclick="switchSOTab('approved')" style="font-size:12px">✅ อนุมัติแล้ว รอจัด <span id="soBadgeApp" class="badge">0</span></button>
+            <button id="soTabDone"     class="btn bo bsm"  onclick="switchSOTab('done')"     style="font-size:12px">📦 จัดแล้ว</button>
             <div style="flex:1"></div>
-            <button class="btn bgd bsm" onclick="openNewSales()">+ เปิดรายการขาย</button>
+            <!-- ปุ่มเปิดรายการ dropdown -->
+            <div style="position:relative">
+              <button class="btn bgd bsm" onclick="toggleSOTypeMenu()" style="font-size:12px">+ เปิดรายการ ▾</button>
+              <div id="soTypeMenu" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:#fff;border:1px solid var(--g200);border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.12);z-index:400;min-width:200px;overflow:hidden">
+                <div onclick="openNewSales('SALE');toggleSOTypeMenu()"    style="padding:10px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='#f0fff4'" onmouseout="this.style.background=''">🛒 <div><div style="font-weight:600">เปิดใบขาย</div><div style="font-size:11px;color:var(--g400)">ขายอะไหล่ให้ลูกค้า</div></div></div>
+                <div onclick="openNewSales('BRANCH');toggleSOTypeMenu()"  style="padding:10px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;border-top:0.5px solid var(--g200)" onmouseover="this.style.background='#f0fff4'" onmouseout="this.style.background=''">🏢 <div><div style="font-weight:600">เบิกส่งสาขา</div><div style="font-size:11px;color:var(--g400)">ส่งอะไหล่ให้สาขาอื่น</div></div></div>
+                <div onclick="openNewSales('HQ_RETURN');toggleSOTypeMenu()" style="padding:10px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;border-top:0.5px solid var(--g200)" onmouseover="this.style.background='#f0fff4'" onmouseout="this.style.background=''">🏛️ <div><div style="font-weight:600">คืน สนญ.</div><div style="font-size:11px;color:var(--g400)">ส่งคืนสำนักงานใหญ่</div></div></div>
+                <div onclick="openNewSales('INTERNAL');toggleSOTypeMenu()" style="padding:10px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;border-top:0.5px solid var(--g200)" onmouseover="this.style.background='#f0fff4'" onmouseout="this.style.background=''">🔧 <div><div style="font-weight:600">เบิกใช้ภายใน</div><div style="font-size:11px;color:var(--g400)">ใช้งานภายในบริษัท</div></div></div>
+              </div>
+            </div>
           </div>
+          <!-- Summary badges -->
+          <div id="soSummaryBar" style="display:flex;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--g400)"></div>
         </div>
         <div id="soList"></div>
       </div>
@@ -1330,21 +1343,28 @@ textarea.fc{min-height:70px;resize:vertical;}
 <div id="soFormModal" class="mo hidden">
   <div class="mow" style="max-width:680px">
     <div class="moh">
-      <div class="mot" id="soFormTitle">🛒 เปิดรายการขาย / เบิกจ่ายภายใน</div>
+      <div class="mot" id="soModalTitle">🛒 เปิดใบขายอะไหล่</div>
       <button class="mcl" onclick="closeModal('soFormModal')">✕</button>
     </div>
     <div class="mob">
+      <!-- แจ้งว่าต้องผ่าน Manager -->
+      <div id="soApprovalNote" style="background:#e8f5e9;padding:8px 12px;border-radius:8px;font-size:12px;color:#1b5e20;margin-bottom:12px">
+        📋 รายการนี้จะส่งให้ <strong>Manager อนุมัติ</strong> ก่อนดำเนินการค่ะ
+      </div>
 
       <!-- ── ประเภทรายการ ─────────────────────────────── -->
       <div class="fg">
         <label class="fl">ประเภทรายการ <span class="rq">*</span></label>
         <select class="fc" id="soOrderType" onchange="onSOTypeChange()">
           <optgroup label="💰 ขายอะไหล่">
-            <option value="SALE">🛒 ขายอะไหล่</option>
+            <option value="SALE">🛒 ขายอะไหล่ให้ลูกค้า</option>
           </optgroup>
-          <optgroup label="🏢 เบิกจ่ายภายใน / ส่งสาขา">
-            <option value="BRANCH_SAMUI">🏝️ ส่งสาขาสมุย</option>
-            <option value="BRANCH_KRABI">🌴 ส่งสาขากระบี่</option>
+          <optgroup label="🚚 ส่ง/คืนสาขา">
+            <option value="BRANCH">🏢 เบิกส่งสาขาอื่น</option>
+            <option value="HQ_RETURN">🏛️ คืนอะไหล่ สนญ.</option>
+          </optgroup>
+          <optgroup label="🔧 ใช้ภายใน">
+            <option value="INTERNAL">🔧 เบิกใช้ภายในบริษัท</option>
             <option value="BRANCH_HATYAI">🏙️ ส่งสาขาหาดใหญ่</option>
             <option value="BRANCH_OTHER">📌 ส่งสาขานอกเขต</option>
             <option value="RETURN_HQ">🏛️ ส่งคืนสำนักงานใหญ่</option>
@@ -5325,12 +5345,28 @@ function renderInventory(data){
 // ══════════════════════════════════════════════════════════════
 // SALES ORDER FUNCTIONS
 // ══════════════════════════════════════════════════════════════
+function toggleSOTypeMenu(){
+  var m = document.getElementById('soTypeMenu');
+  if(m) m.style.display = m.style.display==='none' ? 'block' : 'none';
+  // ปิดเมื่อคลิกนอก
+  setTimeout(function(){
+    document.addEventListener('click', function _close(e){
+      var btn = document.querySelector('[onclick*="toggleSOTypeMenu"]');
+      var menu = document.getElementById('soTypeMenu');
+      if(menu && btn && !menu.contains(e.target) && !btn.contains(e.target)){
+        menu.style.display='none';
+      }
+      document.removeEventListener('click',_close);
+    });
+  },0);
+}
+
 function switchSOTab(tab){
   _soTab = tab;
-  var btnP = document.getElementById('soTabPending');
-  var btnD = document.getElementById('soTabDone');
-  if(btnP) btnP.className = tab==='pending' ? 'btn bgd bsm' : 'btn bo bsm';
-  if(btnD) btnD.className = tab==='done'    ? 'btn bgd bsm' : 'btn bo bsm';
+  ['Pending','Approved','Done'].forEach(function(t){
+    var btn = document.getElementById('soTab'+t);
+    if(btn) btn.className = tab===t.toLowerCase() ? 'btn bgd bsm' : 'btn bo bsm';
+  });
   initSales();
 }
 
@@ -5350,10 +5386,17 @@ function initSales(){
     }
     var html='';
     orders.forEach(function(o){
-      var statusChip = o.Status==='PENDING'
-        ? '<span class="chip chip-gld">รอจัด</span>'
-        : o.Status==='DISPATCHED'
-        ? '<span class="chip chip-grn">จัดแล้ว</span>'
+      var isPending  = o.Status==='PENDING' || o.Status==='PENDING_STOCK' || o.Status==='PENDING_MANAGER';
+      var isApproved = o.Status==='APPROVED' || o.Status==='PENDING_STOCK_DISPATCH';
+      var isDone     = o.Status==='DISPATCHED' || o.Status==='DONE';
+      var typeLabels = {SALE:'🛒 ขาย',BRANCH:'🏢 ส่งสาขา',HQ_RETURN:'🏛️ คืน สนญ.',INTERNAL:'🔧 ภายใน'};
+      var typeLabel  = typeLabels[o.OrderType] || o.OrderType || '—';
+      var statusChip = isPending
+        ? '<span class="chip chip-gld">⏳ รอ Manager อนุมัติ</span>'
+        : isApproved
+        ? '<span class="chip chip-blu">✅ อนุมัติแล้ว รอจัด</span>'
+        : isDone
+        ? '<span class="chip chip-grn">📦 จัดแล้ว</span>'
         : '<span class="chip chip-gry">'+o.Status+'</span>';
       html += '<div class="qc">'
         +'<div class="fb2"><div><strong>'+o.SONo+'</strong> '+statusChip+'</div><span class="tm" style="font-size:13px">'+new Date(o.CreatedAt).toLocaleDateString('th-TH')+'</span></div>'
@@ -5362,15 +5405,21 @@ function initSales(){
         +'<div class="di"><div class="dl">PO</div><div class="dv">'+(o.PONo||'-')+'</div></div>'
         +'<div class="di"><div class="dl">ลูกค้า</div><div class="dv">'+((o.CustName||o.CustomerName||'—')||'-')+'</div></div>'
         +'</div>'
-        +(o.Status==='PENDING' && (CU.role==='STOCK'||CU.role==='MANAGER')
+        +(isPending && (CU.role==='MANAGER'||CU.role==='ADMIN')
+          ? '<div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">'
+            +'<button class="btn bo bsm" onclick="viewSODetail(\''+o.SONo+'\')">ดูรายละเอียด</button>'
+            +'<button class="btn bd bsm" onclick="rejectSO(\''+o.SONo+'\')">✕ ไม่อนุมัติ</button>'
+            +'<button class="btn bgd bsm" onclick="approveSO(\''+o.SONo+'\')">✅ อนุมัติ</button>'
+            +'</div>'
+          : isApproved && (CU.role==='STOCK'||CU.role==='MANAGER'||CU.role==='ADMIN')
           ? '<div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">'
             +'<button class="btn bo bsm" onclick="viewSODetail(\''+o.SONo+'\')">ดูรายละเอียด</button>'
             +'<button class="btn bgd bsm" onclick="dispatchSO(\''+o.SONo+'\')">📦 จัดให้แล้ว</button>'
             +'</div>'
           : '<div style="margin-top:8px;display:flex;gap:6px;justify-content:flex-end">'
-          +'<button class="btn bo bsm" onclick="viewSODetail(\''+o.SONo+'\')">ดูรายละเอียด</button>'
-          +'<button class="btn bo bsm" onclick="openSOEdit(\''+o.SONo+'\')">✏️ แก้ไข</button>'
-          +'</div>'
+            +'<button class="btn bo bsm" onclick="viewSODetail(\''+o.SONo+'\')">ดูรายละเอียด</button>'
+            +(isDone?'':'<button class="btn bo bsm" onclick="openSOEdit(\''+o.SONo+'\')">✏️ แก้ไข</button>')
+            +'</div>'
         )
         +'</div>';
     });
@@ -5378,13 +5427,29 @@ function initSales(){
   });
 }
 
-function openNewSales(){
+function openNewSales(orderType){
   _soItems = [];
-  // clear ทุก field
+  orderType = orderType || 'SALE';
+
+  var typeEl = document.getElementById('soOrderType');
+  if(typeEl) typeEl.value = orderType;
+
+  var titles = {
+    SALE:      {icon:'🛒', label:'เปิดใบขายอะไหล่'},
+    BRANCH:    {icon:'🏢', label:'เบิกส่งสาขา'},
+    HQ_RETURN: {icon:'🏛️', label:'คืนอะไหล่ สนญ.'},
+    INTERNAL:  {icon:'🔧', label:'เบิกใช้ภายใน'},
+  };
+  var t = titles[orderType] || titles.SALE;
+  var titleEl = document.getElementById('soModalTitle');
+  if(titleEl) titleEl.textContent = t.icon + ' ' + t.label;
+
+  var noteEl = document.getElementById('soApprovalNote');
+  if(noteEl) noteEl.innerHTML = '📋 รายการนี้จะส่งให้ <strong>Manager อนุมัติ</strong> ก่อนดำเนินการค่ะ';
+
   ['soQuoteNo','soPONo','soCustName','soDeliveryAddr','soNote','soDPANo'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.value='';
   });
-  // clear preview
   var prev = document.getElementById('soDocPreview');
   if(prev) prev.textContent = '';
 
@@ -5392,11 +5457,10 @@ function openNewSales(){
   if(body) body.innerHTML = '';
   addSORow();
 
-  // reset ปุ่มทุกครั้ง — ป้องกัน disabled ค้าง
   var editBtn   = document.getElementById('soEditBtn');
   var submitBtn = document.getElementById('soSubmitBtn');
   if(editBtn){   editBtn.style.display   = 'none'; }
-  if(submitBtn){ submitBtn.style.display = ''; submitBtn.disabled = false; submitBtn.textContent = '📤 ส่งให้ Stock จัด'; }
+  if(submitBtn){ submitBtn.style.display = ''; submitBtn.disabled = false; submitBtn.textContent = '📤 ส่ง Manager อนุมัติ'; }
 
   var soMo = document.getElementById('soFormModal');
   if(soMo){
@@ -5664,7 +5728,7 @@ function submitSOForm(){
     note:         noteVal,
     items:        items,
     createdBy:    CU ? CU.email : '',
-    status:       'PENDING_STOCK',
+    status:       'PENDING_MANAGER',
   };
 
   // แสดง loading state
@@ -6070,6 +6134,23 @@ function exportInventoryExcel(){
 }
 
 // ── SALES ORDER DISPATCH ────────────────────────────────
+function approveSO(soNo){
+  if(!confirm('อนุมัติรายการ '+soNo+' ให้ Stock จัดของได้เลยไหมคะ?')) return;
+  callAPI('updateSalesOrder',{soNo:soNo, status:'PENDING_STOCK_DISPATCH', approvedBy:CU&&CU.email}).then(function(res){
+    toast(res.success?'✅ อนุมัติแล้ว Stock จัดของได้เลยค่ะ':'❌ '+(res.message||'เกิดข้อผิดพลาด'), res.success?'success':'error');
+    if(res.success){ initSales(); }
+  });
+}
+
+function rejectSO(soNo){
+  var note = prompt('เหตุผลที่ไม่อนุมัติ:','');
+  if(note===null) return;
+  callAPI('updateSalesOrder',{soNo:soNo, status:'REJECTED', rejectedBy:CU&&CU.email, note:note}).then(function(res){
+    toast(res.success?'ปฏิเสธแล้วค่ะ':'❌ '+(res.message||'เกิดข้อผิดพลาด'), res.success?'info':'error');
+    if(res.success){ initSales(); }
+  });
+}
+
 function dispatchSO(soNo){
   if(!confirm('ยืนยันว่าจัดอะไหล่ '+soNo+' เรียบร้อยแล้วค่ะ?')) return;
   callAPI('dispatchSalesOrder',{soNo:soNo}).then(function(res){
