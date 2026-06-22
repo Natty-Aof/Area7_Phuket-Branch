@@ -2771,68 +2771,93 @@ function loadApproval(){
     return;
   }
 
-  // Supervisor ดึงแค่ PENDING_SUPERVISOR
-  // Manager ดึงทั้ง PENDING_SUPERVISOR + PENDING_MANAGER (เพื่อติดตาม)
-  var fetchPending;
-  if(isSup){
-    fetchPending = callAPI('getRequisitions',{status:'PENDING_SUPERVISOR'});
-  } else {
-    fetchPending = Promise.all([
-      callAPI('getRequisitions',{status:'PENDING_SUPERVISOR'}),
-      callAPI('getRequisitions',{status:'PENDING_MANAGER'}),
-    ]).then(function(results){
-      var combined = (results[0].data||[]).concat(results[1].data||[]);
-      combined.sort(function(a,b){ return b.CreatedAt > a.CreatedAt ? 1 : -1; });
-      return { success:true, data: combined };
-    });
-  }
+  var al=document.getElementById('apList');
+  if(al) al.innerHTML='<div class="card tc tm" style="padding:32px">⏳ กำลังโหลด...</div>';
 
-  fetchPending.then(function(res){
-    var list = res.data || [];
+  // โหลด Requisitions + Sales Orders พร้อมกัน
+  var reqFetch = isSup
+    ? callAPI('getRequisitions',{status:'PENDING_SUPERVISOR'})
+    : Promise.all([
+        callAPI('getRequisitions',{status:'PENDING_SUPERVISOR'}),
+        callAPI('getRequisitions',{status:'PENDING_MANAGER'}),
+      ]).then(function(r){
+        var combined = (r[0].data||[]).concat(r[1].data||[]);
+        combined.sort(function(a,b){ return b.CreatedAt>a.CreatedAt?1:-1; });
+        return {success:true, data:combined};
+      });
+
+  var soFetch = isMgr
+    ? callAPI('getSalesOrders',{status:'pending'})
+    : Promise.resolve({data:[]});
+
+  Promise.all([reqFetch, soFetch]).then(function(results){
+    var reqList = results[0].data||[];
+    var soList  = results[1].data||[];
     window._REQS_MAP = {};
-    list.forEach(function(r){ window._REQS_MAP[r.ReqID] = r; });
-    var al=document.getElementById('apList');
-    if(!al) return;
-    if(!list.length){
-      al.innerHTML='<div class="card tc tm" style="padding:32px">ไม่มีรายการรออนุมัติ 🎉</div>';
-      return;
+    reqList.forEach(function(r){ window._REQS_MAP[r.ReqID]=r; });
+
+    var html = '';
+
+    // ── Sales Orders รออนุมัติ ──────────────────────────────
+    if(isMgr && soList.length){
+      var typeLabels={SALE:'🛒 ขายอะไหล่',BRANCH:'🏢 ส่งสาขา',HQ_RETURN:'🏛️ คืน สนญ.',INTERNAL:'🔧 เบิกภายใน'};
+      html += '<div style="padding:5px 12px;font-size:11px;font-weight:700;color:#6a1599;background:#f3e5f5;border-bottom:0.5px solid #e1bee7;border-radius:8px 8px 0 0">🛒 รายการขาย/เบิกจ่าย รออนุมัติ ('+soList.length+')</div>';
+      html += soList.map(function(o){
+        return '<div class="qc" style="border-left:4px solid #6a1599">'
+          +'<div class="fb2">'
+            +'<div><strong>'+o.SONo+'</strong> <span style="font-size:11px;background:#f3e5f5;color:#6a1599;padding:2px 8px;border-radius:8px">'+(typeLabels[o.OrderType]||o.OrderType||'—')+'</span></div>'
+            +'<span class="tm" style="font-size:12px">'+new Date(o.CreatedAt).toLocaleDateString('th-TH')+'</span>'
+          +'</div>'
+          +'<div class="dg" style="grid-template-columns:repeat(3,1fr);gap:8px 16px;margin-top:8px">'
+            +'<div class="di"><div class="dl">ลูกค้า</div><div class="dv">'+(o.CustName||'—')+'</div></div>'
+            +'<div class="di"><div class="dl">เลขที่เอกสาร</div><div class="dv">'+(o.DocNo||'—')+'</div></div>'
+            +'<div class="di"><div class="dl">เปิดโดย</div><div class="dv">'+(o.CreatedBy||'—').split('@')[0]+'</div></div>'
+          +'</div>'
+          +'<div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end;align-items:center">'
+            +'<button class="btn bo bsm" onclick="viewSODetail(\''+o.SONo+'\')">ดูรายละเอียด</button>'
+            +'<button class="btn bd bsm" onclick="rejectSO(\''+o.SONo+'\')">✕ ไม่อนุมัติ</button>'
+            +'<button class="btn bp bsm" style="background:#6a1599;border-color:#6a1599" onclick="approveSO(\''+o.SONo+'\')">✅ อนุมัติ</button>'
+          +'</div>'
+        +'</div>';
+      }).join('');
     }
-    al.innerHTML=list.map(function(r){
-      var isPendingSup = r.StatusApproval === 'PENDING_SUPERVISOR';
-      var isPendingMgr = r.StatusApproval === 'PENDING_MANAGER';
 
-      // ปุ่มด้านขวา — แสดงตามสถานะ + role
-      var actionBtns = '';
-      if(isSup && isPendingSup){
-        // Supervisor อนุมัติ step นี้ได้
-        actionBtns =
-          '<button class="btn bd bsm" onclick="openNoteMo(\'reject\',\''+r.ReqID+'\')">✕ ปฏิเสธ</button>'
-         +'<button class="btn bp bsm" onclick="openNoteMo(\'approve\',\''+r.ReqID+'\')">✓ อนุมัติ</button>';
-      } else if(isMgr && isPendingMgr){
-        // Manager อนุมัติ step นี้ได้
-        actionBtns =
-          '<button class="btn bd bsm" onclick="openNoteMo(\'reject\',\''+r.ReqID+'\')">✕ ปฏิเสธ</button>'
-         +'<button class="btn bp bsm" onclick="openNoteMo(\'approve\',\''+r.ReqID+'\')">✓ อนุมัติ</button>';
-      } else if(isMgr && isPendingSup){
-        // Manager เห็นว่ายังรอหัวหน้าอยู่ — ติดตามสถานะเฉยๆ ไม่มีปุ่ม
-        actionBtns = '<span style="font-size:12px;color:var(--ora);font-weight:600">⏳ รอหัวหน้าช่างอนุมัติก่อน</span>';
-      }
+    // ── Requisitions รออนุมัติ ──────────────────────────────
+    if(reqList.length){
+      html += '<div style="padding:5px 12px;font-size:11px;font-weight:700;color:var(--gd);background:var(--g100,#f5f5f5);border-bottom:0.5px solid var(--g200)'+(soList.length?'':';border-radius:8px 8px 0 0')+'">📋 ใบเบิกอะไหล่ รออนุมัติ ('+reqList.length+')</div>';
+      html += reqList.map(function(r){
+        var isPendingSup = r.StatusApproval==='PENDING_SUPERVISOR';
+        var isPendingMgr = r.StatusApproval==='PENDING_MANAGER';
+        var actionBtns = '';
+        if(isSup && isPendingSup){
+          actionBtns = '<button class="btn bd bsm" onclick="openNoteMo(\'reject\',\''+r.ReqID+'\')">✕ ปฏิเสธ</button>'
+            +'<button class="btn bp bsm" onclick="openNoteMo(\'approve\',\''+r.ReqID+'\')">✓ อนุมัติ</button>';
+        } else if(isMgr && isPendingMgr){
+          actionBtns = '<button class="btn bd bsm" onclick="openNoteMo(\'reject\',\''+r.ReqID+'\')">✕ ปฏิเสธ</button>'
+            +'<button class="btn bp bsm" onclick="openNoteMo(\'approve\',\''+r.ReqID+'\')">✓ อนุมัติ</button>';
+        } else if(isMgr && isPendingSup){
+          actionBtns = '<span style="font-size:12px;color:#e65100;font-weight:600">⏳ รอหัวหน้าช่างอนุมัติก่อน</span>';
+        }
+        return '<div class="qc">'
+          +'<div class="fb2"><div><strong>'+r.ReqID+'</strong> '+apChip(r.StatusApproval)+'</div><span class="tm" style="font-size:13px">'+r.OpenDate+'</span></div>'
+          +'<div class="dg" style="grid-template-columns:repeat(3,1fr);gap:8px 16px;margin-top:8px">'
+            +'<div class="di"><div class="dl">ผู้เบิก</div><div class="dv">'+r.RequesterName+'</div></div>'
+            +'<div class="di"><div class="dl">Job</div><div class="dv">'+r.JobNo+'</div></div>'
+            +'<div class="di"><div class="dl">ลูกค้า</div><div class="dv">'+r.CustomerName+'</div></div>'
+          +'</div>'
+          +'<div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end;align-items:center">'
+            +'<button class="btn bo bsm" onclick="openDetail(\''+r.ReqID+'\')">ดูรายละเอียด</button>'
+            +actionBtns
+          +'</div>'
+        +'</div>';
+      }).join('');
+    }
 
-      return '<div class="qc '+(isPendingSup && isMgr ? '' : 'urg')+'">'
-        +'<div class="fb2">'
-        +'<div><strong>'+r.ReqID+'</strong> '+apChip(r.StatusApproval)+'</div>'
-        +'<span class="tm" style="font-size:13px">'+r.OpenDate+'</span>'
-        +'</div>'
-        +'<div class="dg" style="grid-template-columns:repeat(3,1fr);gap:8px 16px;margin-top:8px">'
-        +'<div class="di"><div class="dl">ผู้เบิก</div><div class="dv">'+r.RequesterName+'</div></div>'
-        +'<div class="di"><div class="dl">Job</div><div class="dv">'+r.JobNo+'</div></div>'
-        +'<div class="di"><div class="dl">ลูกค้า</div><div class="dv">'+r.CustomerName+'</div></div>'
-        +'</div>'
-        +'<div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end;align-items:center">'
-        +'<button class="btn bo bsm" onclick="openDetail(\''+r.ReqID+'\')">ดูรายละเอียด</button>'
-        +actionBtns
-        +'</div></div>';
-    }).join('');
+    if(!html){
+      html = '<div class="card tc tm" style="padding:40px">🎉 ไม่มีรายการรออนุมัติค่ะ</div>';
+    }
+
+    if(al) al.innerHTML = html;
   });
 }
 
