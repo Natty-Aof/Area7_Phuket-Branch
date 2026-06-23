@@ -2238,6 +2238,20 @@ function initApp(){
   var crMenu = document.getElementById('nChangeReq');
   if(crMenu) crMenu.classList.remove('hidden');
 
+  // ── Manager Tools: Migration button ──────────────────────────
+  if(isMgr){
+    var existingMigBtn = document.getElementById('btnMigrate');
+    if(!existingMigBtn){
+      var migBtn = document.createElement('button');
+      migBtn.id = 'btnMigrate';
+      migBtn.className = 'btn bo bsm';
+      migBtn.style.cssText = 'font-size:11px;position:fixed;bottom:70px;right:12px;z-index:900;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.15)';
+      migBtn.innerHTML = '☁️ Migrate to Drive';
+      migBtn.onclick = runMigration;
+      document.body.appendChild(migBtn);
+    }
+  }
+
   if(['SUPERVISOR','MANAGER','ADMIN'].indexOf(CU.role)>=0){
     var na=document.getElementById('nApproval'),ba=document.getElementById('bnAp');
     if(na) na.classList.remove('hidden');
@@ -10142,6 +10156,81 @@ function renderInsList(){
   }).join('');
 }
 
+// ── Inspection Photo Manager ─────────────────────────────────
+var _insPhotos = []; // [{label, data (base64), preview}]
+
+function addInsPhoto(){
+  if(_insPhotos.length >= 10) return toast('ถ่ายรูปได้สูงสุด 10 รูปค่ะ','error');
+  var inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = 'image/*';
+  inp.capture = 'environment';
+  inp.onchange = function(){
+    var file = inp.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e){
+      var label = prompt('ชื่อรูปนี้คืออะไร? เช่น ด้านหน้า, แบตเตอรี่','รูป '+(_insPhotos.length+1));
+      if(label===null) return;
+      _insPhotos.push({label:label||'รูป '+(_insPhotos.length+1), data:e.target.result});
+      renderInsPhotoGrid();
+    };
+    reader.readAsDataURL(file);
+  };
+  inp.click();
+}
+
+function removeInsPhoto(idx){
+  _insPhotos.splice(idx,1);
+  renderInsPhotoGrid();
+}
+
+function renderInsPhotoGrid(){
+  var grid = document.getElementById('insPhotoGrid');
+  var cnt  = document.getElementById('insPhotoCount');
+  var btn  = document.getElementById('insAddPhotoBtn');
+  if(!grid) return;
+  if(cnt) cnt.textContent = _insPhotos.length+'/10';
+  if(btn) btn.style.display = _insPhotos.length>=10 ? 'none' : '';
+
+  grid.innerHTML = _insPhotos.map(function(p,i){
+    return '<div style="position:relative;border-radius:8px;overflow:hidden;aspect-ratio:4/3;background:#f5f5f5">'
+      +'<img src="'+p.data+'" style="width:100%;height:100%;object-fit:cover">'
+      +'<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.55);color:#fff;font-size:10px;padding:3px 6px;display:flex;align-items:center">'
+        +'<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.label+'</span>'
+        +'<button onclick="removeInsPhoto('+i+')" style="background:none;border:none;color:#fff;font-size:14px;cursor:pointer;padding:0 2px;line-height:1">✕</button>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+}
+
+function onInsPhoto(input, id){
+  var file = input.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var img = document.getElementById(id+'_img');
+    var ph  = document.getElementById(id+'_ph');
+    if(img){ img.src = e.target.result; img.style.display='block'; }
+    if(ph)  ph.style.display='none';
+    input.dataset.b64 = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function runMigration(){
+  if(!CU||(CU.role!=='MANAGER'&&CU.role!=='ADMIN')) return toast('เฉพาะ Manager ค่ะ','error');
+  if(!confirm('ต้องการ migrate รูปภาพทั้งหมดไป Google Drive ไหมคะ?\n(อาจใช้เวลาหลายนาที)')) return;
+  toast('กำลัง migrate... กรุณารอค่ะ','info');
+  callAPI('runMigration',{}).then(function(res){
+    if(res.success){
+      alert('✅ Migration เสร็จแล้วค่ะ\n'+res.message+'\n\nดู log ได้ที่ Sheet: MigrationLog');
+    } else {
+      toast('❌ '+(res.message||'เกิดข้อผิดพลาด'),'error');
+    }
+  });
+}
+
 function openNewInspection(){
   var body = document.getElementById('insModalBody');
   if(!body){ toast('ไม่พบ modal ค่ะ','error'); return; }
@@ -10171,17 +10260,27 @@ function openNewInspection(){
       +'<div class="fg"><label class="fl">เบอร์รถ / Car No.</label><input class="fc" id="insCarNo" placeholder="เช่น 01" readonly style="background:#f0f0f0"></div>'
       +'<div class="fg"><label class="fl">รุ่นรถ / Model</label><input class="fc" id="insModel" placeholder="เช่น Precedent 2 Seater" readonly style="background:#f0f0f0"></div>'
       +'<div class="fg"><label class="fl">สีรถ</label><input class="fc" id="insColor" placeholder="เช่น White"></div>'
-      +'<div class="fg"><label class="fl">ชื่อโครงการ / ลูกค้า</label><input class="fc" id="insCustomer" placeholder="ชื่อโครงการ" readonly style="background:#f0f0f0"></div>'
-      +'<div class="fg"><label class="fl">สถานที่ส่ง</label><input class="fc" id="insLocation" placeholder="สถานที่" readonly style="background:#f0f0f0"></div>'
+      +'<div class="fg"><label class="fl">ชื่อโครงการ / ลูกค้า <span style="font-size:10px;color:var(--g400);font-weight:400">— แก้ไขได้</span></label><input class="fc" id="insCustomer" placeholder="ชื่อโครงการ / ลูกค้า"></div>'
+      +'<div class="fg"><label class="fl">สถานที่ส่ง <span style="font-size:10px;color:var(--g400);font-weight:400">— แก้ไขได้</span></label><input class="fc" id="insLocation" placeholder="สถานที่ส่ง/รับรถ"></div>'
       +'<div class="fg"><label class="fl">JOB NO.</label><input class="fc" id="insJobNo" placeholder="Job No."></div>'
       +'<div class="fg"><label class="fl">วันที่ส่ง/รับรถ <span class="rq">*</span></label><input class="fc" type="date" id="insDate"></div>'
     +'</div></div>'
 
     // ประเภทการใช้
     +'<div class="fg"><label class="fl">ประเภทการใช้งาน</label>'
-    +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
-      +['ขาย/SALE','ทดลอง/DEMO','เช่า/RENT','สต๊อก/STOCK','สัมปทาน/CONCESSION','อื่นๆ/OTHER'].map(function(t){
-        return '<label style="font-size:12px;display:flex;align-items:center;gap:4px"><input type="checkbox" name="insUsage" value="'+t+'"> '+t+'</label>';
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">'
+      +['ขาย','ทดลอง','เช่า','สต๊อก','สัมปทาน','อื่นๆ'].map(function(t,i){
+        var vals=['SALE','DEMO','RENT','STOCK','CONCESSION','OTHER'];
+        var icons=['🛒','🔬','🚗','📦','🤝','📌'];
+        return '<label style="display:flex;align-items:center;gap:6px;padding:8px 12px;border:1.5px solid var(--g200);border-radius:20px;cursor:pointer;font-size:13px;background:#fff;transition:all .15s" '
+          +'onmouseover="this.style.borderColor=\'var(--gm)\'" onmouseout="if(!this.querySelector(\'input\').checked)this.style.borderColor=\'var(--g200)\'">'
+          +'<input type="checkbox" name="insUsage" value="'+vals[i]+'" style="display:none" onchange="'
+            +'this.closest(\'label\').style.background=this.checked?\'var(--gm)\':\'#fff\';'
+            +'this.closest(\'label\').style.color=this.checked?\'#fff\':\'inherit\';'
+            +'this.closest(\'label\').style.borderColor=this.checked?\'var(--gm)\':\'var(--g200)\';'
+          +'">'
+          +icons[i]+' '+t
+        +'</label>';
       }).join('')
     +'</div></div>'
 
@@ -10288,6 +10387,19 @@ function openNewInspection(){
     +'</tbody></table></div>'
 
     // หมายเหตุ
+    // ── ถ่ายรูปรถ + แบตเตอรี่ (รวม ไม่เกิน 10 รูป) ──
+    +'<div style="margin:14px 0 0;padding:12px 14px;background:#f9f9f9;border-radius:8px;border:0.5px solid var(--g200)">'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
+      +'<div style="font-size:12px;font-weight:700;color:#004d40;flex:1">📷 รูปถ่ายประกอบ <span style="font-size:11px;font-weight:400;color:var(--g400)">(ไม่เกิน 10 รูป)</span></div>'
+      +'<span id="insPhotoCount" style="font-size:12px;color:var(--g400)">0/10</span>'
+    +'</div>'
+    +'<div id="insPhotoGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"></div>'
+    +'<button onclick="addInsPhoto()" id="insAddPhotoBtn" style="margin-top:8px;width:100%;padding:10px;border:2px dashed var(--g200);border-radius:8px;background:none;cursor:pointer;font-size:13px;color:var(--g400)">'
+      +'+ เพิ่มรูป (แตะเพื่อถ่าย หรือเลือกจากแกลเลอรี่)'
+    +'</button>'
+    +'<div style="font-size:11px;color:var(--g400);margin-top:6px">💡 แนะนำ: หน้า / หลัง / ซ้าย / ขวา / แบตเตอรี่ / ชาร์เจอร์ ฯลฯ</div>'
+    +'</div>'
+
     +'<div class="fg" style="margin-top:10px"><label class="fl">หมายเหตุ</label><textarea class="fc" id="insRemark" rows="2" placeholder="หมายเหตุเพิ่มเติม..."></textarea></div>'
 
     // Signatures
@@ -10404,6 +10516,7 @@ function saveInspection(asDraft){
     batAsset:    (document.getElementById('insBatAsset')||{}).value,
     chgAsset:    (document.getElementById('insChgAsset')||{}).value,
     remark:      (document.getElementById('insRemark')||{}).value,
+    photos:      _insPhotos.map(function(p){ return {label:p.label, data:p.data}; }),
     checkGeneral:JSON.stringify(general),
     checkProgram:JSON.stringify(program),
     checkOption: JSON.stringify(option),
@@ -10527,6 +10640,29 @@ function openInspView(formNo){
 
       // Remark
       +(r.Remark?'<div style="margin-bottom:8px;font-size:10px"><strong>หมายเหตุ:</strong> '+r.Remark+'</div>':'')
+
+      // รูปถ่าย
+      +function(){
+        var photos = [];
+        try { photos = JSON.parse(r.Photos||'[]'); } catch(e){}
+        if(!photos.length) return '';
+        return '<div style="margin-bottom:10px">'
+          +'<div style="font-size:11px;font-weight:700;color:#004d40;margin-bottom:6px">📷 รูปถ่าย ('+photos.length+' รูป)</div>'
+          +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">'
+          +photos.map(function(p){
+            // แปลง Drive view link เป็น direct image (thumbnail)
+            var imgUrl = p.url ? p.url.replace('/view','/preview') : '';
+            return '<div>'
+              +'<div style="font-size:9px;color:#888;margin-bottom:2px">'+p.label+'</div>'
+              +(imgUrl
+                ? '<a href="'+p.url+'" target="_blank" style="display:block;aspect-ratio:4/3;border:0.5px solid #ddd;border-radius:4px;overflow:hidden;background:#f5f5f5;display:flex;align-items:center;justify-content:center">'
+                  +'<span style="font-size:10px;color:#1a237e">📷 ดูรูป</span>'
+                  +'</a>'
+                : '')
+            +'</div>';
+          }).join('')
+          +'</div></div>';
+      }()
 
       // Signatures
       +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px;border-top:0.5px solid #ccc;padding-top:10px">'
