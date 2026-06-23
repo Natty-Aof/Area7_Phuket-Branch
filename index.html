@@ -391,20 +391,33 @@ textarea.fc{min-height:70px;resize:vertical;}
         <div id="listAlert" style="display:none;margin-bottom:10px"></div>
 
         <!-- ── Filter + Tabs ── -->
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
-          <input class="fc" id="fJob" placeholder="🔍 Job No. / ลูกค้า / ชื่อช่าง..." oninput="renderListFromCache()" style="flex:1;min-width:160px">
-          <div style="display:flex;gap:0;border-radius:8px;overflow:hidden;border:1px solid var(--g200)">
-            <button id="ltAll"    onclick="setListTab('all')"     style="padding:5px 12px;font-size:12px;border:none;cursor:pointer;background:var(--gd);color:#fff">ทั้งหมด</button>
-            <button id="ltOpen"   onclick="setListTab('open')"   style="padding:5px 12px;font-size:12px;border:none;cursor:pointer;background:#fff;color:var(--g400)">ยังไม่คืน</button>
-            <button id="ltOld"    onclick="setListTab('old')"    style="padding:5px 12px;font-size:12px;border:none;cursor:pointer;background:#fff;color:var(--g400)">ค้างนาน</button>
-            <button id="ltDone"   onclick="setListTab('done')"   style="padding:5px 12px;font-size:12px;border:none;cursor:pointer;background:#fff;color:var(--g400)">ปิดแล้ว</button>
-          </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
+          <input class="fc" id="fJob" placeholder="🔍 Job No. / ลูกค้า / ชื่อช่าง..." oninput="_listPage=1;renderListFromCache()" style="flex:1;min-width:160px">
+          <select id="fStatus" class="fc" style="width:auto;min-width:140px;font-size:13px" onchange="_listPage=1;_listStatusFilter=this.value;renderListFromCache()">
+            <option value="all">📋 ทุกสถานะ</option>
+            <option value="PENDING_SUPERVISOR">⏳ รอหัวหน้าช่าง</option>
+            <option value="PENDING_MANAGER">⏳ รอ Manager</option>
+            <option value="APPROVED">✅ อนุมัติแล้ว</option>
+            <option value="PENDING">🔵 รอ Stock จัดของ</option>
+            <option value="ACKNOWLEDGED">📦 Stock จัดแล้ว</option>
+            <option value="PICKED_UP">🔧 ช่างรับแล้ว</option>
+            <option value="PENDING_CLEARANCE">🔄 รอเคลียร์</option>
+            <option value="CLOSED">🏁 ปิดงาน</option>
+            <option value="REJECTED">❌ ปฏิเสธ</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:0;border-radius:8px;overflow:hidden;border:1px solid var(--g200);margin-bottom:10px;width:fit-content">
+          <button id="ltAll"    onclick="setListTab('all')"    style="padding:5px 12px;font-size:12px;border:none;cursor:pointer;background:var(--gd);color:#fff">ทั้งหมด</button>
+          <button id="ltOpen"   onclick="setListTab('open')"   style="padding:5px 12px;font-size:12px;border:none;cursor:pointer;background:#fff;color:var(--g400)">ยังไม่คืน</button>
+          <button id="ltOld"    onclick="setListTab('old')"    style="padding:5px 12px;font-size:12px;border:none;cursor:pointer;background:#fff;color:var(--g400)">ค้างนาน</button>
+          <button id="ltDone"   onclick="setListTab('done')"   style="padding:5px 12px;font-size:12px;border:none;cursor:pointer;background:#fff;color:var(--g400)">ปิดแล้ว</button>
         </div>
 
         <!-- ── List Body ── -->
         <div id="listBody" class="card" style="padding:0;overflow:hidden">
           <div class="tc tm" style="padding:32px">กำลังโหลด...</div>
         </div>
+        <div id="listPagination"></div>
 
       </div>
 
@@ -2620,6 +2633,9 @@ var _listYear  = 0;
 var _listMonth = 0; // 1-12
 var _listTab   = 'all';
 var _listCache = [];
+var _listPage  = 1;
+var _listPageSize = 25;
+var _listStatusFilter = 'all';
 
 function _initListMonth(){
   if(_listYear) return;
@@ -2642,8 +2658,36 @@ function shiftListMonth(d){
   loadList();
 }
 
+
+function _renderPagination(total){
+  var totalPages = Math.ceil(total / _listPageSize);
+  var el = document.getElementById('listPagination');
+  if(!el) return;
+  if(totalPages <= 1){ el.innerHTML=''; return; }
+  var html = '<div style="display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;flex-wrap:wrap">';
+  html += '<button onclick="_goPage('+(Math.max(1,_listPage-1))+')" '+(_listPage===1?'disabled style="opacity:.4"':'')+' class="btn bo bsm">◀</button>';
+  for(var p=1;p<=totalPages;p++){
+    if(p===1||p===totalPages||(p>=_listPage-2&&p<=_listPage+2)){
+      html += '<button onclick="_goPage('+p+')" class="btn bsm" style="'+(p===_listPage?'background:var(--gd);color:#fff;border-color:var(--gd)':'background:#fff;border:1px solid var(--g200);color:var(--gd)')+'">'+p+'</button>';
+    } else if(p===_listPage-3||p===_listPage+3){
+      html += '<span style="color:var(--g400);padding:0 4px">...</span>';
+    }
+  }
+  html += '<button onclick="_goPage('+(Math.min(totalPages,_listPage+1))+')" '+(_listPage===totalPages?'disabled style="opacity:.4"':'')+' class="btn bo bsm">▶</button>';
+  html += '<span style="font-size:12px;color:var(--g400);margin-left:8px">หน้า '+_listPage+'/'+totalPages+'</span></div>';
+  el.innerHTML = html;
+}
+
+function _goPage(p){
+  _listPage = p;
+  renderListFromCache();
+  var body = document.getElementById('listBody');
+  if(body) body.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
 function setListTab(t){
   _listTab = t;
+  _listPage = 1;
   ['All','Open','Old','Done'].forEach(function(x){
     var el = document.getElementById('lt'+x);
     if(el){ el.style.background = (t===x.toLowerCase()?'var(--gd)':'#fff'); el.style.color = (t===x.toLowerCase()?'#fff':'var(--g400)'); }
@@ -2713,10 +2757,20 @@ function _buildListSummary(rows){
 
 function renderListFromCache(){
   var q = ((document.getElementById('fJob')||{}).value||'').toLowerCase();
+  var sf = _listStatusFilter || 'all';
+
   var rows = _listCache.filter(function(r){
+    // text search
     if(q && (r.JobNo||'').toLowerCase().indexOf(q)<0
           && (r.CustomerName||'').toLowerCase().indexOf(q)<0
-          && (r.RequesterName||'').toLowerCase().indexOf(q)<0) return false;
+          && (r.RequesterName||'').toLowerCase().indexOf(q)<0
+          && (r.ReqID||'').toLowerCase().indexOf(q)<0) return false;
+    // status filter
+    if(sf !== 'all'){
+      if(sf === 'PENDING' && r.StatusStock !== 'PENDING' && r.StatusStock !== '') return false;
+      else if(sf !== 'PENDING' && r.StatusStock !== sf && r.StatusApproval !== sf) return false;
+    }
+    // tab filter
     if(_listTab==='open') return r.StatusStock !== 'CLOSED';
     if(_listTab==='done') return r.StatusStock === 'CLOSED';
     if(_listTab==='old'){
@@ -2729,13 +2783,26 @@ function renderListFromCache(){
   var body = document.getElementById('listBody');
   if(!body) return;
   if(!rows.length){
+    body.innerHTML='<div class="tc tm" style="padding:32px">ไม่พบรายการที่ตรงกับเงื่อนไขค่ะ</div>';
+    _renderPagination(0);
+    return;
+  }
+
+  // Pagination
+  var total    = rows.length;
+  var totalPages = Math.ceil(total / _listPageSize);
+  if(_listPage > totalPages) _listPage = totalPages;
+  if(_listPage < 1) _listPage = 1;
+  var start = (_listPage-1) * _listPageSize;
+  var pageRows = rows.slice(start, start + _listPageSize);
+  if(!rows.length){
     body.innerHTML='<div class="tc tm" style="padding:32px">ไม่พบรายการในเดือนนี้ค่ะ</div>';
     return;
   }
 
   var now = Date.now();
   var grpOld=[], grpOpen=[], grpPending=[], grpClosed=[];
-  rows.forEach(function(r){
+  pageRows.forEach(function(r){
     var isClosed = r.StatusStock==='CLOSED';
     var isPending = r.StatusStock==='PENDING_CLEARANCE';
     var isOld = !isClosed && r.PickedUpAt && (now-new Date(r.PickedUpAt).getTime())>7*24*3600*1000;
@@ -2793,7 +2860,7 @@ function renderListFromCache(){
     + section('🟡 ยังไม่คืนของ', grpOpen)
     + section('✅ ปิดงานแล้ว', grpClosed)
     +'</tbody>'
-    +'<tfoot><tr><td colspan="8" style="padding:7px 10px;font-size:12px;color:var(--g400);border-top:1px solid var(--g200)">แสดง '+rows.length+' รายการ</td></tr></tfoot>'
+    +'<tfoot><tr><td colspan="8" style="padding:7px 10px;font-size:12px;color:var(--g400);border-top:1px solid var(--g200)">แสดง '+(start+1)+' - '+Math.min(start+_listPageSize, total)+' จาก '+total+' รายการ</td></tr></tfoot>'
     +'</table></div>';
 
   body.querySelectorAll('.del-req-btn').forEach(function(btn){
