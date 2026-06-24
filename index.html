@@ -279,7 +279,7 @@ textarea.fc{min-height:70px;resize:vertical;}
       <div style="height:1px;background:rgba(255,255,255,.15);margin:8px 12px"></div>
       <div class="ni" data-pg="stockcard" onclick="go('stockcard')"><span class="ic">🗂️</span> Stock Card</div>
       <div class="ni" data-pg="vehiclehistory" onclick="go('vehiclehistory')"><span class="ic">🚗</span> ประวัติรถ</div>
-      <div class="ni" data-pg="inspection" onclick="go('inspection')"><span class="ic">📋</span> ใบตรวจสภาพรถ <span id="insBadge" class="bdg hidden"></span></div>
+      <div class="ni" data-pg="inspection" onclick="go('inspection')"><span class="ic">📋</span> ใบตรวจสภาพรถ</div>
       <div class="ni" data-pg="stockcount" onclick="go('stockcount')" id="nStockCount"><span class="ic">🔢</span> นับสต็อก</div>
       <div class="ni hidden" id="nChangeReq" data-pg="changereq" onclick="go('changereq')"><span class="ic">🔑</span> คำขอแก้ไข<span class="badge" id="crBadge">0</span></div>
       <div class="ni" data-pg="sales" onclick="go('sales')"><span class="ic">🛒</span> ขาย/เบิกจ่ายภายใน</div>
@@ -1188,7 +1188,7 @@ textarea.fc{min-height:70px;resize:vertical;}
   <div class="msi" onclick="go('report');closeMore()"><span>📊</span> รายงาน</div>
   <div class="msi" onclick="go('stockcard');closeMore()"><span>🗂️</span> Stock Card</div>
   <div class="msi" onclick="go('vehiclehistory');closeMore()"><span>🚗</span> ประวัติรถ</div>
-  <div class="msi" onclick="go('inspection');closeMore()"><span>📋</span> ใบตรวจสภาพรถ <span id="insBadge2" class="bdg hidden"></span></div>
+  <div class="msi" onclick="go('inspection');closeMore()"><span>📋</span> ใบตรวจสภาพรถ</div>
   <div class="msi" onclick="go('stockcount');closeMore()"><span>🔢</span> นับสต็อก</div>
   <div class="msi" onclick="go('inventory');closeMore()"><span>📦</span> ยอดคงเหลือ</div>
   <div class="msi" onclick="go('print');closeMore()"><span>🖨️</span> พิมพ์ใบเบิก</div>
@@ -2378,51 +2378,45 @@ var _badgeCacheTTL = 15000; // cache 15 วิ
 var _badgeTimer = null;
 
 function refreshBadges(force){
+  // ถ้าไม่ force และ cache ยังใหม่ ไม่ต้องเรียก API
   if(!force && _badgeCache && (Date.now()-_badgeCacheTime)<_badgeCacheTTL) return;
+  // debounce — ถ้าเรียกถี่เกินไปรอก่อน
   if(_badgeTimer) clearTimeout(_badgeTimer);
-  _badgeTimer = setTimeout(_doRefreshBadges, force ? 100 : 1000);
+  _badgeTimer = setTimeout(function(){
+    _doRefreshBadges();
+  }, force ? 0 : 500);
 }
 
 function _doRefreshBadges(){
   if(!CU) return;
+  // กัน call ถี่เกินไป — ถ้าเพิ่งดึงไป < 3 วินาที ข้าม
   var now = Date.now();
-  if((now-_badgeLastFetch) < 5000) return;
+  if((now - _badgeLastFetch) < 3000) return;
   _badgeLastFetch = now;
   callAPI('getDashboard',{}).then(function(res){
     if(!res.success||!res.summary) return;
     var s=res.summary;
     var ab=document.getElementById('apBadge'), sb=document.getElementById('stBadge');
-    var apCount=0;
-    if(CU.role==='SUPERVISOR') apCount=s.pendingSupervisor||0;
-    else if(CU.role==='MANAGER'||CU.role==='ADMIN') apCount=(s.pendingSupervisor||0)+(s.pendingManager||0);
+    // Badge อนุมัติ: Supervisor เห็นเฉพาะ PENDING_SUPERVISOR, Manager เห็นทั้งคู่
+    var apCount = 0;
+    if(CU.role==='SUPERVISOR')        apCount = s.pendingSupervisor||0;
+    else if(CU.role==='MANAGER'||CU.role==='ADMIN')
+                                      apCount = (s.pendingSupervisor||0)+(s.pendingManager||0);
     if(ab){ ab.textContent=apCount; ab.style.display=apCount>0?'inline':'none'; }
     if(sb){ sb.textContent=s.stockPending||0; sb.style.display=(s.stockPending||0)>0?'inline':'none'; }
-    _badgeCache=s; _badgeCacheTime=Date.now();
+    _badgeCache = s; _badgeCacheTime = Date.now();
   });
-  // Badge ใบตรวจสภาพ (ช่าง/Supervisor เห็นงานรอรับ)
-  if(CU&&(CU.role==='TECHNICIAN'||CU.role==='SUPERVISOR')){
-    callAPI('getInspections',{}).then(function(res){
-      var open = (res.data||[]).filter(function(r){ return r.Status==='OPEN'; }).length;
-      ['insBadge','insBadge2'].forEach(function(id){
-        var b=document.getElementById(id);
-        if(b){ b.textContent=open; b.className=open>0?'bdg':'bdg hidden'; }
-      });
+  // Badge คำขอแก้ไข (เฉพาะ Manager)
+  if(CU&&(CU.role==='MANAGER'||CU.role==='ADMIN')){
+    var crMenu = document.getElementById('nChangeReq');
+    if(crMenu) crMenu.classList.remove('hidden');
+    callAPI('getChangeRequests',{status:'PENDING'}).then(function(res){
+      var cnt=(res.data||[]).length;
+      var crb=document.getElementById('crBadge');
+      if(crb){ crb.textContent=cnt; crb.style.display=cnt>0?'inline':'none'; }
     });
   }
-  if(CU&&(CU.role==='MANAGER'||CU.role==='ADMIN')){
-    var crMenu=document.getElementById('nChangeReq');
-    if(crMenu) crMenu.classList.remove('hidden');
-    if(force){
-      callAPI('getChangeRequests',{status:'PENDING'}).then(function(res){
-        var cnt=(res.data||[]).length;
-        var crb=document.getElementById('crBadge');
-        if(crb){ crb.textContent=cnt; crb.style.display=cnt>0?'inline':'none'; }
-      });
-    }
-  }
 }
-
-
 
 function loadDashboard(){
   callAPI('getDashboard',{}).then(function(res){
