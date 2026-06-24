@@ -2439,9 +2439,15 @@ function loadDashboard(){
     // Manager Tools
     var mgTools = document.getElementById('mgToolsBar');
     if(mgTools) mgTools.innerHTML = CU&&(CU.role==='MANAGER'||CU.role==='ADMIN')
-      ? '<div class="card" style="padding:10px 14px;margin-top:10px;background:#f9f9f9;display:flex;align-items:center;gap:10px">'
-          +'<span style="font-size:12px;color:var(--g400);flex:1">🔧 Manager Tools</span>'
-          +'<button class="btn bo bsm" style="font-size:12px" onclick="runMigration()">☁️ Migrate รูปเก่า → Drive</button>'
+      ? '<div class="card" style="padding:8px 14px;margin-top:10px;background:#f9f9f9">'
+          +'<div style="display:flex;align-items:center;gap:8px;cursor:pointer" onclick="var b=document.getElementById(\'mgToolsBody\');b.style.display=b.style.display===\'none\'?\'\':\'none\'">'
+            +'<span style="font-size:12px;color:var(--g400);flex:1">🔧 Manager Tools</span>'
+            +'<span style="font-size:11px;color:var(--g400)">▾</span>'
+          +'</div>'
+          +'<div id="mgToolsBody" style="display:none;margin-top:8px;padding-top:8px;border-top:0.5px solid var(--g200)">'
+            +'<button class="btn bo bsm" style="font-size:12px" onclick="runMigration()">☁️ Migrate รูปเก่า → Drive</button>'
+            +'<div style="font-size:11px;color:var(--g400);margin-top:6px">ทำครั้งเดียวเพื่อย้ายรูป base64 เก่าไป Google Drive</div>'
+          +'</div>'
         +'</div>'
       : '';
     var ab=document.getElementById('apBadge'), sb=document.getElementById('stBadge');
