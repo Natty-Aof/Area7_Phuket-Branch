@@ -891,12 +891,20 @@ textarea.fc{min-height:70px;resize:vertical;}
           </div>
           <button onclick="openNewInspection()" style="background:#fff;color:#004d40;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer">+ สร้างใบตรวจใหม่</button>
         </div>
-        <!-- Tabs -->
-        <div class="card" style="padding:10px 14px;margin-bottom:0;border-radius:var(--r) var(--r) 0 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <button id="insTabAll"    class="btn bgd bsm" onclick="switchInsTab('all')"    style="font-size:12px">📋 ทั้งหมด</button>
-          <button id="insTabSend"   class="btn bo bsm"  onclick="switchInsTab('send')"   style="font-size:12px">🚗 ส่งรถ</button>
-          <button id="insTabReturn" class="btn bo bsm"  onclick="switchInsTab('return')" style="font-size:12px">↩️ รับคืน</button>
-          <button id="insTabPeriod" class="btn bo bsm"  onclick="switchInsTab('period')" style="font-size:12px">🔄 Periodic</button>
+        <!-- Search by Serial No. -->
+        <div class="card" style="padding:12px 14px;margin-bottom:0;border-radius:var(--r) var(--r) 0 0">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <div style="position:relative;flex:1;min-width:200px">
+              <input class="fc" id="insSearchSerial" placeholder="🔍 ค้นหาจาก Serial No. รถ..." oninput="onInsSearch()" autocomplete="off" style="padding-right:32px">
+              <button onclick="clearInsSearch()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--g400);font-size:16px">✕</button>
+            </div>
+            <div style="display:flex;gap:4px">
+              <button id="insTabAll"    class="btn bgd bsm" onclick="switchInsTab('all')"    style="font-size:12px">📋 ทั้งหมด</button>
+              <button id="insTabSend"   class="btn bo bsm"  onclick="switchInsTab('send')"   style="font-size:12px">🚗 ส่งรถ</button>
+              <button id="insTabReturn" class="btn bo bsm"  onclick="switchInsTab('return')" style="font-size:12px">↩️ รับคืน</button>
+              <button id="insTabPeriod" class="btn bo bsm"  onclick="switchInsTab('period')" style="font-size:12px">🔄 Periodic</button>
+            </div>
+          </div>
         </div>
         <div id="insList" style="background:#fff;border-radius:0 0 var(--r) var(--r);border:0.5px solid var(--g200)"></div>
       </div>
@@ -3207,10 +3215,24 @@ function openStockAckModal(reqId){
 // ── DELETE FUNCTIONS (MANAGER only) ─────────────────────────
 function deleteReq(reqId){
   if(!CU||CU.role!=='MANAGER') return toast('ไม่มีสิทธิ์ค่ะ','error');
-  if(!confirm('ยืนยันลบใบเบิก '+reqId+' ? (ไม่สามารถกู้คืนได้)')) return;
+  if(!confirm('ยืนยันลบใบเบิก '+reqId+' ?')) return;
+
+  // ลบออกจาก cache ทันที → UI ตอบสนองเร็ว
+  _listCache = _listCache.filter(function(r){ return r.ReqID !== reqId; });
+  renderListFromCache();
+  toast('กำลังลบ...','info');
+
   callAPI('deleteRequisition',{id:reqId}).then(function(res){
-    toast(res.message, res.success?'success':'error');
-    if(res.success){ loadDashboard(); loadList(); }
+    if(res.success){
+      toast('ลบแล้วค่ะ ✅','success');
+      refreshBadges(true);
+      // refresh ใน background ไม่ block UI
+      setTimeout(function(){ loadList(); }, 1500);
+    } else {
+      // ถ้า error → เอากลับมาใน cache แล้ว re-render
+      toast(res.message||'ลบไม่สำเร็จค่ะ','error');
+      loadList();
+    }
   });
 }
 
@@ -6428,14 +6450,14 @@ function exportInventoryExcel(){
 
 // ── SALES ORDER DISPATCH ────────────────────────────────
 function deleteSOFromDetail(soNo){
-  if(!confirm('ลบรายการ '+soNo+' จริงไหมคะ? ไม่สามารถกู้คืนได้')) return;
+  if(!confirm('ลบรายการ '+soNo+' จริงไหมคะ?')) return;
+  // ปิด modal ทันที
+  var m = document.getElementById('soDetailViewModal');
+  if(m) m.remove();
+  toast('กำลังลบ...','info');
   callAPI('deleteSalesOrder',{soNo:soNo}).then(function(res){
     toast(res.success?'ลบแล้วค่ะ ✅':'❌ '+(res.message||'เกิดข้อผิดพลาด'), res.success?'success':'error');
-    if(res.success){
-      var m = document.getElementById('soDetailViewModal');
-      if(m) m.remove();
-      initSales();
-    }
+    if(res.success) setTimeout(function(){ initSales(); }, 500);
   });
 }
 
@@ -10178,6 +10200,16 @@ var INS_CHECKLIST_OPTION = [
   '40. บันไดข้าง','41.','42.','43.','44.','45.','46.','47.','48.',
 ];
 
+function onInsSearch(){
+  renderInsList();
+}
+
+function clearInsSearch(){
+  var el = document.getElementById('insSearchSerial');
+  if(el){ el.value=''; }
+  renderInsList();
+}
+
 function switchInsTab(tab){
   _insTab = tab;
   ['All','Send','Return','Period'].forEach(function(t){
@@ -10188,6 +10220,8 @@ function switchInsTab(tab){
 }
 
 function loadInspectionPage(){
+  var el = document.getElementById('insList');
+  if(el) el.innerHTML = '<div style="padding:32px;text-align:center;color:var(--g400)">⏳ กำลังโหลด...</div>';
   callAPI('getInspections',{}).then(function(res){
     _insCache = res.data||[];
     renderInsList();
@@ -10197,32 +10231,70 @@ function loadInspectionPage(){
 function renderInsList(){
   var el = document.getElementById('insList');
   if(!el) return;
+  var q = ((document.getElementById('insSearchSerial')||{}).value||'').trim().toLowerCase();
   var list = _insCache;
   if(_insTab==='send')   list = list.filter(function(r){ return r.InspType==='PRE_DELIVERY'; });
   if(_insTab==='return') list = list.filter(function(r){ return r.InspType==='POST_RETURN'; });
   if(_insTab==='period') list = list.filter(function(r){ return r.InspType==='PERIODIC'; });
+  if(q) list = list.filter(function(r){
+    return (r.SerialNo||'').toLowerCase().indexOf(q)>=0
+        || (r.CustomerName||'').toLowerCase().indexOf(q)>=0
+        || (r.FormNo||'').toLowerCase().indexOf(q)>=0
+        || (r.JobNo||'').toLowerCase().indexOf(q)>=0;
+  });
 
-  var typeLabel = {PRE_DELIVERY:'🚗 ส่งรถ',POST_RETURN:'↩️ รับคืน',PERIODIC:'🔄 Periodic'};
-  var statusLabel = {DRAFT:'✏️ ฉบับร่าง',COMPLETED:'✅ เสร็จสมบูรณ์'};
+  var typeLabel  = {PRE_DELIVERY:'🚗 ส่งรถ',POST_RETURN:'↩️ รับคืน',PERIODIC:'🔄 Periodic'};
+  var statusLabel= {DRAFT:'✏️ ฉบับร่าง',COMPLETED:'✅ เสร็จสมบูรณ์'};
 
   if(!list.length){
-    el.innerHTML='<div style="padding:40px;text-align:center;color:var(--g400)">ไม่มีรายการค่ะ<br><button class="btn bp" onclick="openNewInspection()" style="margin-top:12px;background:#004d40;border-color:#004d40">+ สร้างใบตรวจใหม่</button></div>';
+    el.innerHTML='<div style="padding:40px;text-align:center;color:var(--g400)">'
+      +(q?'ไม่พบ "'+q+'" ค่ะ':'ไม่มีรายการค่ะ')
+      +'<br><button class="btn bp" onclick="openNewInspection()" style="margin-top:12px;background:#004d40;border-color:#004d40">+ สร้างใบตรวจใหม่</button>'
+    +'</div>';
     return;
   }
 
-  el.innerHTML = list.map(function(r){
+  var html = '';
+  // ถ้าค้นหาด้วย Serial → แสดง summary ด้านบน
+  if(q){
+    var serials = {};
+    list.forEach(function(r){
+      var sn = r.SerialNo||'—';
+      if(!serials[sn]) serials[sn]={count:0,customer:r.CustomerName||'',model:r.Model||''};
+      serials[sn].count++;
+    });
+    Object.keys(serials).forEach(function(sn){
+      var s=serials[sn];
+      html += '<div style="background:#e0f2f1;padding:8px 14px;border-bottom:0.5px solid #b2dfdb;font-size:12px">'
+        +'<strong style="color:#004d40">🚗 '+sn+'</strong>'
+        +(s.model?' | '+s.model:'')+(s.customer?' | '+s.customer:'')
+        +' — <strong>'+s.count+'</strong> ใบตรวจ'
+      +'</div>';
+    });
+  }
+
+  html += list.map(function(r){
     return '<div style="padding:12px 16px;border-bottom:0.5px solid var(--g200);display:flex;align-items:center;gap:12px">'
       +'<div style="flex:1">'
-        +'<div style="font-weight:600;font-size:13px">'+r.FormNo+'</div>'
-        +'<div style="font-size:12px;color:var(--g400);margin-top:2px">'
-          +(typeLabel[r.InspType]||r.InspType)+' | '+r.SerialNo+' | '+(r.CustomerName||'—')+' | '+r.InspDate
+        +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+          +'<span style="font-weight:700;font-size:13px;color:#004d40">'+r.FormNo+'</span>'
+          +'<span style="font-size:11px;background:#e0f2f1;color:#004d40;padding:2px 8px;border-radius:8px">'+(typeLabel[r.InspType]||r.InspType)+'</span>'
+          +'<span style="font-size:11px;background:'+(r.Status==='COMPLETED'?'#e8f5e9':'#fff8e1')+';color:'+(r.Status==='COMPLETED'?'#1b5e20':'#e65100')+';padding:2px 8px;border-radius:8px">'+(statusLabel[r.Status]||r.Status)+'</span>'
+        +'</div>'
+        +'<div style="font-size:12px;color:var(--g400);margin-top:4px;display:flex;gap:12px;flex-wrap:wrap">'
+          +'<span>🚗 <strong style="color:#1a237e">'+r.SerialNo+'</strong></span>'
+          +(r.CarNo?'<span>เบอร์ '+r.CarNo+'</span>':'')
+          +(r.CustomerName?'<span>'+r.CustomerName+'</span>':'')
+          +'<span>📅 '+r.InspDate+'</span>'
         +'</div>'
       +'</div>'
-      +'<span style="font-size:11px;padding:2px 10px;border-radius:10px;background:'+(r.Status==='COMPLETED'?'#e8f5e9':'#fff8e1')+';color:'+(r.Status==='COMPLETED'?'#1b5e20':'#e65100')+'">'+(statusLabel[r.Status]||r.Status)+'</span>'
-      +'<button class="btn bo bsm" onclick="openInspView(\''+r.FormNo+'\')">' + 'ดู/ปริ้น</button>'
+      +'<button class="btn bo bsm" style="white-space:nowrap" onclick="openInspView(\''+r.FormNo+'\')">' + 'ดู/ปริ้น</button>'
     +'</div>';
   }).join('');
+
+  el.innerHTML = html + '<div style="padding:8px 14px;font-size:11px;color:var(--g400)">พบ '+list.length+' รายการ</div>';
 }
+
 
 // ── Inspection Photo Manager ─────────────────────────────────
 var _insPhotos = []; // [{label, data (base64), preview}]
