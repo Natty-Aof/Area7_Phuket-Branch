@@ -10395,13 +10395,15 @@ function renderInsList(){
         || (r.JobNo||'').toLowerCase().indexOf(q)>=0;
   });
 
-  var typeLabel  = {PRE_DELIVERY:'🚗 ส่งรถ',POST_RETURN:'↩️ รับคืน',PERIODIC:'🔄 Periodic'};
-  var statusLabel= {DRAFT:'✏️ ฉบับร่าง',COMPLETED:'✅ เสร็จสมบูรณ์'};
+  var typeLabel  = {PRE_DELIVERY:'🚗 ส่งรถ', POST_RETURN:'↩️ รับคืน', PERIODIC:'🔄 Periodic'};
+  var statusLabel= {DRAFT:'✏️ ฉบับร่าง', OPEN:'📢 รอช่างรับงาน', ASSIGNED:'👨‍🔧 ช่างรับงานแล้ว', COMPLETED:'✅ เสร็จสมบูรณ์'};
+  var statusColor= {DRAFT:'#fff8e1', OPEN:'#e3f2fd', ASSIGNED:'#f3e5f5', COMPLETED:'#e8f5e9'};
+  var statusText = {DRAFT:'#e65100', OPEN:'#1565c0', ASSIGNED:'#6a1599', COMPLETED:'#1b5e20'};
+  var isTech = CU && (CU.role==='TECHNICIAN'||CU.role==='SUPERVISOR');
 
   if(!list.length){
     el.innerHTML='<div style="padding:40px;text-align:center;color:var(--g400)">'
-      +(q?'ไม่พบ "'+q+'" ค่ะ':'ไม่มีรายการค่ะ')
-      +'<br><button class="btn bp" onclick="openNewInspection()" style="margin-top:12px;background:#004d40;border-color:#004d40">+ สร้างใบตรวจใหม่</button>'
+      +(q?'ไม่พบ "'+q+'" ค่ะ':'ไม่มีรายการค่ะ กด "+ สร้างใบตรวจใหม่" ด้านบนขวาค่ะ')
     +'</div>';
     return;
   }
@@ -10438,9 +10440,10 @@ function renderInsList(){
           +(r.CarNo?'<span>เบอร์ '+r.CarNo+'</span>':'')
           +(r.CustomerName?'<span>'+r.CustomerName+'</span>':'')
           +'<span>📅 '+r.InspDate+'</span>'
+          +(r.AssignedTo?'<span>👨‍🔧 '+(r.AssignedTo.split('@')[0])+'</span>':'')
         +'</div>'
       +'</div>'
-      +'<button class="btn bo bsm" style="white-space:nowrap" onclick="openInspView(\''+r.FormNo+'\')">' + 'ดู/ปริ้น</button>'
+      +'<div style="display:flex;gap:6px;flex-shrink:0">'        +(r.Status==='OPEN' && isTech          ? '<button class="btn bp bsm" style="background:#1565c0;border-color:#1565c0;white-space:nowrap" onclick="acceptInspection(\''+r.FormNo+'\')">✋ รับงาน</button>'          : '')        +(r.Status==='ASSIGNED' && r.AssignedTo===CU.email          ? '<button class="btn bp bsm" style="background:#004d40;border-color:#004d40;white-space:nowrap" onclick="openInspView(\''+r.FormNo+'\')">📝 กรอก/ปริ้น</button>'          : '<button class="btn bo bsm" style="white-space:nowrap" onclick="openInspView(\''+r.FormNo+'\')">ดู/ปริ้น</button>')      +'</div>'
     +'</div>';
   }).join('');
 
@@ -10812,7 +10815,8 @@ function saveInspection(asDraft){
     checkGeneral:JSON.stringify(general),
     checkProgram:JSON.stringify(program),
     checkOption: JSON.stringify(option),
-    status:      asDraft ? 'DRAFT' : 'COMPLETED',
+    status:      asDraft ? 'DRAFT' : 'OPEN',
+    assignedTo:  '',
     techSig:     CU&&CU.sig||'',
   };
 
@@ -10823,6 +10827,16 @@ function saveInspection(asDraft){
       loadInspectionPage();
       if(!asDraft) openInspView(res.formNo);
     }
+  });
+}
+
+function acceptInspection(formNo){
+  if(!CU) return;
+  if(!confirm('รับงานตรวจสภาพรถ '+formNo+' ใช่ไหมคะ?')) return;
+  toast('กำลังรับงาน...','info');
+  callAPI('updateInspection',{formNo:formNo, status:'ASSIGNED', assignedTo:CU.email}).then(function(res){
+    toast(res.success?'✅ รับงานแล้วค่ะ':'❌ '+(res.message||'เกิดข้อผิดพลาด'), res.success?'success':'error');
+    if(res.success) loadInspectionPage();
   });
 }
 
