@@ -242,6 +242,12 @@ textarea.fc{min-height:70px;resize:vertical;}
     <h2>ระบบใบเบิกอะไหล่</h2>
     <p>ระบบใบเบิกอะไหล่ - Phuket Branch</p>
     <div id="gBtn"></div>
+    <div style="margin-top:10px">
+      <button onclick="manualGoogleLogin()" style="display:flex;align-items:center;gap:8px;margin:0 auto;padding:10px 20px;border:1px solid #dadce0;border-radius:4px;background:#fff;cursor:pointer;font-size:14px;color:#3c4043">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:18px;height:18px">
+        <span>เข้าสู่ระบบด้วย Google</span>
+      </button>
+    </div>
     <div id="demoArea" class="hidden" style="display:none!important">
       <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:8px 12px;font-size:12px;color:#795548;margin-bottom:10px">⚠️ Demo Mode — เลือก Role เพื่อทดสอบ</div>
       <div class="demo-btns">
@@ -1820,9 +1826,27 @@ function _goWithoutPush(page){
   loadGSI();
 })();
 
-function showDemo(){
-  // Demo mode disabled — production system
+function manualGoogleLogin(){
+  if(typeof google === 'undefined' || !google.accounts){
+    toast('กำลังโหลด Google... กรุณารอสักครู่แล้วลองใหม่ค่ะ','info');
+    return;
+  }
+  var client = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: 'email profile openid',
+    callback: function(resp){
+      if(resp.error) return toast('Login ไม่สำเร็จ: '+resp.error,'error');
+      fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: {Authorization: 'Bearer '+resp.access_token}
+      }).then(function(r){ return r.json(); }).then(function(p){
+        onGSI({_raw: p});
+      });
+    }
+  });
+  client.requestAccessToken();
 }
+
+
 
 window._gsiReady = initGSI;
 window.onload = function(){
@@ -1846,15 +1870,22 @@ function initGSI(){
       callback: onGSI,
       auto_select: false,
       use_fedcm_for_prompt: true,
+      itp_support: true,
     });
     var btn = document.getElementById('gBtn');
-    if(btn) google.accounts.id.renderButton(btn, {theme:'outline',size:'large',text:'signin_with',locale:'th'});
-    google.accounts.id.prompt();
+    if(btn){
+      google.accounts.id.renderButton(btn, {
+        theme:'outline', size:'large', text:'signin_with', locale:'th',
+        width: 280,
+      });
+    }
+    // ลอง prompt — ถ้าไม่ได้ button จะยังใช้งานได้
+    try { google.accounts.id.prompt(); } catch(e){}
   } catch(e){ console.warn('initGSI error:', e); }
 }
 
 function onGSI(resp){
-  var p = parseJWT(resp.credential);
+  var p = resp._raw || parseJWT(resp.credential);
   var emailLower = (p.email||'').toLowerCase();
 
   // ── ตรวจ BG_EMAIL_ROLES ก่อน (hardcode สำหรับ admin สำคัญ) ──
