@@ -1835,15 +1835,20 @@ function manualGoogleLogin(){
     client_id: GOOGLE_CLIENT_ID,
     scope: 'email profile openid',
     callback: function(resp){
-      if(resp.error) return toast('Login ไม่สำเร็จ: '+resp.error,'error');
+      if(resp.error){ toast('Login ไม่สำเร็จ: '+resp.error,'error'); return; }
+      if(!resp.access_token){ toast('ไม่ได้รับ token ค่ะ','error'); return; }
       fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
         headers: {Authorization: 'Bearer '+resp.access_token}
-      }).then(function(r){ return r.json(); }).then(function(p){
+      })
+      .then(function(r){ return r.json(); })
+      .then(function(p){
+        if(!p.email){ toast('ไม่ได้รับ email ค่ะ','error'); return; }
         onGSI({_raw: p});
-      });
+      })
+      .catch(function(e){ toast('ดึงข้อมูล Google ไม่สำเร็จค่ะ','error'); });
     }
   });
-  client.requestAccessToken();
+  client.requestAccessToken({prompt:'select_account'});
 }
 
 
