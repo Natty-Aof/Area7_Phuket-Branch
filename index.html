@@ -2931,8 +2931,8 @@ function loadApproval(){
           +'</div>'
           +'<div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end;align-items:center">'
             +'<button class="btn bo bsm" onclick="viewSODetail(\''+o.SONo+'\')">ดูรายละเอียด</button>'
-            +'<button class="btn bd bsm" onclick="rejectSO(\''+o.SONo+'\')">✕ ไม่อนุมัติ</button>'
-            +'<button class="btn bp bsm" style="background:#6a1599;border-color:#6a1599" onclick="approveSO(\''+o.SONo+'\')">✅ อนุมัติ</button>'
+            +'<button class="btn bd bsm" onclick="rejectSO(\''+o.SONo+'\',true)">✕ ไม่อนุมัติ</button>'
+            +'<button class="btn bp bsm" style="background:#6a1599;border-color:#6a1599" onclick="approveSO(\''+o.SONo+'\',true)">✅ อนุมัติ</button>'
           +'</div>'
         +'</div>';
       }).join('');
@@ -6461,20 +6461,30 @@ function deleteSOFromDetail(soNo){
   });
 }
 
-function approveSO(soNo){
+function approveSO(soNo, fromApproval){
   if(!confirm('อนุมัติรายการ '+soNo+' ให้ Stock จัดของได้เลยไหมคะ?')) return;
+  toast('กำลังอนุมัติ...','info');
   callAPI('approveSalesOrder',{soNo:soNo, approvedBy:CU&&CU.email}).then(function(res){
     toast(res.success?'✅ อนุมัติแล้ว แจ้ง Stock ทางอีเมลแล้วค่ะ':'❌ '+(res.message||'เกิดข้อผิดพลาด'), res.success?'success':'error');
-    if(res.success){ switchSOTab('approved'); }
+    if(res.success){
+      refreshBadges(true);
+      if(fromApproval) setTimeout(function(){ loadApproval(); }, 500);
+      else switchSOTab('approved');
+    }
   });
 }
 
-function rejectSO(soNo){
+function rejectSO(soNo, fromApproval){
   var note = prompt('เหตุผลที่ไม่อนุมัติ:','');
   if(note===null) return;
+  toast('กำลังดำเนินการ...','info');
   callAPI('updateSalesOrder',{soNo:soNo, status:'REJECTED', rejectedBy:CU&&CU.email, note:note}).then(function(res){
     toast(res.success?'ปฏิเสธแล้วค่ะ':'❌ '+(res.message||'เกิดข้อผิดพลาด'), res.success?'info':'error');
-    if(res.success){ initSales(); }
+    if(res.success){
+      refreshBadges(true);
+      if(fromApproval) setTimeout(function(){ loadApproval(); }, 500);
+      else switchSOTab('pending');
+    }
   });
 }
 
