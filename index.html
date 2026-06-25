@@ -10535,6 +10535,7 @@ function renderInsList(){
   var statusColor= {DRAFT:'#fff8e1', OPEN:'#e3f2fd', ASSIGNED:'#f3e5f5', COMPLETED:'#e8f5e9'};
   var statusText = {DRAFT:'#e65100', OPEN:'#1565c0', ASSIGNED:'#6a1599', COMPLETED:'#1b5e20'};
   var isTech = CU && (CU.role==='TECHNICIAN'||CU.role==='SUPERVISOR');
+  var canDelete = CU && (CU.role==='MANAGER'||CU.role==='ADMIN'||CU.role==='SUPERVISOR');
 
   if(!list.length){
     el.innerHTML='<div style="padding:40px;text-align:center;color:var(--g400)">'
@@ -10578,7 +10579,7 @@ function renderInsList(){
           +(r.AssignedTo?'<span>👨‍🔧 '+(r.AssignedTo.split('@')[0])+'</span>':'')
         +'</div>'
       +'</div>'
-      +'<div style="display:flex;gap:6px;flex-shrink:0">'        +(r.Status==='OPEN' && isTech          ? '<button class="btn bp bsm" style="background:#1565c0;border-color:#1565c0;white-space:nowrap" onclick="acceptInspection(\''+r.FormNo+'\')">✋ รับงาน</button>'          : '')        +(r.Status==='ASSIGNED' && r.AssignedTo===CU.email          ? '<button class="btn bp bsm" style="background:#004d40;border-color:#004d40;white-space:nowrap" onclick="openInspView(\''+r.FormNo+'\')">📝 กรอก/ปริ้น</button>'          : '<button class="btn bo bsm" style="white-space:nowrap" onclick="openInspView(\''+r.FormNo+'\')">ดู/ปริ้น</button>')      +'</div>'
+      +'<div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">'        +(r.Status==='OPEN' && isTech          ? '<button class="btn bp bsm" style="background:#1565c0;border-color:#1565c0;white-space:nowrap" onclick="acceptInspection(\''+r.FormNo+'\')">✋ รับงาน</button>'          : '')        +(r.Status==='ASSIGNED' && r.AssignedTo===CU.email          ? '<button class="btn bp bsm" style="background:#004d40;border-color:#004d40;white-space:nowrap" onclick="openInspView(\''+r.FormNo+'\')">📝 กรอก/ปริ้น</button>'          : '<button class="btn bo bsm" style="white-space:nowrap" onclick="openInspView(\''+r.FormNo+'\')">ดู/ปริ้น</button>')        +(canDelete          ? '<button class="btn bo bsm" style="white-space:nowrap" onclick="editInspection(\''+r.FormNo+'\')">✏️ แก้ไข</button>'            +'<button class="btn bd bsm" style="white-space:nowrap" onclick="deleteInspection(\''+r.FormNo+'\')">🗑️ ลบ</button>'          : '')      +'</div>'
     +'</div>';
   }).join('');
 
@@ -10817,6 +10818,9 @@ function openNewInspection(){
     +'</tbody></table></div>'
 
     // หมายเหตุ
+    // ── ระยะสัญญาเช่า ──
+    +'<div style="margin:14px 0 0;padding:12px 14px;background:#f3e5f5;border-radius:8px;border:0.5px solid #ce93d8">'    +'<div style="font-size:12px;font-weight:700;color:#6a1b9a;margin-bottom:10px">📅 ระยะสัญญาเช่า (เฉพาะกรณีเช่า)</div>'    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'      +'<div><label style="font-size:11px;color:var(--g400);display:block;margin-bottom:4px">วันเริ่มสัญญา</label>'        +'<input class="fc" type="date" id="insLeaseStart" oninput="calcLeaseDuration()"></div>'      +'<div><label style="font-size:11px;color:var(--g400);display:block;margin-bottom:4px">วันสิ้นสุดสัญญา</label>'        +'<input class="fc" type="date" id="insLeaseEnd" oninput="calcLeaseDuration()"></div>'    +'</div>'    +'<div style="margin-top:8px;display:flex;align-items:center;gap:10px">'      +'<label style="font-size:11px;color:var(--g400)">ระยะสัญญา</label>'      +'<input class="fc" id="insLeaseDuration" placeholder="คำนวณอัตโนมัติ" style="flex:1;background:#f8f8f8" readonly>'      +'<span style="font-size:12px;color:var(--g400)">เดือน</span>'    +'</div>'    +'</div>'
+
     // ── ถ่ายรูปรถ + แบตเตอรี่ (รวม ไม่เกิน 10 รูป) ──
     +'<div style="margin:14px 0 0;padding:12px 14px;background:#f9f9f9;border-radius:8px;border:0.5px solid var(--g200)">'
     +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
@@ -10932,6 +10936,9 @@ function saveInspection(asDraft){
     location:    (document.getElementById('insLocation')||{}).value,
     jobNo:       (document.getElementById('insJobNo')||{}).value,
     inspDate:    (document.getElementById('insDate')||{}).value,
+    leaseStart:  (document.getElementById('insLeaseStart')||{}).value,
+    leaseEnd:    (document.getElementById('insLeaseEnd')||{}).value,
+    leaseDuration: (document.getElementById('insLeaseDuration')||{}).value,
     usage:       Array.from(document.querySelectorAll('input[name="insUsage"]:checked')).map(function(c){return c.value;}).join(','),
     motorNo:     (document.getElementById('insMotor')||{}).value,
     controllerNo:(document.getElementById('insController')||{}).value,
@@ -10962,6 +10969,62 @@ function saveInspection(asDraft){
       loadInspectionPage();
       if(!asDraft) openInspView(res.formNo);
     }
+  });
+}
+
+function calcLeaseDuration(){
+  var s = (document.getElementById('insLeaseStart')||{}).value;
+  var e = (document.getElementById('insLeaseEnd')||{}).value;
+  var d = document.getElementById('insLeaseDuration');
+  if(!d) return;
+  if(s && e){
+    var ms = new Date(e) - new Date(s);
+    if(ms > 0){
+      var months = Math.round(ms / (1000*60*60*24*30.44));
+      d.value = months;
+      return;
+    }
+  }
+  d.value = '';
+}
+
+function deleteInspection(formNo){
+  if(!confirm('ลบใบตรวจ '+formNo+' จริงไหมคะ?')) return;
+  toast('กำลังลบ...','info');
+  callAPI('deleteInspection',{formNo:formNo}).then(function(res){
+    toast(res.success?'✅ ลบแล้วค่ะ':'❌ '+(res.message||'เกิดข้อผิดพลาด'), res.success?'success':'error');
+    if(res.success) loadInspectionPage();
+  });
+}
+
+function editInspection(formNo){
+  callAPI('getInspectionDetail',{formNo:formNo}).then(function(res){
+    if(!res.success||!res.data) return toast('ไม่พบข้อมูลค่ะ','error');
+    var r = res.data;
+    // เปิดฟอร์มใหม่แล้วกรอกข้อมูลเดิม
+    openNewInspection();
+    setTimeout(function(){
+      // รอ modal เปิดแล้วค่อย fill
+      var fields = {
+        insSerial: r.SerialNo, insCarNo: r.CarNo, insModel: r.Model,
+        insColor: r.Color, insCustName: r.CustomerName, insLocation: r.Location,
+        insJobNo: r.JobNo, insDate: r.InspDate ? r.InspDate.substring(0,10) : '',
+        insMotorNo: r.MotorNo, insControllerNo: r.ControllerNo,
+        insOnboardNo: r.OnboardNo, insSolenoidNo: r.SolenoidNo,
+        insChargerNo: r.ChargerNo, insTransaxleNo: r.TransaxleNo,
+        insBatBrand: r.BatBrand, insBatCode: r.BatCode,
+        insBatTotal: r.BatTotal, insBatAsset: r.BatAsset, insChgAsset: r.ChgAsset,
+        insRemark: r.Remark,
+        insLeaseStart: r.LeaseStart||'', insLeaseEnd: r.LeaseEnd||'',
+        insLeaseDuration: r.LeaseDuration||'',
+      };
+      Object.keys(fields).forEach(function(id){
+        var el = document.getElementById(id);
+        if(el) el.value = fields[id]||'';
+      });
+      // เก็บ formNo เดิมไว้เพื่อ update แทน create
+      window._editingFormNo = formNo;
+    }, 500);
   });
 }
 
