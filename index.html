@@ -10721,19 +10721,31 @@ function openNewInspection(){
 
     // Serial อุปกรณ์ไฟฟ้า
     var _canEditSerial = CU && (CU.role==='MANAGER'||CU.role==='ADMIN'||CU.role==='SUPERVISOR');
-    var _sl = _canEditSerial ? '' : ' readonly';
-    var _slStyle = _canEditSerial ? '' : ' style="background:#f5f5f5;color:#888"';
-    var _slNote = _canEditSerial ? '' : '<div style="font-size:11px;color:#e65100;margin-bottom:6px;padding:4px 8px;background:#fff3e0;border-radius:6px">⚠️ เฉพาะ Supervisor/Manager เท่านั้นที่แก้ไข Serial ได้</div>';
+    // ช่างกรอก Serial ได้ถ้า Admin เปิดให้ หรือมี flag จาก record เดิม
+    var _allowTechSerial = (document.getElementById('insAllowTechSerial') && document.getElementById('insAllowTechSerial').checked)
+                        || (window._editingAllowTech === 'YES');
+    var _canFillSerial = _canEditSerial || _allowTechSerial;
+    var _sl = _canFillSerial ? '' : ' readonly';
+    var _slStyle = _canFillSerial ? '' : ' style="background:#f5f5f5;color:#888"';
+    var _slNote = _canFillSerial ? '' : '<div id="serialLockNote" style="font-size:11px;color:#e65100;margin-bottom:6px;padding:4px 8px;background:#fff3e0;border-radius:6px">⚠️ เฉพาะ Supervisor/Manager เท่านั้นที่แก้ไข Serial ได้</div>';
+    // toggle สำหรับ Admin/Supervisor เปิดให้ช่างกรอก
+    var _serialToggle = _canEditSerial
+      ? '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:6px 10px;background:#e8f5e9;border-radius:6px">'
+         +'<input type="checkbox" id="insAllowTechSerial" onchange="rebuildSerialSection()">'
+         +'<label for="insAllowTechSerial" style="font-size:12px;color:#2e7d32;cursor:pointer">✅ อนุญาตให้ช่างกรอก Serial อะไหล่ได้</label>'
+         +'</div>'
+      : '';
     +'<div style="background:#e8eaf6;border-radius:8px;padding:12px 14px;margin:10px 0">'
     +'<div style="font-size:12px;font-weight:700;color:#1a237e;margin-bottom:6px">⚡ SERIAL NO. FOR ELECTRICAL PART</div>'
+    +_serialToggle
     +_slNote
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
-      +'<div class="fg"><label class="fl">DC MOTOR NO.</label><input class="fc" id="insMotor" placeholder="Serial No."'+_sl+_slStyle+'></div>'
-      +'<div class="fg"><label class="fl">CONTROLLER NO.</label><input class="fc" id="insController" placeholder="Serial No."'+_sl+_slStyle+'></div>'
-      +'<div class="fg"><label class="fl">ONBOARD NO.</label><input class="fc" id="insOnboard" placeholder="Serial No."'+_sl+_slStyle+'></div>'
-      +'<div class="fg"><label class="fl">SOLENOID NO.</label><input class="fc" id="insSolenoid" placeholder="Serial No."'+_sl+_slStyle+'></div>'
-      +'<div class="fg"><label class="fl">CHARGER NO.</label><input class="fc" id="insCharger" placeholder="Serial No."'+_sl+_slStyle+'></div>'
-      +'<div class="fg"><label class="fl">TRANSAXLE NO.</label><input class="fc" id="insTransaxle" placeholder="Serial No."'+_sl+_slStyle+'></div>'
+      +'<div class="fg"><label class="fl">DC MOTOR NO.</label><input class="fc" id="insMotor" class="fc serial-lockable" placeholder="Serial No."'+_sl+_slStyle+'></div>'
+      +'<div class="fg"><label class="fl">CONTROLLER NO.</label><input class="fc" id="insController" class="fc serial-lockable" placeholder="Serial No."'+_sl+_slStyle+'></div>'
+      +'<div class="fg"><label class="fl">ONBOARD NO.</label><input class="fc" id="insOnboard" class="fc serial-lockable" placeholder="Serial No."'+_sl+_slStyle+'></div>'
+      +'<div class="fg"><label class="fl">SOLENOID NO.</label><input class="fc" id="insSolenoid" class="fc serial-lockable" placeholder="Serial No."'+_sl+_slStyle+'></div>'
+      +'<div class="fg"><label class="fl">CHARGER NO.</label><input class="fc" id="insCharger" class="fc serial-lockable" placeholder="Serial No."'+_sl+_slStyle+'></div>'
+      +'<div class="fg"><label class="fl">TRANSAXLE NO.</label><input class="fc" id="insTransaxle" class="fc serial-lockable" placeholder="Serial No."'+_sl+_slStyle+'></div>'
     +'</div>'
     // Battery
     +'<div style="margin-top:10px;padding-top:10px;border-top:0.5px solid #c5cae9">'
@@ -10752,8 +10764,8 @@ function openNewInspection(){
     +'</div>'
     +'</div>'
     +'<div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:10px">'
-      +'<div class="fg"><label class="fl">ทะเบียนทรัพย์สินแบตเตอรี่</label><input class="fc" id="insBatAsset" placeholder="รหัสทรัพย์สิน"'+_sl+_slStyle+'></div>'
-      +'<div class="fg"><label class="fl">ทะเบียนทรัพย์สินชาร์เจอร์</label><input class="fc" id="insChgAsset" placeholder="รหัสทรัพย์สิน"'+_sl+_slStyle+'></div>'
+      +'<div class="fg"><label class="fl">ทะเบียนทรัพย์สินแบตเตอรี่</label><input class="fc" id="insBatAsset" class="fc serial-lockable" placeholder="รหัสทรัพย์สิน"'+_sl+_slStyle+'></div>'
+      +'<div class="fg"><label class="fl">ทะเบียนทรัพย์สินชาร์เจอร์</label><input class="fc" id="insChgAsset" class="fc serial-lockable" placeholder="รหัสทรัพย์สิน"'+_sl+_slStyle+'></div>'
     +'</div>'
     +'</div>'
 
@@ -10987,6 +10999,7 @@ function saveInspection(asDraft){
     checkOption: JSON.stringify(option),
     status:      asDraft ? 'DRAFT' : 'OPEN',
     assignedTo:  '',
+    allowTechSerial: document.getElementById('insAllowTechSerial') && document.getElementById('insAllowTechSerial').checked ? 'YES' : 'NO',
     techSig:     CU&&CU.sig||'',
   };
 
@@ -11003,6 +11016,25 @@ function saveInspection(asDraft){
       if(!asDraft && res.formNo) openInspView(res.formNo);
     }
   });
+}
+
+function rebuildSerialSection(){
+  // re-render แค่ส่วน serial ไม่ต้อง rebuild ทั้งฟอร์ม
+  var allowed = document.getElementById('insAllowTechSerial') && document.getElementById('insAllowTechSerial').checked;
+  var note = document.getElementById('serialLockNote');
+  var inputs = document.querySelectorAll('.serial-lockable');
+  inputs.forEach(function(el){
+    if(allowed){
+      el.removeAttribute('readonly');
+      el.style.background='';
+      el.style.color='';
+    } else {
+      el.setAttribute('readonly','');
+      el.style.background='#f5f5f5';
+      el.style.color='#888';
+    }
+  });
+  if(note) note.style.display = allowed ? 'none' : '';
 }
 
 function calcLeaseDuration(){
@@ -11057,6 +11089,7 @@ function editInspection(formNo){
       });
       // เก็บ formNo เดิมไว้เพื่อ update แทน create
       window._editingFormNo = formNo;
+      window._editingAllowTech = r.AllowTechSerial||'NO';
     }, 500);
   });
 }
