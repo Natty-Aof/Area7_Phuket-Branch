@@ -2434,20 +2434,30 @@ function _doRefreshBadges(){
     var s=res.summary;
     var ab=document.getElementById('apBadge'), sb=document.getElementById('stBadge');
     var apCount=0;
-    if(CU.role==='SUPERVISOR') apCount=s.pendingSupervisor||0;
-    else if(CU.role==='MANAGER'||CU.role==='ADMIN') apCount=(s.pendingSupervisor||0)+(s.pendingManager||0);
+    if(CU.role==='SUPERVISOR')        apCount = (s.pendingSupervisor||0);
+    else if(CU.role==='MANAGER'||CU.role==='ADMIN')
+                                      apCount = (s.pendingSupervisor||0)+(s.pendingManager||0);
     if(ab){ ab.textContent=apCount; ab.style.display=apCount>0?'inline':'none'; }
     if(sb){ sb.textContent=s.stockPending||0; sb.style.display=(s.stockPending||0)>0?'inline':'none'; }
     _badgeCache=s; _badgeCacheTime=Date.now();
   });
-  // Badge ใบตรวจสภาพ (ช่าง/Supervisor เห็นงานรอรับ)
+  // Badge ใบตรวจสภาพ
   if(CU&&(CU.role==='TECHNICIAN'||CU.role==='SUPERVISOR')){
     callAPI('getInspections',{}).then(function(res){
-      var open = (res.data||[]).filter(function(r){ return r.Status==='OPEN'; }).length;
+      var list = res.data||[];
+      var openCount = list.filter(function(r){ return r.Status==='OPEN'; }).length;
+      var myCount   = list.filter(function(r){ return r.Status==='ASSIGNED' && r.AssignedTo===CU.email; }).length;
+      var count = CU.role==='SUPERVISOR' ? openCount : myCount;
       ['insBadge','insBadge2'].forEach(function(id){
         var b=document.getElementById(id);
-        if(b){ b.textContent=open; b.className=open>0?'bdg':'bdg hidden'; }
+        if(b){ b.textContent=count; b.className=count>0?'bdg':'bdg hidden'; }
       });
+      // เพิ่มตัวเลข OPEN ไปที่ badge รออนุมัติสำหรับ Supervisor
+      if(CU.role==='SUPERVISOR' && openCount>0 && ab){
+        var total = (parseInt(ab.textContent)||0) + openCount;
+        ab.textContent = total;
+        ab.style.display = 'inline';
+      }
     });
   }
   if(CU&&(CU.role==='MANAGER'||CU.role==='ADMIN')){
@@ -10887,7 +10897,46 @@ function openNewInspection(){
       var el = document.getElementById(id);
       if(el) el.value = today;
     });
-  },50);
+
+    // ถ้ากำลังแก้ไขใบเดิม — fill ข้อมูลเดิม
+    if(window._editingData){
+      var r = window._editingData;
+      var fieldMap = {
+        insSerial:r.SerialNo, insCarNo:r.CarNo, insModel:r.Model,
+        insColor:r.Color, insCustomer:r.CustomerName, insLocation:r.Location,
+        insJobNo:r.JobNo, insDate:r.InspDate?(r.InspDate.substring(0,10)):'',
+        insMotor:r.MotorNo, insController:r.ControllerNo,
+        insOnboard:r.OnboardNo, insSolenoid:r.SolenoidNo,
+        insCharger:r.ChargerNo, insTransaxle:r.TransaxleNo,
+        insBatBrand:r.BatBrand, insBatCode:r.BatCode,
+        insBatTotal:r.BatTotal, insBatAsset:r.BatAsset, insChgAsset:r.ChgAsset,
+        insRemark:r.Remark,
+        insLeaseStart:r.LeaseStart||'', insLeaseEnd:r.LeaseEnd||'',
+        insLeaseDuration:r.LeaseDuration||'',
+      };
+      Object.keys(fieldMap).forEach(function(id){
+        var el = document.getElementById(id);
+        if(el) el.value = fieldMap[id]||'';
+      });
+      // Usage pills
+      if(r.Usage){
+        r.Usage.split(',').forEach(function(u){
+          var btn = document.querySelector('[data-usage="'+u.trim()+'"]');
+          if(btn) btn.click();
+        });
+      }
+      // InspType
+      if(r.InspType){
+        var radio = document.querySelector('input[name="insType"][value="'+r.InspType+'"]');
+        if(radio) radio.checked = true;
+      }
+      // AllowTechSerial toggle
+      var chk = document.getElementById('insAllowTechSerial');
+      if(chk) chk.checked = r.AllowTechSerial==='YES';
+
+      window._editingData = null; // clear หลัง fill
+    }
+  },100);
   } catch(err){ toast('เกิดข้อผิดพลาด: '+err.message,'error'); console.error(err); }
 }
 
@@ -11066,31 +11115,10 @@ function editInspection(formNo){
   callAPI('getInspectionDetail',{formNo:formNo}).then(function(res){
     if(!res.success||!res.data) return toast('ไม่พบข้อมูลค่ะ','error');
     var r = res.data;
-    // เปิดฟอร์มใหม่แล้วกรอกข้อมูลเดิม
+    window._editingFormNo = formNo;
+    window._editingAllowTech = r.AllowTechSerial||'NO';
+    window._editingData = r; // เก็บไว้ fill หลัง form render
     openNewInspection();
-    setTimeout(function(){
-      // รอ modal เปิดแล้วค่อย fill
-      var fields = {
-        insSerial: r.SerialNo, insCarNo: r.CarNo, insModel: r.Model,
-        insColor: r.Color, insCustName: r.CustomerName, insLocation: r.Location,
-        insJobNo: r.JobNo, insDate: r.InspDate ? r.InspDate.substring(0,10) : '',
-        insMotorNo: r.MotorNo, insControllerNo: r.ControllerNo,
-        insOnboardNo: r.OnboardNo, insSolenoidNo: r.SolenoidNo,
-        insChargerNo: r.ChargerNo, insTransaxleNo: r.TransaxleNo,
-        insBatBrand: r.BatBrand, insBatCode: r.BatCode,
-        insBatTotal: r.BatTotal, insBatAsset: r.BatAsset, insChgAsset: r.ChgAsset,
-        insRemark: r.Remark,
-        insLeaseStart: r.LeaseStart||'', insLeaseEnd: r.LeaseEnd||'',
-        insLeaseDuration: r.LeaseDuration||'',
-      };
-      Object.keys(fields).forEach(function(id){
-        var el = document.getElementById(id);
-        if(el) el.value = fields[id]||'';
-      });
-      // เก็บ formNo เดิมไว้เพื่อ update แทน create
-      window._editingFormNo = formNo;
-      window._editingAllowTech = r.AllowTechSerial||'NO';
-    }, 500);
   });
 }
 
