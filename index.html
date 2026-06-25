@@ -10745,8 +10745,26 @@ function openNewInspection(){
          +'<label for="insAllowTechSerial" style="font-size:12px;color:#2e7d32;cursor:pointer">✅ อนุญาตให้ช่างกรอก Serial อะไหล่ได้</label>'
          +'</div>'
       : '';
-    +'<div style="background:#e8eaf6;border-radius:8px;padding:12px 14px;margin:10px 0">'
-    +'<div style="font-size:12px;font-weight:700;color:#1a237e;margin-bottom:6px">⚡ SERIAL NO. FOR ELECTRICAL PART</div>'
+    // สร้าง checklist rows ล่วงหน้า
+    var _checklistRows = (function(){
+      var maxRows = Math.max(INS_CHECKLIST_GENERAL.length, INS_CHECKLIST_PROGRAM.length);
+      var rows = '';
+      for(var i=0;i<maxRows;i++){
+        var g = INS_CHECKLIST_GENERAL[i]||'';
+        var p = INS_CHECKLIST_PROGRAM[i]||'';
+        rows += '<tr style="border-bottom:0.5px solid var(--g200);background:'+(i%2===0?'#fff':'#f8f9fa')+'">'
+          +'<td style="padding:5px 8px">'+g+'</td>'
+          +'<td style="text-align:center"><input type="radio" name="insG'+i+'" value="ok"></td>'
+          +'<td style="text-align:center"><input type="radio" name="insG'+i+'" value="ng"></td>'
+          +'<td style="padding:5px 8px;font-size:10.5px">'+p+'</td>'
+          +'<td style="text-align:center">'+(p?'<input type="radio" name="insP'+i+'" value="ok">':'')+'</td>'
+          +'<td style="text-align:center">'+(p?'<input type="radio" name="insP'+i+'" value="ng">':'')+'</td>'
+        +'</tr>';
+      }
+      return rows;
+    })();
+    body.innerHTML +=
+    '<div style="background:#e8eaf6;border-radius:8px;padding:12px 14px;margin:10px 0">'
     +_serialToggle
     +_slNote
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
@@ -10791,23 +10809,7 @@ function openNewInspection(){
       +'<th style="padding:6px 8px;text-align:center;width:7%">ปกติ</th>'
       +'<th style="padding:6px 8px;text-align:center;width:8%">ไม่ปกติ</th>'
     +'</tr></thead><tbody>'
-    +function(){
-      var maxRows = Math.max(INS_CHECKLIST_GENERAL.length, INS_CHECKLIST_PROGRAM.length);
-      var rows = '';
-      for(var i=0;i<maxRows;i++){
-        var g = INS_CHECKLIST_GENERAL[i]||'';
-        var p = INS_CHECKLIST_PROGRAM[i]||'';
-        rows += '<tr style="border-bottom:0.5px solid var(--g200);background:'+(i%2===0?'#fff':'#f8f9fa')+'">'
-          +'<td style="padding:5px 8px">'+g+'</td>'
-          +'<td style="text-align:center"><input type="radio" name="insG'+i+'" value="ok"></td>'
-          +'<td style="text-align:center"><input type="radio" name="insG'+i+'" value="ng"></td>'
-          +'<td style="padding:5px 8px;font-size:10.5px">'+p+'</td>'
-          +'<td style="text-align:center">'+(p?'<input type="radio" name="insP'+i+'" value="ok">':'')+'</td>'
-          +'<td style="text-align:center">'+(p?'<input type="radio" name="insP'+i+'" value="ng">':'')+'</td>'
-        +'</tr>';
-      }
-      return rows;
-    }()
+    +_checklistRows
     +'</tbody></table></div>'
 
     // Option Checklist
