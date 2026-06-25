@@ -10716,15 +10716,20 @@ function openNewInspection(){
     +'</div></div>'
 
     // Serial อุปกรณ์ไฟฟ้า
+    var _canEditSerial = CU && (CU.role==='MANAGER'||CU.role==='ADMIN'||CU.role==='SUPERVISOR');
+    var _sl = _canEditSerial ? '' : ' readonly';
+    var _slStyle = _canEditSerial ? '' : ' style="background:#f5f5f5;color:#888"';
+    var _slNote = _canEditSerial ? '' : '<div style="font-size:11px;color:#e65100;margin-bottom:6px;padding:4px 8px;background:#fff3e0;border-radius:6px">⚠️ เฉพาะ Supervisor/Manager เท่านั้นที่แก้ไข Serial ได้</div>';
     +'<div style="background:#e8eaf6;border-radius:8px;padding:12px 14px;margin:10px 0">'
-    +'<div style="font-size:12px;font-weight:700;color:#1a237e;margin-bottom:10px">⚡ SERIAL NO. FOR ELECTRICAL PART</div>'
+    +'<div style="font-size:12px;font-weight:700;color:#1a237e;margin-bottom:6px">⚡ SERIAL NO. FOR ELECTRICAL PART</div>'
+    +_slNote
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
-      +'<div class="fg"><label class="fl">DC MOTOR NO.</label><input class="fc" id="insMotor" placeholder="Serial No."></div>'
-      +'<div class="fg"><label class="fl">CONTROLLER NO.</label><input class="fc" id="insController" placeholder="Serial No."></div>'
-      +'<div class="fg"><label class="fl">ONBOARD NO.</label><input class="fc" id="insOnboard" placeholder="Serial No."></div>'
-      +'<div class="fg"><label class="fl">SOLENOID NO.</label><input class="fc" id="insSolenoid" placeholder="Serial No."></div>'
-      +'<div class="fg"><label class="fl">CHARGER NO.</label><input class="fc" id="insCharger" placeholder="Serial No."></div>'
-      +'<div class="fg"><label class="fl">TRANSAXLE NO.</label><input class="fc" id="insTransaxle" placeholder="Serial No."></div>'
+      +'<div class="fg"><label class="fl">DC MOTOR NO.</label><input class="fc" id="insMotor" placeholder="Serial No."'+_sl+_slStyle+'></div>'
+      +'<div class="fg"><label class="fl">CONTROLLER NO.</label><input class="fc" id="insController" placeholder="Serial No."'+_sl+_slStyle+'></div>'
+      +'<div class="fg"><label class="fl">ONBOARD NO.</label><input class="fc" id="insOnboard" placeholder="Serial No."'+_sl+_slStyle+'></div>'
+      +'<div class="fg"><label class="fl">SOLENOID NO.</label><input class="fc" id="insSolenoid" placeholder="Serial No."'+_sl+_slStyle+'></div>'
+      +'<div class="fg"><label class="fl">CHARGER NO.</label><input class="fc" id="insCharger" placeholder="Serial No."'+_sl+_slStyle+'></div>'
+      +'<div class="fg"><label class="fl">TRANSAXLE NO.</label><input class="fc" id="insTransaxle" placeholder="Serial No."'+_sl+_slStyle+'></div>'
     +'</div>'
     // Battery
     +'<div style="margin-top:10px;padding-top:10px;border-top:0.5px solid #c5cae9">'
@@ -10962,12 +10967,17 @@ function saveInspection(asDraft){
     techSig:     CU&&CU.sig||'',
   };
 
-  callAPI('createInspection',data).then(function(res){
+  // ถ้ากำลังแก้ไขใบเดิม ใช้ update แทน create
+  var action = window._editingFormNo ? 'updateInspectionWithHistory' : 'createInspection';
+  if(window._editingFormNo) data.formNo = window._editingFormNo;
+
+  callAPI(action, data).then(function(res){
     toast(res.message, res.success?'success':'error');
     if(res.success){
+      window._editingFormNo = null;
       closeInspModal();
       loadInspectionPage();
-      if(!asDraft) openInspView(res.formNo);
+      if(!asDraft && res.formNo) openInspView(res.formNo);
     }
   });
 }
