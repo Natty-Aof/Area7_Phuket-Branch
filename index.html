@@ -10750,12 +10750,12 @@ function openNewInspection(){
     +_serialToggle
     +_slNote
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
-      +'<div class="fg"><label class="fl">DC MOTOR NO.</label><input class="fc" id="insMotor" class="fc serial-lockable" placeholder="Serial No."'+_sl+_slStyle+'></div>'
-      +'<div class="fg"><label class="fl">CONTROLLER NO.</label><input class="fc" id="insController" class="fc serial-lockable" placeholder="Serial No."'+_sl+_slStyle+'></div>'
-      +'<div class="fg"><label class="fl">ONBOARD NO.</label><input class="fc" id="insOnboard" class="fc serial-lockable" placeholder="Serial No."'+_sl+_slStyle+'></div>'
-      +'<div class="fg"><label class="fl">SOLENOID NO.</label><input class="fc" id="insSolenoid" class="fc serial-lockable" placeholder="Serial No."'+_sl+_slStyle+'></div>'
-      +'<div class="fg"><label class="fl">CHARGER NO.</label><input class="fc" id="insCharger" class="fc serial-lockable" placeholder="Serial No."'+_sl+_slStyle+'></div>'
-      +'<div class="fg"><label class="fl">TRANSAXLE NO.</label><input class="fc" id="insTransaxle" class="fc serial-lockable" placeholder="Serial No."'+_sl+_slStyle+'></div>'
+      +'<div class="fg"><label class="fl">DC MOTOR NO.</label><input class="fc" id="insMotor" class="serial-lockable" placeholder="Serial No."'+_sl+_slStyle+'></div>'
+      +'<div class="fg"><label class="fl">CONTROLLER NO.</label><input class="fc" id="insController" class="serial-lockable" placeholder="Serial No."'+_sl+_slStyle+'></div>'
+      +'<div class="fg"><label class="fl">ONBOARD NO.</label><input class="fc" id="insOnboard" class="serial-lockable" placeholder="Serial No."'+_sl+_slStyle+'></div>'
+      +'<div class="fg"><label class="fl">SOLENOID NO.</label><input class="fc" id="insSolenoid" class="serial-lockable" placeholder="Serial No."'+_sl+_slStyle+'></div>'
+      +'<div class="fg"><label class="fl">CHARGER NO.</label><input class="fc" id="insCharger" class="serial-lockable" placeholder="Serial No."'+_sl+_slStyle+'></div>'
+      +'<div class="fg"><label class="fl">TRANSAXLE NO.</label><input class="fc" id="insTransaxle" class="serial-lockable" placeholder="Serial No."'+_sl+_slStyle+'></div>'
     +'</div>'
     // Battery
     +'<div style="margin-top:10px;padding-top:10px;border-top:0.5px solid #c5cae9">'
@@ -10774,8 +10774,8 @@ function openNewInspection(){
     +'</div>'
     +'</div>'
     +'<div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:10px">'
-      +'<div class="fg"><label class="fl">ทะเบียนทรัพย์สินแบตเตอรี่</label><input class="fc" id="insBatAsset" class="fc serial-lockable" placeholder="รหัสทรัพย์สิน"'+_sl+_slStyle+'></div>'
-      +'<div class="fg"><label class="fl">ทะเบียนทรัพย์สินชาร์เจอร์</label><input class="fc" id="insChgAsset" class="fc serial-lockable" placeholder="รหัสทรัพย์สิน"'+_sl+_slStyle+'></div>'
+      +'<div class="fg"><label class="fl">ทะเบียนทรัพย์สินแบตเตอรี่</label><input class="fc" id="insBatAsset" class="serial-lockable" placeholder="รหัสทรัพย์สิน"'+_sl+_slStyle+'></div>'
+      +'<div class="fg"><label class="fl">ทะเบียนทรัพย์สินชาร์เจอร์</label><input class="fc" id="insChgAsset" class="serial-lockable" placeholder="รหัสทรัพย์สิน"'+_sl+_slStyle+'></div>'
     +'</div>'
     +'</div>'
 
@@ -10898,9 +10898,15 @@ function openNewInspection(){
       if(el) el.value = today;
     });
 
-    // ถ้ากำลังแก้ไขใบเดิม — fill ข้อมูลเดิม
-    if(window._editingData){
+    // รอ modal render ครบก่อน fill — ตรวจว่า element สำคัญมีแล้ว
+    function tryFill(attempts){
+      var el = document.getElementById('insMotor');
+      if(!el && attempts > 0){
+        setTimeout(function(){ tryFill(attempts-1); }, 200);
+        return;
+      }
       var r = window._editingData;
+      if(!r) return;
       var fieldMap = {
         insSerial:r.SerialNo, insCarNo:r.CarNo, insModel:r.Model,
         insColor:r.Color, insCustomer:r.CustomerName, insLocation:r.Location,
@@ -10918,24 +10924,21 @@ function openNewInspection(){
         var el = document.getElementById(id);
         if(el) el.value = fieldMap[id]||'';
       });
-      // Usage pills
       if(r.Usage){
         r.Usage.split(',').forEach(function(u){
           var btn = document.querySelector('[data-usage="'+u.trim()+'"]');
           if(btn) btn.click();
         });
       }
-      // InspType
       if(r.InspType){
         var radio = document.querySelector('input[name="insType"][value="'+r.InspType+'"]');
         if(radio) radio.checked = true;
       }
-      // AllowTechSerial toggle
       var chk = document.getElementById('insAllowTechSerial');
       if(chk) chk.checked = r.AllowTechSerial==='YES';
-
-      window._editingData = null; // clear หลัง fill
+      window._editingData = null;
     }
+    tryFill(10);
   },100);
   } catch(err){ toast('เกิดข้อผิดพลาด: '+err.message,'error'); console.error(err); }
 }
