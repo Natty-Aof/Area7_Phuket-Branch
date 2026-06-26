@@ -463,7 +463,7 @@ textarea.fc{min-height:70px;resize:vertical;}
               <div class="tm" style="font-size:12px">ถ่ายรูปอะไหล่ทั้งหมดก่อนออกงาน (บังคับ)</div>
               <img id="pickupPhotoPreview" class="pp hidden">
             </div>
-            <input type="file" id="pickupPhotoIn" accept="image/*" capture="environment" style="display:none" onchange="onPickupPhoto(event)">
+            <input type="file" id="pickupPhotoIn" accept="image/*" style="display:none" onchange="onPickupPhoto(event)">
           </div>
           <div style="display:flex;gap:12px;justify-content:flex-end;padding-bottom:24px">
             <button class="btn bp" onclick="submitPickup()">✅ ยืนยันรับอะไหล่แล้ว</button>
@@ -495,7 +495,7 @@ textarea.fc{min-height:70px;resize:vertical;}
                 <div style="margin-top:6px;color:var(--g400)">ถ่ายรูปภาพรวม / อะไหล่ที่คืน</div>
                 <img id="retPhoPreview" class="pp hidden">
               </div>
-              <input type="file" id="retPhoIn" accept="image/*" capture="environment" style="display:none" onchange="onRetPhoto(event)">
+              <input type="file" id="retPhoIn" accept="image/*" style="display:none" onchange="onRetPhoto(event)">
             </div>
             <div class="card">
               <div class="fg"><label class="fl">หมายเหตุ / รายงานการทำงาน</label>
@@ -512,6 +512,7 @@ textarea.fc{min-height:70px;resize:vertical;}
 
           <!-- Stock ตรวจสอบ + ใส่เลข SAP -->
           <div id="adminClearSection" class="hidden">
+            <div class="card"><div class="ct">📦 รายการอะไหล่ที่ช่างใช้</div><div id="adminClItemsBody"></div></div>
             <div class="card" style="border-color:var(--gm)">
               <div class="ct">🔐 Stock: ตรวจสอบและปิดใบเบิก</div>
               <div style="background:#e8f5e9;padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:13px;color:#2e5e1e">
@@ -690,7 +691,7 @@ textarea.fc{min-height:70px;resize:vertical;}
                   oninput="onSCSearch()" autocomplete="off"
                   style="font-size:13px;padding-left:34px">
               <!-- QR scan input (hidden) -->
-              <input type="file" id="scQRInput" accept="image/*" capture="environment" style="display:none" onchange="onSCQRScan(this)">
+              <input type="file" id="scQRInput" accept="image/*" style="display:none" onchange="onSCQRScan(this)">
                 <div id="scSearchDrop" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid var(--g200);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.12);z-index:400;max-height:320px;overflow-y:auto"></div>
               </div>
               <!-- Selected Part Badge -->
@@ -2010,78 +2011,6 @@ function mockAPI(action, data){
   if(action==='getRequisitionDetail'){
     var r = DEMO_REQS.find(function(x){return x.ReqID===data.id;}) || DEMO_REQS[0];
     return {success:true,data:Object.assign({},r,{items:DEMO_ITEMS})};
-  }
-  if(action==='getStockCardEntries'){
-    var now = new Date().toISOString();
-    var db = typeof PARTS_DB!=='undefined' ? PARTS_DB : [];
-    // ถ้ามี demo entries ที่บันทึกมาให้แสดงด้วย
-    var demoNew = window._scDemoEntries || [];
-    var db50 = db.slice(0, 50);
-    var allEntries = db50.map(function(p,i){
-      return {
-        EntryID:'SC-INIT-'+(i+1),
-        Type:'IN',
-        PartNo:p.partNo,
-        NameEN:p.nameEN||p.nameTH||'-',
-        Qty:p.inStock||0,
-        Unit:p.unit||'ชิ้น',
-        SerialNo:'',
-        RefNo:'STOCK-INIT-06-06-69',
-        Note:'ยอดเริ่มต้น 6/6/69',
-        CreatedAt:now,
-        Location:p.location||''
-      };
-    });
-    // filter ตาม type tab
-    var tab = data&&data.type ? data.type : 'in';
-    var filtered = tab==='log' ? allEntries :
-      tab==='in' ? allEntries.filter(function(e){return e.Type==='IN'||e.Type==='ADJUST';}) :
-      allEntries.filter(function(e){return e.Type!=='IN'&&e.Type!=='ADJUST';});
-    return {success:true, data:demoNew.concat(filtered)};
-  }
-  if(action==='saveStockCardEntry'){
-    var entryType = data.type||data.Type||'';
-    var qty       = parseFloat(data.qty||data.Qty||0);
-    var isInType  = entryType==='IN' || entryType==='RETURN_GOOD' || entryType==='RETURN';
-    var isOutType = entryType.startsWith('OUT_');
-    var isDefect  = entryType==='DEFECT' || entryType==='DEFECT_RETURN';
-    var isAdjust  = entryType==='ADJUST';
-
-    // อัปเดต PARTS_DB inStock
-    if(typeof PARTS_DB !== 'undefined'){
-      var p = PARTS_DB.find(function(x){ return x.partNo===data.partNo; });
-      if(p){
-        if(isAdjust)      p.inStock = data.newBalance !== undefined ? data.newBalance : Math.max(0,(p.inStock||0)+qty);
-        else if(isInType) p.inStock = (p.inStock||0) + qty;
-        else if(isOutType)p.inStock = Math.max(0,(p.inStock||0) - qty);
-        // isDefect → ไม่เปลี่ยน inStock
-      }
-    }
-    // บันทึกใน _scDemoEntries
-    if(!window._scDemoEntries) window._scDemoEntries = [];
-    var today = new Date().toLocaleDateString('th-TH');
-    window._scDemoEntries.push({
-      EntryID:   'SC-'+Date.now(),
-      Date:      today,
-      Type:      entryType,
-      DocNo:     data.docNo||data.DocNo||'—',
-      PartNo:    data.partNo||data.PartNo||'',
-      NameEN:    data.nameEN||data.NameEN||'',
-      Qty:       qty,
-      Unit:      data.unit||data.Unit||'ชิ้น',
-      Requester: data.recordedBy||(CU?CU.name||CU.email:''),
-      JobNo:     data.jobNo||'—',
-      Customer:  data.customerName||'—',
-      Purpose:   data.purpose||entryType,
-      Note:      data.note||(isDefect?'ของเสีย/ชำรุด — ไม่กระทบ Stock':''),
-      NoBalanceEffect: isDefect,
-    });
-    var typeMsg = {
-      'IN':'รับเข้า Stock','RETURN_GOOD':'รับคืนของดี','ADJUST':'ปรับยอด Stock',
-      'DEFECT':'บันทึกของเสีย (ไม่กระทบ Stock)','DEFECT_RETURN':'บันทึกช่างคืนของเสีย',
-    };
-    var msg = (typeMsg[entryType]||'บันทึก') + ' แล้วค่ะ ✅';
-    return {success:true, message:msg};
   }
   
   if(action==='getPartLocations') return {success:true,data:partLocs};
@@ -3542,7 +3471,7 @@ function _doRenderCloseItems(readonly){
             +'<img src="'+v.photo+'" style="width:56px;height:56px;object-fit:cover;border-radius:6px;border:2px solid var(--gm);cursor:pointer" onclick="openImgLightbox(this.src)">'
             +(readonly?'':'<button onclick="_clItemState['+pi+'].vehicles['+vi+'].photo=null;renderCloseItems(false)" style="position:absolute;top:-5px;right:-5px;background:var(--red);color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer">✕</button>')
           +'</div>'
-        : (readonly ? '' : '<label style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;background:#f5f5f5;border:1.5px dashed var(--g300);border-radius:6px;cursor:pointer;font-size:11px;color:var(--g400)">📷<input type="file" accept="image/*" capture="environment" style="display:none" onchange="_clVehiclePhoto(event,'+pi+','+vi+')"></label>');
+        : (readonly ? '' : '<label style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;background:#f5f5f5;border:1.5px dashed var(--g300);border-radius:6px;cursor:pointer;font-size:11px;color:var(--g400)">📷<input type="file" accept="image/*" style="display:none" onchange="_clVehiclePhoto(event,'+pi+','+vi+')"></label>');
 
       return '<div style="background:#fff;border-radius:8px;padding:8px 10px;margin-bottom:6px;border:1px solid var(--g200)">'
         +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
@@ -3596,7 +3525,7 @@ function _doRenderCloseItems(readonly){
         }).join('')
         +(readonly?'':'<label style="display:inline-flex;flex-direction:column;align-items:center;justify-content:center;width:70px;height:70px;background:#fff;border:2px dashed var(--g300);border-radius:6px;cursor:pointer;font-size:20px;color:var(--g400);gap:2px">'
             +'📷<span style="font-size:10px">เพิ่มรูป</span>'
-            +'<input type="file" accept="image/*" capture="environment" multiple style="display:none" onchange="_clPartPhoto(event,'+pi+')">'
+            +'<input type="file" accept="image/*" multiple style="display:none" onchange="_clPartPhoto(event,'+pi+')">'
           +'</label>')
       +'</div>'
     +'</div>';
@@ -3729,6 +3658,33 @@ function loadCloseDetail(){
     if(as){
       // Stock เห็น section ปิดงาน เฉพาะตอนช่างส่งเคลียร์แล้ว
       as.classList.toggle('hidden', !(isStock && isPendingClearance));
+      // แสดงรายการอะไหล่แบบ readonly ใน adminClearSection
+      if(isStock && isPendingClearance){
+        var adminItems = document.getElementById('adminClItemsBody');
+        if(adminItems && window._clItemState){
+          adminItems.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+            +'<thead><tr style="background:#f5f5f5">'
+            +'<th style="padding:8px;text-align:left;border:0.5px solid #ddd">Part No.</th>'
+            +'<th style="padding:8px;text-align:left;border:0.5px solid #ddd">ชื่อ</th>'
+            +'<th style="padding:8px;text-align:center;border:0.5px solid #ddd">จ่ายจริง</th>'
+            +'<th style="padding:8px;text-align:center;border:0.5px solid #ddd;color:var(--gm)">คืนดี</th>'
+            +'<th style="padding:8px;text-align:center;border:0.5px solid #ddd;color:var(--red)">คืนเสีย</th>'
+            +'<th style="padding:8px;text-align:center;border:0.5px solid #ddd">ใช้จริง</th>'
+            +'</tr></thead><tbody>'
+            + window._clItemState.map(function(it){
+              var used = (it.issued||0) - (it.retGood||0) - (it.retBad||0);
+              return '<tr style="border-bottom:0.5px solid #eee">'
+                +'<td style="padding:8px;border:0.5px solid #ddd;font-size:11px">'+it.partNo+'</td>'
+                +'<td style="padding:8px;border:0.5px solid #ddd">'+it.nameEN+'</td>'
+                +'<td style="padding:8px;text-align:center;border:0.5px solid #ddd;font-weight:700">'+it.issued+' '+it.unit+'</td>'
+                +'<td style="padding:8px;text-align:center;border:0.5px solid #ddd;color:var(--gm)">'+it.retGood+'</td>'
+                +'<td style="padding:8px;text-align:center;border:0.5px solid #ddd;color:var(--red)">'+it.retBad+'</td>'
+                +'<td style="padding:8px;text-align:center;border:0.5px solid #ddd;font-weight:700;color:#1565c0">'+used+'</td>'
+              +'</tr>';
+            }).join('')
+            +'</tbody></table>';
+        }
+      }
     }
 
     var rl=document.getElementById('clIM'), cn=document.getElementById('clNote');
@@ -7357,7 +7313,7 @@ function renderVehicleAssign(items){
             +'<button onclick="_vhAssignItems['+pi+']['+ai+'].photo=null;renderVehicleAssign(window._clearItems.map(function(it){return {partNo:String(it.PartNo||it.partNo||\'\'),nameEN:it.NameEN||it.NameTH||\'\',qty:parseFloat(it.IssuedQty!=null&&it.IssuedQty!==\'\'?it.IssuedQty:it.Qty)||0,unit:it.Unit||\'ชิ้น\'};}));" style="position:absolute;top:-6px;right:-6px;background:var(--red);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;line-height:1">✕</button>'
           +'</div>'
         : '<label style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;background:#f5f5f5;border:1.5px dashed var(--g300);border-radius:6px;cursor:pointer;font-size:11px;color:var(--g400)">'
-            +'+ รูป<input type="file" accept="image/*" capture="environment" style="display:none" onchange="_onVhSerialPhoto(event,'+pi+','+ai+')">'
+            +'+ รูป<input type="file" accept="image/*" style="display:none" onchange="_onVhSerialPhoto(event,'+pi+','+ai+')">'
           +'</label>';
 
       return '<div style="background:#fff;border-radius:8px;padding:10px;margin-bottom:8px;border:1px solid var(--g200)">'
@@ -7394,7 +7350,7 @@ function renderVehicleAssign(items){
         +'</div>'
       : '<label style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:#fff;border:1.5px dashed var(--g300);border-radius:8px;cursor:pointer;font-size:12px;color:var(--g400)">'
           +'📷 ถ่าย/อัพรูปอะไหล่นี้'
-          +'<input type="file" accept="image/*" capture="environment" style="display:none" onchange="_onVhPartPhoto(event,'+pi+')">'
+          +'<input type="file" accept="image/*" style="display:none" onchange="_onVhPartPhoto(event,'+pi+')">'
         +'</label>';
 
     return '<div style="margin-bottom:16px;padding:12px;background:#f8f9fa;border-radius:10px;border-left:4px solid '+(ok?'var(--gm)':'var(--g200)') +'">'
