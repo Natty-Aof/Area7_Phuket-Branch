@@ -2425,7 +2425,9 @@ var _badgeCacheTime = 0;
 var _badgeCacheTTL = 15000; // cache 15 วิ
 var _badgeTimer = null;
 
+var _badgeRefreshing = false;
 function refreshBadges(force){
+  if(_badgeRefreshing) return;
   if(!force && _badgeCache && (Date.now()-_badgeCacheTime)<_badgeCacheTTL) return;
   if(_badgeTimer) clearTimeout(_badgeTimer);
   _badgeTimer = setTimeout(_doRefreshBadges, force ? 100 : 1000);
@@ -2433,8 +2435,9 @@ function refreshBadges(force){
 
 function _doRefreshBadges(){
   if(!CU) return;
+  _badgeRefreshing = true;
   var now = Date.now();
-  if((now-_badgeLastFetch) < 5000) return;
+  if((now-_badgeLastFetch) < 5000){ _badgeRefreshing = false; return; }
   _badgeLastFetch = now;
   callAPI('getDashboard',{}).then(function(res){
     if(!res.success||!res.summary) return;
@@ -2446,7 +2449,7 @@ function _doRefreshBadges(){
                                       apCount = (s.pendingSupervisor||0)+(s.pendingManager||0);
     if(ab){ ab.textContent=apCount; ab.style.display=apCount>0?'inline':'none'; }
     if(sb){ sb.textContent=s.stockPending||0; sb.style.display=(s.stockPending||0)>0?'inline':'none'; }
-    _badgeCache=s; _badgeCacheTime=Date.now();
+    _badgeCache=s; _badgeCacheTime=Date.now(); _badgeRefreshing=false;
   });
   // Badge ใบตรวจสภาพ
   if(CU&&(CU.role==='TECHNICIAN'||CU.role==='SUPERVISOR')){
@@ -9467,13 +9470,17 @@ function exportReportCSV(){
 }
 
 // Auto load เมื่อเข้าหน้ารายงาน
-var _origGoReport = go;
-go = function(page){
-  _origGoReport(page);
-  if(page === 'report'){
-    setTimeout(loadFullReport, 300);
-  }
-};
+var _goReportWrapped = false;
+if(!_goReportWrapped){
+  _goReportWrapped = true;
+  var _origGoReport = go;
+  go = function(page){
+    _origGoReport(page);
+    if(page === 'report'){
+      setTimeout(loadFullReport, 300);
+    }
+  };
+}
 
 
 // ── พิมพ์รายงานงานค้าง ──────────────────────────────────────
