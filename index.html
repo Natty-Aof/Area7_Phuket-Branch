@@ -365,7 +365,7 @@ textarea.fc{min-height:70px;resize:vertical;}
           <div class="fb2" style="margin-bottom:12px"><div class="ct" style="margin:0">🔩 รายการอะไหล่<span class="rq">*</span></div><button class="btn bo bsm" onclick="addRow()">+ เพิ่มรายการ</button></div>
           <div style="margin-bottom:8px;display:flex;gap:8px;align-items:center"><input class="fc" id="partSearch" placeholder="🔍 ค้นหาอะไหล่ (Part No. / ชื่อ TH / EN)..." oninput="searchParts()" style="max-width:300px"><button class="btn bo bsm" onclick="openQRScanner('create')" title="สแกน QR Code อะไหล่" style="white-space:nowrap">📷 สแกน QR</button><select class="fc" id="partModelFilter" onchange="searchParts()" style="max-width:180px"><option value="">ทุกรุ่น</option><option value="precedent">Precedent</option><option value="tempo">Tempo</option><option value="villager">Villager</option><option value="transporter">Transporter</option><option value="carryall">Carryall</option><option value="ds">DS</option><option value="minibus">Minibus</option><option value="e-bike">E-Bike</option></select><button class="btn bo bsm" onclick="searchParts(document.getElementById('partSearch').value)">ค้นหา</button></div><div id="searchResults" class="hidden" style="border:1.5px solid var(--gm);border-radius:var(--rs);margin-bottom:8px;max-height:200px;overflow-y:auto;background:#fff"></div><div class="tw"><table class="it"><thead><tr><th style="width:15%">Part No.</th><th style="width:20%">ชื่อ (EN)</th><th style="width:20%">ชื่อภาษาไทย</th><th style="width:7%">จำนวน</th><th style="width:7%">หน่วย</th><th style="width:10%">Serial No.</th><th style="width:8%">หมายเหตุ</th><th style="width:32px"></th></tr></thead>
           <tbody id="itemsBody"></tbody></table></div>
-          <button class="btn bo bsm mt8" onclick="addRow()">+ เพิ่มรายการอะไหล่</button><div style="margin-top:8px;padding:10px 12px;background:var(--goldl);border-radius:var(--rs);font-size:13px;color:#5a4000">💡 ไม่พบอะไหล่ที่ต้องการ? <button class="btn bo bsm" style="padding:3px 10px;font-size:12px" onclick="showAddPart()">+ เพิ่มอะไหล่ใหม่ในฐานข้อมูล</button></div>
+          <button class="btn bo bsm mt8" onclick="addRow()">+ เพิ่มรายการอะไหล่</button><div style="margin-top:8px;padding:10px 12px;background:var(--goldl);border-radius:var(--rs);font-size:13px;color:#5a4000">💡 ไม่พบอะไหล่ที่ต้องการ? <button class="btn bo bsm" style="padding:3px 10px;font-size:12px" id="btnAddNewPart" onclick="showAddPart()">+ เพิ่มอะไหล่ใหม่ในฐานข้อมูล</button><span id="btnAddNewPartLock" style="display:none;font-size:11px;color:#b71c1c">🔒 เฉพาะ Stock และ Manager เท่านั้นค่ะ</span></div>
         </div>
         <div class="card" style="background:var(--goldl);border-color:#ffe082">
           <div class="ct" style="color:#5a4000">📋 หมายเหตุการถ่ายรูป</div>
@@ -2288,6 +2288,13 @@ function initApp(){
   var ap = document.getElementById('app');
   if(ls) ls.classList.add('hidden');
   if(ap) ap.classList.remove('hidden');
+
+  // แสดง/ซ่อนปุ่มเพิ่มอะไหล่ใหม่ตาม Role
+  var canAddPart = CU && (CU.role==='STOCK'||CU.role==='MANAGER'||CU.role==='ADMIN');
+  var btnAddPart = document.getElementById('btnAddNewPart');
+  var btnAddPartLock = document.getElementById('btnAddNewPartLock');
+  if(btnAddPart) btnAddPart.style.display = canAddPart ? '' : 'none';
+  if(btnAddPartLock) btnAddPartLock.style.display = canAddPart ? 'none' : '';
   var av=document.getElementById('avi'), un=document.getElementById('uname'), ur=document.getElementById('urole'), ue=document.getElementById('uEmail');
   if(av) av.textContent=(CU.name||'?')[0];
   if(un) un.textContent=CU.name;
@@ -2582,20 +2589,23 @@ function addRow(p){
   var pn=(p.partNo||'').replace(/"/g,'&quot;');
   var th=(p.nameTH||'').replace(/"/g,'&quot;');
   var en=(p.nameEN||'').replace(/"/g,'&quot;');
+  var hasData = !!p.partNo;
   tr.innerHTML=''
     +'<td style="position:relative"><div class="acw">'
-    +'<input class="fc" placeholder="Part No." data-field="partNo" autocomplete="off" value="'+pn+'"'
+    +'<input class="fc" placeholder="ค้นหา Part No. / ชื่อ..." data-field="partNo" autocomplete="off" value="'+pn+'"'
+    +(hasData?' readonly style="background:#f5f5f5"':'')
     +' oninput="onAC(this,\''+rid+'\');" onkeydown="onACKey(event,\''+rid+'\');" onblur="setTimeout(function(){closeAC(\''+rid+'\')},180);">'
     +'<div class="acd" id="ac_'+rid+'"></div></div></td>'
-    +'<td><input class="fc" placeholder="ชื่อ EN (หลัก)" data-field="nameEN" value="'+en+'"></td>'
-    +'<td><input class="fc" placeholder="ชื่อภาษาไทย" data-field="nameTH" value="'+th+'"></td>'
+    +'<td><input class="fc" placeholder="ชื่อ EN" data-field="nameEN" value="'+en+'" readonly style="background:#f5f5f5"></td>'
+    +'<td><input class="fc" placeholder="ชื่อภาษาไทย" data-field="nameTH" value="'+th+'" readonly style="background:#f5f5f5"></td>'
     +'<td><input class="fc" type="number" value="'+(p.qty||1)+'" min="1" data-field="qty" style="text-align:center"></td>'
-    +'<td><input class="fc" value="'+(p.unit||'ชิ้น')+'" data-field="unit"></td>'
+    +'<td><input class="fc" value="'+(p.unit||'ชิ้น')+'" data-field="unit" readonly style="background:#f5f5f5"></td>'
     +'<td><input class="fc" placeholder="Serial No." data-field="serialNo" value="'+(p.serialNo||'')+'"></td>'
     +'<td><input class="fc" placeholder="หมายเหตุ" data-field="note" value="'+(p.note||'')+'"></td>'
     +'<td><button type="button" class="btn bd bi bsm" onclick="this.closest(\'tr\').remove()">✕</button></td>';
   tbody.appendChild(tr);
 }
+
 
 function getItems(){
   return Array.from(document.querySelectorAll('#itemsBody tr')).map(function(tr){
@@ -4455,7 +4465,7 @@ function selModel(name){
 function addPartFromEnc(enc){
   try{
     var p = typeof enc === 'string' ? JSON.parse(enc) : enc;
-    addRow({partNo:p.partNo,nameTH:p.nameTH||'',nameEN:p.nameEN||''});
+    addRow({partNo:p.partNo,nameTH:p.nameTH||'',nameEN:p.nameEN||'',unit:p.unit||'ชิ้น'});
     var ps=document.getElementById('partSearch'),sr=document.getElementById('searchResults');
     if(ps) ps.value='';
     if(sr) sr.classList.add('hidden');
@@ -4467,6 +4477,10 @@ function addPartFromEnc(enc){
 
 // ── ADD NEW PART TO DB ───────────────────────────────────────
 function showAddPart(){
+  if(!CU||(CU.role!=='STOCK'&&CU.role!=='MANAGER'&&CU.role!=='ADMIN')){
+    toast('เฉพาะ Stock และ Manager เท่านั้นที่เพิ่มอะไหล่ใหม่ได้ค่ะ','error');
+    return;
+  }
   var moT=document.getElementById('moTitle'),moB=document.getElementById('moBody'),moF=document.getElementById('moFoot'),mo=document.getElementById('detailMo');
   if(!mo) return;
   if(moT) moT.textContent='+ เพิ่มอะไหล่ใหม่ในฐานข้อมูล';
