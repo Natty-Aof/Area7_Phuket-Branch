@@ -7673,6 +7673,7 @@ function onCRTypeChange(){
       if(val) beforeEl.value=val;
     }
   }
+  if(window._crCurrentReq) _fillCRBefore(window._crCurrentReq, type);
 }
 
 function openChangeReqModal(refId, refType){
@@ -7683,8 +7684,35 @@ function openChangeReqModal(refId, refType){
   document.getElementById('crAfter').value = '';
   document.getElementById('crType').value = 'EDIT_JOB';
   onCRTypeChange();
+
+  // ดึงข้อมูลใบเบิกมาใส่ช่อง Before อัตโนมัติ
+  if(refId){
+    callAPI('getRequisitionDetail',{reqId:refId}).then(function(res){
+      if(!res.success||!res.data) return;
+      var r = res.data;
+      // เก็บไว้ใช้ตอน type เปลี่ยน
+      window._crCurrentReq = r;
+      _fillCRBefore(r, document.getElementById('crType').value);
+    });
+  }
+
   document.getElementById('changeReqModal').classList.remove('hidden');
 }
+
+function _fillCRBefore(r, type){
+  var fieldMap = {
+    EDIT_JOB:      r.JobNo||'',
+    EDIT_CUSTOMER: r.CustomerName||'',
+    EDIT_SERIAL:   r.SerialNos||'',
+    EDIT_PURPOSE:  r.Purpose||'',
+    EDIT_QTY:      '',
+    CANCEL:        '',
+    OTHER:         '',
+  };
+  var b = document.getElementById('crBefore');
+  if(b) b.value = fieldMap[type]||'';
+}
+
 
 function submitChangeReq(){
   var desc = document.getElementById('crDesc').value.trim();
