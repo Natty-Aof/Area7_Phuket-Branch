@@ -7746,14 +7746,22 @@ function loadChangeReqPage(){
       }
 
       // Action buttons
+      var isExpired = cr.ExpireAt && new Date() > new Date(cr.ExpireAt);
+      var expireNote = cr.ExpireAt && cr.Status==='PENDING'
+        ? '<div style="font-size:11px;color:'+(isExpired?'#b71c1c':'#e65100')+';margin-top:4px">'
+          +(isExpired?'⛔ หมดอายุแล้ว':'⏰ หมดอายุ: '+new Date(cr.ExpireAt).toLocaleString('th-TH'))
+          +'</div>'
+        : '';
       var actionHtml = '';
-      if(isManager && cr.Status==='PENDING'){
+      if(isManager && cr.Status==='PENDING' && !isExpired){
         actionHtml = '<div style="display:flex;gap:8px;margin-top:10px">'
           +'<button class="btn bd bsm" onclick="doCRDecision(\''+cr.CRNo+'\',false)">✕ ไม่อนุมัติ</button>'
           +'<button class="btn bp bsm" style="background:#6a1b9a;border-color:#6a1b9a" onclick="doCRDecision(\''+cr.CRNo+'\',true)">✅ อนุมัติ</button>'
         +'</div>';
-      } else if(cr.Status==='APPROVED' && cr.RequestedBy===myEmail){
-        actionHtml = '<div style="margin-top:6px;font-size:12px;color:var(--gm)">✅ อนุมัติแล้ว — ระบบอัปเดตข้อมูลให้อัตโนมัติ</div>';
+      } else if(isManager && cr.Status==='PENDING' && isExpired){
+        actionHtml = '<div style="margin-top:6px;font-size:12px;color:#b71c1c">⛔ คำขอนี้หมดอายุแล้ว ไม่สามารถอนุมัติได้ค่ะ</div>';
+      } else if(cr.Status==='APPROVED'){
+        actionHtml = '<div style="margin-top:6px;font-size:12px;color:var(--gm)">✅ อนุมัติแล้ว — ระบบอัปเดตข้อมูลให้อัตโนมัติ'+(cr.DoneAt?' เมื่อ '+new Date(cr.DoneAt).toLocaleString('th-TH'):'')+'</div>';
       }
 
       return '<div class="card" style="padding:12px 14px;margin-bottom:8px;border-left:4px solid '+(cr.Status==='PENDING'?'#e65100':cr.Status==='APPROVED'?'var(--gm)':'var(--g300)')+'">'
@@ -7768,6 +7776,7 @@ function loadChangeReqPage(){
         +beforeAfterHtml
         +'<div style="font-size:12px;color:#555;margin-top:4px">📝 '+(cr.RequestDesc||'—')+'</div>'
         +(cr.ApproveNote?'<div style="font-size:12px;color:var(--red);margin-top:4px">💬 Manager: '+cr.ApproveNote+'</div>':'')
+        +expireNote
         +actionHtml
       +'</div>';
     }).join('');
