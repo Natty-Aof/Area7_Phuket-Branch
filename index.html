@@ -1260,7 +1260,7 @@ textarea.fc{min-height:70px;resize:vertical;}
   <div class="mow" style="max-width:540px">
     <div class="moh">
       <div class="mot">🔑 ขออนุมัติแก้ไข</div>
-      <button class="mcl" onclick="document.getElementById('changeReqModal').classList.add('hidden')">✕</button>
+      <button class="mcl" onclick="var m=document.getElementById('changeReqModal');m.classList.add('hidden');m.style.display=''">✕</button>
     </div>
     <div class="mob">
       <div class="fg">
@@ -1303,7 +1303,7 @@ textarea.fc{min-height:70px;resize:vertical;}
       </div>
     </div>
     <div class="mof">
-      <button class="btn bd" onclick="document.getElementById('changeReqModal').classList.add('hidden')">ยกเลิก</button>
+      <button class="btn bd" onclick="var m=document.getElementById('changeReqModal');m.classList.add('hidden');m.style.display=''">ยกเลิก</button>
       <button class="btn bp" onclick="submitChangeReq()" style="background:#6a1b9a;border-color:#6a1b9a">🔑 ส่งคำขออนุมัติ</button>
     </div>
   </div>
@@ -7696,7 +7696,9 @@ function openChangeReqModal(refId, refType){
     });
   }
 
-  document.getElementById('changeReqModal').classList.remove('hidden');
+  var modal = document.getElementById('changeReqModal');
+  modal.classList.remove('hidden');
+  modal.style.display = 'flex';
 }
 
 function _fillCRBefore(r, type){
@@ -7730,7 +7732,7 @@ function submitChangeReq(){
     valueAfter:  after,
   }).then(function(res){
     toast(res.message, res.success?'success':'error');
-    if(res.success) document.getElementById('changeReqModal').classList.add('hidden');
+    if(res.success){ var m=document.getElementById('changeReqModal');m.classList.add('hidden');m.style.display=''; }
   });
 }
 
