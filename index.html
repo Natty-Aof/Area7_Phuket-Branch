@@ -4994,7 +4994,7 @@ function loadStockCard(){
   var el = document.getElementById('scContent');
   if(!el) return;
   el.innerHTML = '<div class="card tc" style="padding:32px">⏳ กำลังโหลด...</div>';
-  callAPI('getStockCardEntries',{type:_scTab}).then(function(res){
+  callAPI('getStockCardEntries',{filter:_scTab}).then(function(res){
     var entries = res.data || [];
     if(!entries.length){
       el.innerHTML = '<div class="card tc tm" style="padding:32px">ไม่มีข้อมูล</div>'; return;
@@ -8497,7 +8497,7 @@ function _buildSCTable(p, realEntries, el){
 
   realEntries.forEach(function(e){
     var qIn=parseFloat(e.QtyIn)||0, qOut=parseFloat(e.QtyOut)||0, qDef=parseFloat(e.QtyDefect)||0;
-    var isSCR = String(pn||'').indexOf('SCR')===0;
+    var isSCR = String(e.PartNo||'').indexOf('SCR')===0;
     var noEffect = String(e.NoBalanceEffect||'').toLowerCase()==='true' || isSCR;
     if(!noEffect){ runBalance += qIn - qOut; totalIn+=qIn; totalOut+=qOut; }
     if(e.QtyDefect) totalDef += qDef;
@@ -8517,6 +8517,14 @@ function _buildSCTable(p, realEntries, el){
 
   // ── Summary bar ──
   var currentBal = runBalance;
+  // อัพเดต PARTS_DB ให้ตรงกับยอดจริง
+  if(typeof PARTS_DB !== 'undefined'){
+    var pDB = PARTS_DB.find(function(x){ return x.partNo===p.partNo; });
+    if(pDB) pDB.inStock = currentBal;
+  }
+  // อัพเดต UI header ให้ตรงกับยอดจริง
+  var stockEl = document.getElementById('scInfoStock');
+  if(stockEl) stockEl.textContent = currentBal + ' ' + (p.unit||'ชิ้น');
   var balColor = currentBal<=0?'color:#b71c1c':currentBal<=5?'color:#e65100':'color:#1b5e20';
   var summaryHtml = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px;border-bottom:0.5px solid var(--g200)">'
     +'<div style="background:var(--g50,#f8f9fa);border-radius:8px;padding:10px 12px;text-align:center">'
