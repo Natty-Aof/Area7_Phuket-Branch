@@ -3791,18 +3791,22 @@ function submitClose(){
   if(!reqId) return toast('กรุณาเลือกใบเบิก','error');
   var sap=document.getElementById('clIM').value.trim();
   if(!sap) return toast('กรุณากรอกเลขตัดอะไหล่ SAP ก่อนปิดงานค่ะ','error');
-  var items = window._clearItems||[];
+
+  // ดึงข้อมูลที่ช่างกรอกมาจาก _clItemState
   var returnedItems=[], defectItems=[];
-  items.forEach(function(it,i){
-    var ret = Number((document.getElementById('cr_'+i)||{}).value)||0;
-    var def = Number((document.getElementById('cdf_'+i)||{}).value)||0;
-    if(ret>0) returnedItems.push({partNo:it.PartNo,nameEN:it.NameEN,unit:it.Unit,returnedQty:ret});
-    if(def>0) defectItems.push({partNo:it.PartNo,nameEN:it.NameEN,unit:it.Unit,defectQty:def});
+  (window._clItemState||[]).forEach(function(it){
+    if((it.retGood||0)>0) returnedItems.push({
+      partNo:it.partNo, nameEN:it.nameEN, unit:it.unit, returnedQty:it.retGood
+    });
+    if((it.retBad||0)>0) defectItems.push({
+      partNo:it.partNo, nameEN:it.nameEN, unit:it.unit, defectQty:it.retBad
+    });
   });
+
   callAPI('confirmCloseByStock',{
     id:reqId,
     imNumber:sap,
-    note:document.getElementById('clNote').value,
+    note:(document.getElementById('clNote')||{}).value||'',
     returnedItems:returnedItems,
     defectItems:defectItems,
   }).then(function(res){
