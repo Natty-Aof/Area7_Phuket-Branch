@@ -2405,13 +2405,12 @@ function _doRefreshBadges(){
   if(CU&&(CU.role==='MANAGER'||CU.role==='ADMIN')){
     var crMenu=document.getElementById('nChangeReq');
     if(crMenu) crMenu.classList.remove('hidden');
-    if(force){
-      callAPI('getChangeRequests',{status:'PENDING'}).then(function(res){
-        var cnt=(res.data||[]).length;
-        var crb=document.getElementById('crBadge');
-        if(crb){ crb.textContent=cnt; crb.style.display=cnt>0?'inline':'none'; }
-      });
-    }
+    // โหลด CR badge ทุกครั้ง (ไม่ต้อง force)
+    callAPI('getChangeRequests',{status:'PENDING'}).then(function(res){
+      var cnt=(res.data||[]).length;
+      var crb=document.getElementById('crBadge');
+      if(crb){ crb.textContent=cnt; crb.style.display=cnt>0?'inline':'none'; }
+    });
   }
 }
 
