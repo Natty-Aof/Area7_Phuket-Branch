@@ -2924,7 +2924,9 @@ function loadApproval(){
     : Promise.resolve({data:[]});
 
   Promise.all([reqFetch, soFetch]).then(function(results){
-    var reqList = results[0].data||[];
+    var reqList = (results[0].data||[]).filter(function(r){
+      return r.StatusApproval==='PENDING_SUPERVISOR' || r.StatusApproval==='PENDING_MANAGER';
+    });
     var soList  = results[1].data||[];
     window._REQS_MAP = {};
     reqList.forEach(function(r){ window._REQS_MAP[r.ReqID]=r; });
