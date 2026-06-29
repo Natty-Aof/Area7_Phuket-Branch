@@ -2351,7 +2351,7 @@ function go(page){
 var _badgeLastFetch = 0;
 var _badgeCache = null;
 var _badgeCacheTime = 0;
-var _badgeCacheTTL = 15000; // cache 15 วิ
+var _badgeCacheTTL = 3 * 60 * 1000; // cache 3 นาที
 var _badgeTimer = null;
 
 var _badgeRefreshing = false;
@@ -2380,24 +2380,27 @@ function _doRefreshBadges(){
     if(sb){ sb.textContent=s.stockPending||0; sb.style.display=(s.stockPending||0)>0?'inline':'none'; }
     _badgeCache=s; _badgeCacheTime=Date.now(); _badgeRefreshing=false;
   });
-  // Badge ใบตรวจสภาพ
+  // Badge ใบตรวจสภาพ — cache 2 นาที
   if(CU&&(CU.role==='TECHNICIAN'||CU.role==='SUPERVISOR')){
-    callAPI('getInspections',{}).then(function(res){
-      var list = res.data||[];
-      var openCount = list.filter(function(r){ return r.Status==='OPEN'; }).length;
-      var myCount   = list.filter(function(r){ return r.Status==='ASSIGNED' && r.AssignedTo===CU.email; }).length;
-      var count = CU.role==='SUPERVISOR' ? openCount : myCount;
-      ['insBadge','insBadge2'].forEach(function(id){
-        var b=document.getElementById(id);
-        if(b){ b.textContent=count; b.className=count>0?'bdg':'bdg hidden'; }
+    var now2 = Date.now();
+    if(!window._insBadgeCache || (now2 - (window._insBadgeCacheTime||0)) > 2*60*1000){
+      callAPI('getInspections',{}).then(function(res){
+        window._insBadgeCache = res.data||[];
+        window._insBadgeCacheTime = Date.now();
+        var list = window._insBadgeCache;
+        var openCount = list.filter(function(r){ return r.Status==='OPEN'; }).length;
+        var myCount   = list.filter(function(r){ return r.Status==='ASSIGNED' && r.AssignedTo===CU.email; }).length;
+        var count = CU.role==='SUPERVISOR' ? openCount : myCount;
+        ['insBadge','insBadge2'].forEach(function(id){
+          var b=document.getElementById(id);
+          if(b){ b.textContent=count; b.className=count>0?'bdg':'bdg hidden'; }
+        });
+        if(CU.role==='SUPERVISOR' && openCount>0){
+          var ab2=document.getElementById('apBadge');
+          if(ab2){ ab2.textContent=(parseInt(ab2.textContent)||0)+openCount; ab2.style.display='inline'; }
+        }
       });
-      // เพิ่มตัวเลข OPEN ไปที่ badge รออนุมัติสำหรับ Supervisor
-      if(CU.role==='SUPERVISOR' && openCount>0 && ab){
-        var total = (parseInt(ab.textContent)||0) + openCount;
-        ab.textContent = total;
-        ab.style.display = 'inline';
-      }
-    });
+    }
   }
   if(CU&&(CU.role==='MANAGER'||CU.role==='ADMIN')){
     var crMenu=document.getElementById('nChangeReq');
