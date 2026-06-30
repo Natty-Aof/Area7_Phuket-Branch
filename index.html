@@ -3060,7 +3060,7 @@ function doAssignInspection(formNo){
   toast('กำลังมอบหมาย...','info');
   callAPI('updateInspection',{formNo:formNo, status:'ASSIGNED', assignedTo:techEmail}).then(function(res){
     if(res.success){
-      closeModal();
+      closeSimpleModal();
       toast('✅ มอบหมายให้ '+techName+' แล้วค่ะ','success');
       // ส่งอีเมลแจ้งช่าง
       callAPI('notifyTechnician',{formNo:formNo, techEmail:techEmail});
