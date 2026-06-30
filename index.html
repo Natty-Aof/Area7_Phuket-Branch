@@ -2953,7 +2953,10 @@ function loadApproval(){
             +'<div style="font-weight:700;color:#1565c0;font-size:13px">'+r.FormNo+' <span style="font-size:11px;background:#e3f2fd;padding:2px 8px;border-radius:8px">'+(tl[r.InspType]||r.InspType)+'</span></div>'
             +'<div style="font-size:12px;color:var(--g400);margin-top:3px">🚗 '+r.SerialNo+' | '+r.CustomerName+' | 📅 '+r.InspDate+'</div>'
           +'</div>'
-          +'<button class="btn bp bsm" style="background:#1565c0;border-color:#1565c0;white-space:nowrap" onclick="openAssignInspection(\''+r.FormNo+'\')">👨‍🔧 มอบหมายช่าง</button>'
+          +'<div style="display:flex;gap:6px;flex-shrink:0">'
+            +'<button class="btn bo bsm" style="white-space:nowrap" onclick="acceptInspection(\''+r.FormNo+'\')">✋ รับงานเอง</button>'
+            +'<button class="btn bp bsm" style="background:#1565c0;border-color:#1565c0;white-space:nowrap" onclick="openAssignInspection(\''+r.FormNo+'\')">👨‍🔧 มอบหมายช่าง</button>'
+          +'</div>'
         +'</div>';
       }).join('');
       html += '</div>';
@@ -11166,7 +11169,14 @@ function acceptInspection(formNo){
   toast('กำลังรับงาน...','info');
   callAPI('updateInspection',{formNo:formNo, status:'ASSIGNED', assignedTo:CU.email}).then(function(res){
     toast(res.success?'✅ รับงานแล้วค่ะ':'❌ '+(res.message||'เกิดข้อผิดพลาด'), res.success?'success':'error');
-    if(res.success) loadInspectionPage();
+    if(res.success){
+      refreshBadges(true);
+      if(document.getElementById('pg-approval') && !document.getElementById('pg-approval').classList.contains('hidden')){
+        loadApproval();
+      } else {
+        loadInspectionPage();
+      }
+    }
   });
 }
 
