@@ -231,6 +231,13 @@ textarea.fc{min-height:70px;resize:vertical;}
   .card{padding:14px;} .sc{padding:12px 14px;} .sc .vl{font-size:24px;}
   .fb{flex-direction:column;} .fb .fg{min-width:unset;width:100%;}
 }
+@media print {
+  body * { visibility: hidden; }
+  #inspectionPrintModal, #inspectionPrintModal * { visibility: visible; }
+  #inspectionPrintModal { position: absolute; left: 0; top: 0; width: 100%; }
+  #inspectionPrintModal button, #inspectionPrintModal label { display: none !important; }
+  .insPhotoSection { page-break-before: always; }
+}
 </style>
 </head>
 <body>
@@ -11259,6 +11266,13 @@ function acceptInspection(formNo){
   });
 }
 
+function toggleInsPrintPhotos(){
+  var show = document.getElementById('insPrintWithPhotos').checked;
+  document.querySelectorAll('.insPhotoSection').forEach(function(el){
+    el.style.display = show ? '' : 'none';
+  });
+}
+
 function openInspView(formNo){
   callAPI('getInspectionDetail',{formNo:formNo}).then(function(res){
     if(!res.success||!res.data) return toast('ไม่พบข้อมูลค่ะ','error');
@@ -11426,15 +11440,21 @@ function openInspView(formNo){
       })()
       +'</tbody></table>'
 
-      // รูปถ่าย
+      // รูปถ่าย — แสดงรูปจริงในหน้าจอ (ซ่อนตอนพิมพ์ถ้าไม่เลือก), ขึ้นหน้าใหม่เมื่อพิมพ์
       +(photos.length
-        ? '<div style="font-weight:700;font-size:11px;background:#004d40;color:#fff;padding:3px 6px;margin-bottom:6px">รูปถ่ายรถ</div>'
-          +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px">'
+        ? '<div class="insPhotoSection">'
+          +'<div style="font-weight:700;font-size:11px;background:#004d40;color:#fff;padding:3px 6px;margin-bottom:6px">รูปถ่ายรถ ('+photos.length+' รูป)</div>'
+          +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px">'
           +photos.map(function(p){
-            return '<div><div style="font-size:9px;color:#888;margin-bottom:2px">'+p.label+'</div>'
-              +'<a href="'+(p.url||'#')+'" target="_blank" style="display:block;border:0.5px solid #ddd;border-radius:4px;padding:4px;text-align:center;font-size:10px;color:#1a237e;text-decoration:none">📷 ดูรูป</a>'
+            var src = p.data || p.url || '';
+            return '<div style="text-align:center">'
+              +'<div style="font-size:9px;color:#888;margin-bottom:3px">'+(p.label||'')+'</div>'
+              +(src
+                ? '<img src="'+src+'" style="width:100%;height:90px;object-fit:cover;border-radius:6px;border:0.5px solid #ddd;cursor:pointer" onclick="window.open(\''+src+'\',\'_blank\')">'
+                : '<div style="height:90px;border:0.5px solid #ddd;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#ccc;font-size:11px">ไม่มีรูป</div>')
             +'</div>';
           }).join('')
+          +'</div>'
           +'</div>'
         : '')
 
@@ -11493,8 +11513,12 @@ function openInspView(formNo){
 <!-- ── INSPECTION PRINT WINDOW ─────────────────────────── -->
 <div id="inspectionPrintModal" class="mo hidden" style="z-index:4000">
   <div class="mow" style="max-width:900px;max-height:95vh;overflow-y:auto">
-    <div style="display:flex;gap:8px;padding:12px 16px;background:#004d40;color:#fff;position:sticky;top:0;z-index:10;border-radius:var(--r) var(--r) 0 0">
+    <div style="display:flex;gap:8px;align-items:center;padding:12px 16px;background:#004d40;color:#fff;position:sticky;top:0;z-index:10;border-radius:var(--r) var(--r) 0 0;flex-wrap:wrap">
       <div style="flex:1;font-weight:700">📋 ใบตรวจสอบสภาพรถไฟฟ้า — พร้อมปริ้น</div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;background:rgba(255,255,255,.15);padding:6px 10px;border-radius:6px">
+        <input type="checkbox" id="insPrintWithPhotos" checked onchange="toggleInsPrintPhotos()">
+        พิมพ์พร้อมรูปถ่าย
+      </label>
       <button onclick="window.print()" style="background:#fff;color:#004d40;border:none;border-radius:6px;padding:6px 16px;font-weight:700;cursor:pointer">🖨️ ปริ้น</button>
       <button onclick="document.getElementById('inspectionPrintModal').classList.add('hidden')" style="background:none;border:1px solid rgba(255,255,255,.5);color:#fff;border-radius:6px;padding:6px 12px;cursor:pointer">ปิด</button>
     </div>
