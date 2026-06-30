@@ -11022,6 +11022,52 @@ function onInsSerialInput(inp){
   });
   // โหลดประวัติอะไหล่
   if(inp.value.trim().length >= 5) _loadInsSerialHistory(inp.value.trim());
+  // Auto-fill จากใบตรวจล่าสุดของรถคันนี้ (เฉพาะตอนสร้างใหม่ ไม่ใช่ตอนแก้ไข)
+  if(inp.value.trim().length >= 5 && !window._editingFormNo) _autoFillFromLatestInspection(inp.value.trim());
+}
+
+function _autoFillFromLatestInspection(serialNo){
+  callAPI('getLatestInspectionByVehicle',{serialNo:serialNo}).then(function(res){
+    if(!res.success || !res.data) return;
+    var d = res.data;
+    var canFill = CU && (CU.role==='MANAGER'||CU.role==='ADMIN'||CU.role==='SUPERVISOR');
+
+    // ใส่ note แจ้งว่าดึงข้อมูลมาจากใบไหน
+    var note = document.getElementById('insAutoFillNote');
+    if(!note){
+      var serialEl = document.getElementById('insSerial');
+      if(serialEl && serialEl.parentElement){
+        note = document.createElement('div');
+        note.id = 'insAutoFillNote';
+        note.style.cssText = 'font-size:11px;color:#1565c0;margin-top:4px;padding:4px 8px;background:#e3f2fd;border-radius:6px';
+        serialEl.parentElement.appendChild(note);
+      }
+    }
+    if(note) note.textContent = '📋 ดึงข้อมูลอะไหล่และสัญญาเช่าจากใบตรวจล่าสุด '+d.FormNo+' ('+(d.InspDate||'').substring(0,10)+') — แก้ไขได้หากมีการเปลี่ยนแปลง';
+
+    // Serial fields — เฉพาะคนมีสิทธิ์แก้
+    if(canFill){
+      var fieldMap = {
+        insMotor:d.MotorNo, insController:d.ControllerNo, insOnboard:d.OnboardNo,
+        insSolenoid:d.SolenoidNo, insCharger:d.ChargerNo, insTransaxle:d.TransaxleNo,
+        insBatBrand:d.BatBrand, insBatCode:d.BatCode, insBatTotal:d.BatTotal,
+        insBatAsset:d.BatAsset, insChgAsset:d.ChgAsset,
+      };
+      Object.keys(fieldMap).forEach(function(id){
+        var el = document.getElementById(id);
+        if(el && !el.value && fieldMap[id]) el.value = fieldMap[id];
+      });
+    }
+
+    // วันที่สัญญาเช่า — auto-fill เสมอ (เป็นข้อมูลอ้างอิง แก้ไขได้)
+    var leaseFieldMap = {
+      insLeaseStart:d.LeaseStart, insLeaseEnd:d.LeaseEnd, insLeaseDuration:d.LeaseDuration,
+    };
+    Object.keys(leaseFieldMap).forEach(function(id){
+      var el = document.getElementById(id);
+      if(el && !el.value && leaseFieldMap[id]) el.value = String(leaseFieldMap[id]).substring(0,10);
+    });
+  });
 }
 
 function _loadInsSerialHistory(serialNo){
