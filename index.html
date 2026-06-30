@@ -2577,6 +2577,7 @@ function onPhoto(e){
 
 function submitReq(){
   if(!CU) return toast('กรุณาเข้าสู่ระบบก่อนค่ะ','error');
+  if(window._reqSubmitting) return; // ป้องกันกดซ้ำ
   var job=document.getElementById('nJob').value.trim();
   if(!job) return toast('กรุณากรอก Job No.','error');
   var custDisplay = document.getElementById('nCust').value.trim();
@@ -2595,7 +2596,9 @@ function submitReq(){
   var reqId=document.getElementById('nId').value.trim();
   var data={jobNo:job,customerName:cust,requesterName:CU.name,coWorkers:(document.getElementById('nCo').value||'').split(',').map(function(s){return s.trim();}).filter(Boolean),serialNos:(document.getElementById('nSerial').value||'').split(',').map(function(s){return s.trim();}).filter(Boolean),vehicleModel:document.getElementById('nModel').value,purpose:pp.join(', '),items:items};
   toast('กำลังส่งใบเบิก...','info');
+  window._reqSubmitting = true;
   callAPI('createRequisition',data).then(function(res){
+    window._reqSubmitting = false;
     toast(res.message,res.success?'success':'error');
     if(res.success) go('list');
   });
@@ -11111,9 +11114,19 @@ function closeInspModal(){
 }
 
 function saveInspection(asDraft){
+  // ป้องกันกดซ้ำ — ถ้ากำลังบันทึกอยู่ ไม่ให้กดซ้ำ
+  if(window._insSaving) return;
+  window._insSaving = true;
+  var btns = document.querySelectorAll('#inspectionModal button');
+  btns.forEach(function(b){ b.disabled = true; });
+
   var type = (document.querySelector('input[name="insType"]:checked')||{}).value||'PRE_DELIVERY';
   var serial = (document.getElementById('insSerial')||{}).value.trim();
-  if(!serial) return toast('กรุณาระบุ Serial No. รถค่ะ','error');
+  if(!serial){
+    window._insSaving = false;
+    btns.forEach(function(b){ b.disabled = false; });
+    return toast('กรุณาระบุ Serial No. รถค่ะ','error');
+  }
 
   // collect checklist
   var general={}, program={}, option={};
@@ -11177,6 +11190,8 @@ function saveInspection(asDraft){
   if(window._editingFormNo) data.formNo = window._editingFormNo;
 
   callAPI(action, data).then(function(res){
+    window._insSaving = false;
+    btns.forEach(function(b){ b.disabled = false; });
     if(res.success){
       var savedFormNo = res.formNo || window._editingFormNo || data.formNo;
       window._editingFormNo = null;
@@ -11191,6 +11206,10 @@ function saveInspection(asDraft){
     } else {
       toast('❌ '+(res.message||'บันทึกไม่สำเร็จ ลองใหม่อีกครั้งค่ะ'), 'error');
     }
+  }).catch(function(){
+    window._insSaving = false;
+    btns.forEach(function(b){ b.disabled = false; });
+    toast('❌ เกิดข้อผิดพลาด ลองใหม่อีกครั้งค่ะ', 'error');
   });
 }
 
