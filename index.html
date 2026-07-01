@@ -6304,6 +6304,7 @@ function editSODetail(soNo){
   callAPI('getSalesOrderDetail',{soNo:soNo}).then(function(res){
     if(!res.success||!res.data) return toast('ไม่พบข้อมูลค่ะ','error');
     var o = res.data;
+    var items = o.Items||o.items||[];
 
     var existing = document.getElementById('soEditModal');
     if(existing) existing.remove();
@@ -6311,22 +6312,45 @@ function editSODetail(soNo){
     modal.id = 'soEditModal';
     modal.className = 'mo';
     modal.style.zIndex = '3100';
+
+    var esc = function(v){ return (v||'').toString().replace(/"/g,'&quot;'); };
+
+    var itemRows = items.map(function(it, i){
+      return '<div class="so-edit-row" data-idx="'+i+'" style="display:grid;grid-template-columns:1.4fr 1.6fr 70px 70px 1fr 28px;gap:6px;align-items:center;margin-bottom:6px">'
+        +'<input class="fc so-edit-pn" value="'+esc(it.PartNo)+'" placeholder="Part No." style="font-size:12px">'
+        +'<input class="fc so-edit-name" value="'+esc(it.NameEN)+'" placeholder="ชื่ออะไหล่" style="font-size:12px">'
+        +'<input class="fc so-edit-qty" type="number" min="0" value="'+(it.Qty||1)+'" style="font-size:12px;text-align:center">'
+        +'<input class="fc so-edit-unit" value="'+esc(it.Unit||'ชิ้น')+'" style="font-size:12px;text-align:center">'
+        +'<input class="fc so-edit-sn" value="'+esc(it.SerialNo)+'" placeholder="Serial" style="font-size:12px">'
+        +'<button type="button" onclick="this.closest(\'.so-edit-row\').remove()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">✕</button>'
+      +'</div>';
+    }).join('');
+
     modal.innerHTML =
-      '<div class="mow" style="max-width:520px">'
+      '<div class="mow" style="max-width:640px">'
         +'<div class="moh">'
           +'<div class="mot">✏️ แก้ไข '+soNo+'</div>'
-          +'<button class="mcl" onclick="document.getElementById(\'soEditModal\').remove()">✕</button>'
+          +'<button class="mcl" onclick="closeSOEditModal()">✕</button>'
         +'</div>'
         +'<div class="mob">'
-          +'<div class="fg"><label class="fl">เลขที่เอกสาร</label><input class="fc" id="soEditDocNo" value="'+(o.DocNo||'').replace(/"/g,'&quot;')+'"></div>'
-          +'<div class="fg"><label class="fl">เลขที่ PO</label><input class="fc" id="soEditPONo" value="'+(o.PONo||'').replace(/"/g,'&quot;')+'" placeholder="เช่น PO-2569-001"></div>'
-          +'<div class="fg"><label class="fl">ลูกค้า / ปลายทาง</label><input class="fc" id="soEditCustName" value="'+(o.CustName||o.CustomerName||'').replace(/"/g,'&quot;')+'"></div>'
-          +'<div class="fg"><label class="fl">ที่อยู่จัดส่ง</label><input class="fc" id="soEditDeliveryAddr" value="'+(o.DeliveryAddr||'').replace(/"/g,'&quot;')+'"></div>'
-          +'<div class="fg"><label class="fl">หมายเหตุ</label><input class="fc" id="soEditNote" value="'+(o.Note||'').replace(/"/g,'&quot;')+'"></div>'
+          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+            +'<div class="fg"><label class="fl">เลขที่เอกสาร</label><input class="fc" id="soEditDocNo" value="'+esc(o.DocNo)+'"></div>'
+            +'<div class="fg"><label class="fl">เลขที่ PO</label><input class="fc" id="soEditPONo" value="'+esc(o.PONo)+'" placeholder="เช่น PO-2569-001"></div>'
+          +'</div>'
+          +'<div class="fg"><label class="fl">ลูกค้า / ปลายทาง</label><input class="fc" id="soEditCustName" value="'+esc(o.CustName||o.CustomerName)+'"></div>'
+          +'<div class="fg"><label class="fl">ที่อยู่จัดส่ง</label><input class="fc" id="soEditDeliveryAddr" value="'+esc(o.DeliveryAddr)+'"></div>'
+          +'<div class="fg"><label class="fl">หมายเหตุ</label><input class="fc" id="soEditNote" value="'+esc(o.Note)+'"></div>'
+          +'<div style="border-top:0.5px solid var(--g200);margin-top:10px;padding-top:10px">'
+            +'<div style="font-size:12px;font-weight:700;color:var(--gd);margin-bottom:8px">รายการอะไหล่</div>'
+            +'<div id="soEditItemsBody">'+itemRows+'</div>'
+            +'<button type="button" class="btn bo bsm" onclick="addSOEditRow()">+ เพิ่มรายการ</button>'
+          +'</div>'
+          +'<div class="fg" style="margin-top:10px"><label class="fl">เหตุผลที่แก้ไข <span style="color:var(--red)">*</span></label>'
+            +'<input class="fc" id="soEditReason" placeholder="เช่น แก้เลข PO ให้ตรงกับเอกสารลูกค้า"></div>'
         +'</div>'
         +'<div class="mof">'
-          +'<button class="btn bo" onclick="document.getElementById(\'soEditModal\').remove()">ยกเลิก</button>'
-          +'<button class="btn bp" onclick="saveSOEdit(\''+soNo+'\')">💾 บันทึก</button>'
+          +'<button class="btn bo" onclick="closeSOEditModal()">ยกเลิก</button>'
+          +'<button class="btn bp" onclick="saveSOEdit(\''+soNo+'\', this)">💾 บันทึก</button>'
         +'</div>'
       +'</div>';
     document.body.appendChild(modal);
@@ -6334,7 +6358,44 @@ function editSODetail(soNo){
   });
 }
 
-function saveSOEdit(soNo){
+function addSOEditRow(){
+  var wrap = document.getElementById('soEditItemsBody');
+  if(!wrap) return;
+  var div = document.createElement('div');
+  div.className = 'so-edit-row';
+  div.style.cssText = 'display:grid;grid-template-columns:1.4fr 1.6fr 70px 70px 1fr 28px;gap:6px;align-items:center;margin-bottom:6px';
+  div.innerHTML =
+    '<input class="fc so-edit-pn" placeholder="Part No." style="font-size:12px">'
+    +'<input class="fc so-edit-name" placeholder="ชื่ออะไหล่" style="font-size:12px">'
+    +'<input class="fc so-edit-qty" type="number" min="0" value="1" style="font-size:12px;text-align:center">'
+    +'<input class="fc so-edit-unit" value="ชิ้น" style="font-size:12px;text-align:center">'
+    +'<input class="fc so-edit-sn" placeholder="Serial" style="font-size:12px">'
+    +'<button type="button" onclick="this.closest(\'.so-edit-row\').remove()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">✕</button>';
+  wrap.appendChild(div);
+}
+
+function closeSOEditModal(){
+  var em = document.getElementById('soEditModal');
+  if(em){ em.style.display='none'; em.remove(); }
+}
+
+function saveSOEdit(soNo, btnEl){
+  var reason = (document.getElementById('soEditReason')||{}).value.trim()||'';
+  if(!reason) return toast('กรุณาระบุเหตุผลที่แก้ไขค่ะ','error');
+
+  var items = [];
+  document.querySelectorAll('#soEditItemsBody .so-edit-row').forEach(function(row){
+    var pn = (row.querySelector('.so-edit-pn')||{}).value.trim()||'';
+    if(!pn) return;
+    items.push({
+      partNo:   pn,
+      nameEN:   (row.querySelector('.so-edit-name')||{}).value||'',
+      qty:      parseFloat((row.querySelector('.so-edit-qty')||{}).value)||0,
+      unit:     (row.querySelector('.so-edit-unit')||{}).value||'ชิ้น',
+      serialNo: (row.querySelector('.so-edit-sn')||{}).value||'',
+    });
+  });
+
   var data = {
     soNo:         soNo,
     docNo:        (document.getElementById('soEditDocNo')||{}).value||'',
@@ -6342,18 +6403,28 @@ function saveSOEdit(soNo){
     custName:     (document.getElementById('soEditCustName')||{}).value||'',
     deliveryAddr: (document.getElementById('soEditDeliveryAddr')||{}).value||'',
     note:         (document.getElementById('soEditNote')||{}).value||'',
+    items:        items,
+    editReason:   reason,
     // ไม่ส่ง status มา — backend จะไม่แก้สถานะเดิม
   };
   if(!data.custName) return toast('กรุณาระบุชื่อลูกค้าค่ะ','error');
-  toast('กำลังบันทึก...','info');
+
+  var saveBtn = btnEl;
+  if(saveBtn){ saveBtn.disabled = true; saveBtn.textContent = '⏳ กำลังบันทึก...'; }
+
   callAPI('updateSalesOrder', data).then(function(res){
     toast(res.success?'✅ บันทึกแล้วค่ะ':'❌ '+(res.message||'เกิดข้อผิดพลาด'), res.success?'success':'error');
+    if(saveBtn){ saveBtn.disabled = false; saveBtn.textContent = '💾 บันทึก'; }
     if(res.success){
-      var em = document.getElementById('soEditModal'); if(em) em.remove();
-      var dm = document.getElementById('soDetailViewModal'); if(dm) dm.remove();
+      closeSOEditModal();
+      var dm = document.getElementById('soDetailViewModal'); if(dm){ dm.style.display='none'; dm.remove(); }
       viewSODetail(soNo);
       if(typeof loadSOPage==='function') loadSOPage();
+      if(typeof initSales==='function') initSales();
     }
+  }).catch(function(err){
+    toast('เกิดข้อผิดพลาด: '+(err&&err.message||'ไม่ทราบสาเหตุ'),'error');
+    if(saveBtn){ saveBtn.disabled = false; saveBtn.textContent = '💾 บันทึก'; }
   });
 }
 
