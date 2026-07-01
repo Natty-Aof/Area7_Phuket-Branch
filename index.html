@@ -6418,7 +6418,7 @@ function saveSOEdit(soNo, btnEl){
     if(res.success){
       closeSOEditModal();
       var dm = document.getElementById('soDetailViewModal'); if(dm){ dm.style.display='none'; dm.remove(); }
-      viewSODetail(soNo);
+      // ไม่เปิด detail view ซ้ำอัตโนมัติ — กันสับสนว่า popup เปิดขึ้นมาใหม่ ถ้าอยากดูผลลัพธ์ กดดูรายละเอียดอีกครั้งได้เลย
       if(typeof loadSOPage==='function') loadSOPage();
       if(typeof initSales==='function') initSales();
     }
