@@ -2964,7 +2964,7 @@ function loadApproval(){
     // ── ใบตรวจสภาพเสร็จแล้ว รอตรวจสอบ (Manager/Admin) ──
     if(isMgr && insCompleted.length){
       html += '<div class="card" style="margin-bottom:10px;border-left:4px solid #1b5e20">';
-      html += '<div style="font-size:13px;font-weight:700;color:#1b5e20;padding:10px 14px;border-bottom:0.5px solid var(--g200)">✅ ใบตรวจสภาพรถเสร็จแล้ว รอตรวจสอบ ('+insCompleted.length+')</div>';
+      html += '<div style="font-size:13px;font-weight:700;color:#1b5e20;padding:10px 14px;border-bottom:0.5px solid var(--g200)">✅ ใบตรวจสภาพรถเสร็จแล้ว รออนุมัติ ผจก. ('+insCompleted.length+')</div>';
       html += insCompleted.map(function(r){
         var tl={PRE_DELIVERY:'ส่งรถ',POST_RETURN:'รับคืน',PERIODIC:'Periodic'};
         return '<div style="padding:12px 14px;border-bottom:0.5px solid var(--g200);display:flex;align-items:center;gap:12px">'
@@ -2974,7 +2974,7 @@ function loadApproval(){
           +'</div>'
           +'<div style="display:flex;gap:6px;flex-shrink:0">'
             +'<button class="btn bo bsm" style="white-space:nowrap" onclick="openInspView(\''+r.FormNo+'\')">🖨️ ดู/ปริ้น</button>'
-            +'<button class="btn bp bsm" style="background:#1b5e20;border-color:#1b5e20;white-space:nowrap" onclick="reviewInspectionDone(\''+r.FormNo+'\')">✔ ตรวจสอบแล้ว</button>'
+            +'<button class="btn bp bsm" style="background:#1b5e20;border-color:#1b5e20;white-space:nowrap" onclick="reviewInspectionDone(\''+r.FormNo+'\')">✅ อนุมัติ</button>'
           +'</div>'
         +'</div>';
       }).join('');
@@ -11290,10 +11290,10 @@ function acceptInspection(formNo){
 
 function reviewInspectionDone(formNo){
   if(!CU) return;
-  if(!confirm('ยืนยันว่าตรวจสอบใบตรวจสภาพรถ '+formNo+' เรียบร้อยแล้วใช่ไหมคะ?')) return;
+  if(!confirm('ยืนยันอนุมัติใบตรวจสภาพรถ '+formNo+' ใช่ไหมคะ?')) return;
   toast('กำลังบันทึก...','info');
   callAPI('reviewInspection',{formNo:formNo}).then(function(res){
-    toast(res.success?'✅ ตรวจสอบแล้วค่ะ':'❌ '+(res.message||'เกิดข้อผิดพลาด'), res.success?'success':'error');
+    toast(res.success?'✅ อนุมัติแล้วค่ะ':'❌ '+(res.message||'เกิดข้อผิดพลาด'), res.success?'success':'error');
     if(res.success){
       refreshBadges(true);
       if(document.getElementById('pg-approval') && !document.getElementById('pg-approval').classList.contains('hidden')){
