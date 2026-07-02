@@ -9535,9 +9535,15 @@ function drawTechRaceChart(canvas, techList){
     ctx.strokeStyle = color; ctx.lineWidth = 8; ctx.lineCap='round';
     ctx.beginPath(); ctx.moveTo(trackX0, y); ctx.lineTo(runX, y); ctx.stroke();
 
-    // ม้าแข่ง 🏇 (หันหน้าไปทาง % / เส้นชัย)
+    // ม้าแข่ง 🏇 (พลิกให้หันหน้าไปทาง % / เส้นชัย) — 3 อันดับท้ายสุดใช้เต่า 🐢 แทน
+    var isBottom3 = i >= list.length - 3 && list.length > 3;
+    var raceEmoji = isBottom3 ? '🐢' : '🏇';
     ctx.font = '34px Arial'; ctx.textAlign='center';
-    ctx.fillText('🏇', runX, y+12);
+    ctx.save();
+    ctx.translate(runX, y+12);
+    ctx.scale(-1, 1);
+    ctx.fillText(raceEmoji, 0, 0);
+    ctx.restore();
 
     // เส้นชัย 🏁 (ตัวใหญ่ขึ้น)
     ctx.font = '28px Arial';
