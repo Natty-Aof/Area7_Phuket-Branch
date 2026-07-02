@@ -9211,6 +9211,22 @@ function _renderFullReport(){
     else if(r.StatusStock==='PICKED_UP') techMap[n].waitClear++;
     else techMap[n].inProgress++;
   });
+  // ── เพิ่ม: ผู้รับผิดชอบฝั่ง Stock (ตัด SAP / ปิดงาน) — เช่น อนุวิทย์ คำคง ──
+  var STOCK_CLOSERS = [
+    {name:'อนุวิทย์ คำคง (Stock)', emails:['anuwit@beyond-green.co.th','anuwitx@gmail.com']},
+  ];
+  STOCK_CLOSERS.forEach(function(sc){
+    var entry = {name:sc.name, total:0, inProgress:0, waitClear:0, closed:0, days:[]};
+    reqs.forEach(function(r){
+      if(r.StatusStock==='PENDING_CLEARANCE'){
+        // งานที่ยังรอตัด SAP — ถือเป็นคิวของ Stock ทุกคนที่รับผิดชอบเรื่องนี้
+        entry.total++; entry.waitClear++;
+      } else if(r.StatusStock==='CLEARED' && r.StockHandlerEmail && sc.emails.indexOf(String(r.StockHandlerEmail).toLowerCase())>=0){
+        entry.total++; entry.closed++; entry.days.push(ageDays(r.OpenDate));
+      }
+    });
+    if(entry.total>0) techMap[sc.name]=entry;
+  });
   var techList=Object.values(techMap).sort(function(a,b){return (b.inProgress+b.waitClear)-(a.inProgress+a.waitClear);});
   var techChartCanvas = document.getElementById('rptTechChart');
   if(techChartCanvas && techList.length) drawTechRaceChart(techChartCanvas, techList);
@@ -9481,7 +9497,7 @@ function drawTechRaceChart(canvas, techList){
   var dpr  = window.devicePixelRatio || 1;
   var cont = canvas.parentElement;
   var cssW = cont ? Math.max(cont.getBoundingClientRect().width||600, 320) : 600;
-  var ROW_H = 44, PAD_TOP = 40, PAD_BOT = 16, NAME_W = 130, TRACK_R = 46; // เผื่อที่ให้ธง+ตัวเลขทางขวา
+  var ROW_H = 62, PAD_TOP = 46, PAD_BOT = 16, NAME_W = 150, TRACK_R = 46; // เผื่อที่ให้ธง+ตัวเลขทางขวา
   var cssH = PAD_TOP + ROW_H*list.length + PAD_BOT;
   canvas.width  = Math.round(cssW*dpr); canvas.height = Math.round(cssH*dpr);
   canvas.style.width = cssW+'px'; canvas.style.height = cssH+'px';
@@ -9493,8 +9509,8 @@ function drawTechRaceChart(canvas, techList){
   var trackW = trackX1 - trackX0;
 
   // header
-  ctx.fillStyle = '#1a4a2e'; ctx.font = 'bold 13px Sarabun,Arial,sans-serif'; ctx.textAlign='center';
-  ctx.fillText('🏁 สนามแข่งปิดงาน — % ใบเบิกที่ปิดจบแล้วของแต่ละช่าง', cssW/2, 20);
+  ctx.fillStyle = '#1a4a2e'; ctx.font = 'bold 14px Sarabun,Arial,sans-serif'; ctx.textAlign='center';
+  ctx.fillText('🏁 สนามแข่งปิดงาน — % ใบเบิกที่ปิดจบแล้วของแต่ละช่าง', cssW/2, 24);
 
   list.forEach(function(t, i){
     var y = PAD_TOP + i*ROW_H + ROW_H/2;
@@ -9515,17 +9531,17 @@ function drawTechRaceChart(canvas, techList){
     ctx.strokeStyle = color; ctx.lineWidth = 8; ctx.lineCap='round';
     ctx.beginPath(); ctx.moveTo(trackX0, y); ctx.lineTo(runX, y); ctx.stroke();
 
-    // นักวิ่ง 🏃
-    ctx.font = '20px Arial'; ctx.textAlign='center';
-    ctx.fillText('🏃', runX, y+7);
+    // นักวิ่ง 🏃 (ตัวใหญ่ขึ้น)
+    ctx.font = '34px Arial'; ctx.textAlign='center';
+    ctx.fillText('🏃', runX, y+12);
 
-    // เส้นชัย 🏁
-    ctx.font = '18px Arial';
-    ctx.fillText('🏁', trackX1+18, y+6);
+    // เส้นชัย 🏁 (ตัวใหญ่ขึ้น)
+    ctx.font = '28px Arial';
+    ctx.fillText('🏁', trackX1+20, y+10);
 
     // % ตัวเลข
-    ctx.fillStyle = color; ctx.font = 'bold 13px Sarabun,Arial,sans-serif'; ctx.textAlign='left';
-    ctx.fillText(t.pct+'%', trackX1+38, y+4);
+    ctx.fillStyle = color; ctx.font = 'bold 14px Sarabun,Arial,sans-serif'; ctx.textAlign='left';
+    ctx.fillText(t.pct+'%', trackX1+42, y+5);
   });
 }
 
