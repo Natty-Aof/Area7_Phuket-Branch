@@ -341,6 +341,7 @@ textarea.fc{min-height:70px;resize:vertical;}
             <span style="font-size:18px">🚨</span>
             <strong style="color:var(--red);font-size:14px">รายการที่ต้องตรวจสอบด่วน</strong>
           </div>
+          <div id="rptAlertCharts"></div>
           <div id="rptAlertList"></div>
         </div>
 
@@ -9180,19 +9181,34 @@ function _renderFullReport(){
   var alerts=[];
   reqs.forEach(function(r){
     var d=ageDays(r.OpenDate);
+    var who = r.RequesterName||r.RequesterEmail||'ไม่ระบุ';
     if((r.StatusApproval==='PENDING_SUPERVISOR'||r.StatusApproval==='PENDING_MANAGER')&&d>=3)
-      alerts.push('ใบเบิก <strong>'+r.ReqID+'</strong> ('+( r.RequesterName||r.RequesterEmail)+') รออนุมัติมาแล้ว <strong>'+fmtAge(d)+'</strong>');
+      alerts.push({cat:'รออนุมัติ', tech:who, html:'ใบเบิก <strong>'+r.ReqID+'</strong> ('+who+') รออนุมัติมาแล้ว <strong>'+fmtAge(d)+'</strong>'});
     if(r.StatusStock==='PICKED_UP'&&d>=7)
-      alerts.push('ใบเบิก <strong>'+r.ReqID+'</strong> ('+( r.RequesterName||r.RequesterEmail)+') ยังไม่เคลียร์ มาแล้ว <strong>'+fmtAge(d)+'</strong>');
+      alerts.push({cat:'ยังไม่เคลียร์', tech:who, html:'ใบเบิก <strong>'+r.ReqID+'</strong> ('+who+') ยังไม่เคลียร์ มาแล้ว <strong>'+fmtAge(d)+'</strong>'});
     if(r.StatusStock==='PENDING_CLEARANCE'&&d>=3)
-      alerts.push('ใบเบิก <strong>'+r.ReqID+'</strong> ('+( r.RequesterName||r.RequesterEmail)+') ช่างส่งเคลียร์แล้ว แต่ยังไม่ตัด SAP / ยังไม่ปิดงาน มาแล้ว <strong>'+fmtAge(d)+'</strong>');
+      alerts.push({cat:'รอตัด SAP', tech:who, html:'ใบเบิก <strong>'+r.ReqID+'</strong> ('+who+') ช่างส่งเคลียร์แล้ว แต่ยังไม่ตัด SAP / ยังไม่ปิดงาน มาแล้ว <strong>'+fmtAge(d)+'</strong>'});
     if(r.StatusApproval==='APPROVED'&&r.StatusStock==='PENDING'&&d>=2)
-      alerts.push('ใบเบิก <strong>'+r.ReqID+'</strong> อนุมัติแล้วแต่ยังไม่จ่ายของ มาแล้ว <strong>'+fmtAge(d)+'</strong>');
+      alerts.push({cat:'รอจ่ายของ', tech:who, html:'ใบเบิก <strong>'+r.ReqID+'</strong> อนุมัติแล้วแต่ยังไม่จ่ายของ มาแล้ว <strong>'+fmtAge(d)+'</strong>'});
   });
   var ap=document.getElementById('rptAlertPanel'), al=document.getElementById('rptAlertList');
   if(ap&&al){
     if(alerts.length){
-      al.innerHTML=alerts.map(function(a){return '<div style="padding:6px 10px;margin-bottom:4px;background:rgba(183,28,28,.07);border-radius:6px;font-size:13px">⚠️ '+a+'</div>';}).join('');
+      // ── สรุปเป็น Pie Chart 2 มุม: ตามประเภทปัญหา / ตามช่าง ──
+      var chartsEl = document.getElementById('rptAlertCharts');
+      if(chartsEl){
+        var catCount = {}; alerts.forEach(function(a){ catCount[a.cat]=(catCount[a.cat]||0)+1; });
+        var techCount = {}; alerts.forEach(function(a){ techCount[a.tech]=(techCount[a.tech]||0)+1; });
+        chartsEl.innerHTML =
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">'
+          +'<div style="background:#fff;border-radius:8px;padding:10px"><canvas id="rptAlertPieCat"></canvas></div>'
+          +'<div style="background:#fff;border-radius:8px;padding:10px"><canvas id="rptAlertPieTech"></canvas></div>'
+          +'</div>';
+        var catColors = {'รออนุมัติ':'#1565c0','ยังไม่เคลียร์':'#c9a84c','รอตัด SAP':'#e65100','รอจ่ายของ':'#6a1599'};
+        drawAlertPieChart('rptAlertPieCat', catCount, 'แยกตามประเภทปัญหา ('+alerts.length+' รายการ)', catColors);
+        drawAlertPieChart('rptAlertPieTech', techCount, 'แยกตามช่างที่ค้าง', null);
+      }
+      al.innerHTML=alerts.map(function(a){return '<div style="padding:6px 10px;margin-bottom:4px;background:rgba(183,28,28,.07);border-radius:6px;font-size:13px">⚠️ '+a.html+'</div>';}).join('');
       ap.style.display='';
     } else { ap.style.display='none'; }
   }
@@ -9410,6 +9426,62 @@ function _renderFullReport(){
 
 
 // ── Vertical Bar Chart — Modern Style ───────────────────────
+// ── Pie Chart สรุปรายการค้าง (Alert Panel) ──────────────────
+var _ALERT_PIE_COLORS = ['#1a4a2e','#2d6a4f','#40916c','#74c69d','#95d5b2','#c9a84c','#e65100','#6a1599','#1565c0','#b71c1c','#37474f','#8d6e63'];
+function drawAlertPieChart(canvasId, countsObj, title, colorMap){
+  var canvas = document.getElementById(canvasId);
+  if(!canvas) return;
+  var entries = Object.keys(countsObj).map(function(k){ return {label:k, count:countsObj[k]}; })
+    .sort(function(a,b){ return b.count-a.count; });
+  var total = entries.reduce(function(s,e){ return s+e.count; }, 0);
+  if(!total) return;
+
+  var dpr  = window.devicePixelRatio || 1;
+  var cont = canvas.parentElement;
+  var cssW = cont ? Math.max(cont.getBoundingClientRect().width||280, 220) : 280;
+  var legendRows = entries.length;
+  var cssH = 190 + legendRows * 20;
+  canvas.width  = Math.round(cssW*dpr); canvas.height = Math.round(cssH*dpr);
+  canvas.style.width = cssW+'px'; canvas.style.height = cssH+'px';
+  var ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0,0,cssW,cssH);
+
+  // title
+  ctx.fillStyle = '#1a4a2e'; ctx.font = 'bold 12px Sarabun,Arial,sans-serif'; ctx.textAlign='center';
+  ctx.fillText(title, cssW/2, 18);
+
+  // pie
+  var cx = cssW/2, cy = 100, r = 62;
+  var start = -Math.PI/2;
+  entries.forEach(function(e, i){
+    var slice = (e.count/total) * Math.PI * 2;
+    var color = colorMap && colorMap[e.label] ? colorMap[e.label] : _ALERT_PIE_COLORS[i % _ALERT_PIE_COLORS.length];
+    ctx.beginPath(); ctx.moveTo(cx,cy);
+    ctx.arc(cx, cy, r, start, start+slice);
+    ctx.closePath(); ctx.fillStyle = color; ctx.fill();
+    start += slice;
+  });
+  // center hole (donut style) + total count
+  ctx.beginPath(); ctx.arc(cx, cy, r*0.55, 0, Math.PI*2); ctx.fillStyle='#fff'; ctx.fill();
+  ctx.fillStyle = '#1a4a2e'; ctx.font = 'bold 20px Sarabun,Arial,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(String(total), cx, cy-6);
+  ctx.font = '10px Sarabun,Arial,sans-serif'; ctx.fillStyle='#888';
+  ctx.fillText('รายการ', cx, cy+12);
+  ctx.textBaseline='alphabetic';
+
+  // legend
+  var ly = 175;
+  entries.forEach(function(e,i){
+    var color = colorMap && colorMap[e.label] ? colorMap[e.label] : _ALERT_PIE_COLORS[i % _ALERT_PIE_COLORS.length];
+    var pct = Math.round(e.count/total*100);
+    ctx.fillStyle = color; ctx.fillRect(14, ly-9, 10, 10);
+    ctx.fillStyle = '#333'; ctx.font='11px Sarabun,Arial,sans-serif'; ctx.textAlign='left';
+    ctx.fillText(e.label+' ('+e.count+' • '+pct+'%)', 30, ly);
+    ly += 20;
+  });
+}
+
 function drawHorizontalBar(ctx, canvas, data, _a, _b, _c, _d){
   var N       = Math.min(data.length, 10);
   var items   = data.slice(0, N);
