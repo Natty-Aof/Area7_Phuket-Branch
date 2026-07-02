@@ -5810,6 +5810,10 @@ function initSales(){
       var b=document.getElementById('soBadgePend');
       if(b) b.textContent=orders.length;
     }
+    if(_soTab==='approved'){
+      var b2=document.getElementById('soBadgeApp');
+      if(b2) b2.textContent=orders.length;
+    }
     if(!orders.length){
       el.innerHTML='<div class="card tc tm" style="padding:32px">ไม่มีรายการ</div>'; return;
     }
