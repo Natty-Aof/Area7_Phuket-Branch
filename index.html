@@ -9063,7 +9063,9 @@ function _renderFullReport(){
     });
   });
   var inUse     = reqs.filter(function(r){return r.StatusStock==='ACKNOWLEDGED'||r.StatusStock==='PICKED_UP';}).length;
-  var waitClear = reqs.filter(function(r){return r.StatusStock==='PICKED_UP';}).length;
+  // ── รวม PENDING_CLEARANCE (ส่งเคลียร์แล้ว รอ Stock ตัด SAP) เข้ากับ "รอเคลียร์" ──
+  // กันไม่ให้รายการหายไปจาก Pipeline/KPI (เดิมนับแค่ PICKED_UP ทำให้ตัวเลขรวมไม่ครบ)
+  var waitClear = reqs.filter(function(r){return r.StatusStock==='PICKED_UP'||r.StatusStock==='PENDING_CLEARANCE';}).length;
   var closed    = reqs.filter(function(r){return r.StatusStock==='CLEARED';}).length;
   var overdue7  = reqs.filter(function(r){return ageDays(r.OpenDate)>=7&&r.StatusStock!=='CLEARED';}).length;
 
@@ -9140,7 +9142,7 @@ function _renderFullReport(){
           case 'pendingManager':    return r.StatusApproval==='PENDING_MANAGER';
           case 'waitStock': return r.StatusApproval==='APPROVED'&&r.StatusStock==='PENDING';
           case 'inUse':     return r.StatusStock==='ACKNOWLEDGED'||r.StatusStock==='PICKED_UP';
-          case 'waitClear': return r.StatusStock==='PICKED_UP';
+          case 'waitClear': return r.StatusStock==='PICKED_UP'||r.StatusStock==='PENDING_CLEARANCE';
           case 'closed':    return true; // กรองด้วย trackSource แล้ว
           case 'overdue7':  return ageDays(r.OpenDate)>=7;
           case 'partIssued':
@@ -9209,10 +9211,13 @@ function _renderFullReport(){
   var techMap={};
   reqs.forEach(function(r){
     var n=r.RequesterName||r.RequesterEmail||'ไม่ระบุ';
-    if(!techMap[n]) techMap[n]={name:n,total:0,inProgress:0,waitClear:0,closed:0,days:[]};
+    if(!techMap[n]) techMap[n]={name:n,total:0,inProgress:0,waitClear:0,submittedClearance:0,closed:0,days:[]};
     techMap[n].total++;
     if(r.StatusStock==='CLEARED'){techMap[n].closed++;techMap[n].days.push(ageDays(r.OpenDate));}
     else if(r.StatusStock==='PICKED_UP') techMap[n].waitClear++;
+    // ── ส่งเคลียร์แล้ว (PENDING_CLEARANCE) = งานฝั่งช่างเสร็จแล้ว รอ Stock ตัด SAP เท่านั้น
+    // ไม่ควรนับเป็น "ยังไม่ปิด" ของช่าง เพราะช่างทำหน้าที่ตัวเองครบแล้ว ──
+    else if(r.StatusStock==='PENDING_CLEARANCE'){techMap[n].submittedClearance++;techMap[n].days.push(ageDays(r.OpenDate));}
     else techMap[n].inProgress++;
   });
   // ── เพิ่ม: ผู้รับผิดชอบฝั่ง Stock (ตัด SAP / ปิดงาน) — เช่น อนุวิทย์ คำคง ──
@@ -9220,7 +9225,7 @@ function _renderFullReport(){
     {name:'อนุวิทย์ คำคง (Stock)', emails:['anuwit@beyond-green.co.th','anuwitx@gmail.com']},
   ];
   STOCK_CLOSERS.forEach(function(sc){
-    var entry = {name:sc.name, total:0, inProgress:0, waitClear:0, closed:0, days:[]};
+    var entry = {name:sc.name, total:0, inProgress:0, waitClear:0, submittedClearance:0, closed:0, days:[]};
     reqs.forEach(function(r){
       if(r.StatusStock==='PENDING_CLEARANCE'){
         // งานที่ยังรอตัด SAP — ถือเป็นคิวของ Stock ทุกคนที่รับผิดชอบเรื่องนี้
@@ -9239,16 +9244,19 @@ function _renderFullReport(){
     var h2='<div class="tw"><table class="it" style="font-size:13px"><thead><tr style="font-size:13px;font-weight:700">'
       +'<th>ชื่อช่าง</th><th style="text-align:center">ทั้งหมด</th>'
       +'<th style="text-align:center">ดำเนินการ</th><th style="text-align:center">รอเคลียร์</th>'
+      +'<th style="text-align:center">ส่งเคลียร์แล้ว<br><span style="font-weight:400;font-size:10px;color:var(--g400)">(รอ Stock ตัด SAP)</span></th>'
       +'<th style="text-align:center">ปิดแล้ว</th><th style="text-align:center">เวลาเฉลี่ย</th>'
-      +'<th style="text-align:center">% ปิดงาน</th></tr></thead><tbody>';
+      +'<th style="text-align:center">% งานฝั่งช่างเสร็จ<br><span style="font-weight:400;font-size:10px;color:var(--g400)">(รวมที่ส่งเคลียร์แล้ว)</span></th></tr></thead><tbody>';
     techList.forEach(function(t){
       var avg=t.days.length?Math.round(t.days.reduce(function(a,b){return a+b;},0)/t.days.length):0;
-      var pct=t.total?Math.round(t.closed/t.total*100):0;
+      var techDone = t.closed + (t.submittedClearance||0); // ── ช่างทำหน้าที่ตัวเองเสร็จแล้ว (ไม่ว่า Stock จะตัด SAP หรือยัง) ──
+      var pct=t.total?Math.round(techDone/t.total*100):0;
       var pc=pct>=80?'#388e3c':pct>=50?'#c9a84c':'#b71c1c';
       h2+='<tr><td style="font-weight:600">'+t.name+'</td>'
         +'<td style="text-align:center">'+t.total+'</td>'
         +'<td style="text-align:center;color:#1565c0;font-weight:700">'+t.inProgress+'</td>'
         +'<td style="text-align:center;color:#c9a84c;font-weight:700">'+t.waitClear+'</td>'
+        +'<td style="text-align:center;color:#1565c0;font-weight:700">'+(t.submittedClearance||0)+'</td>'
         +'<td style="text-align:center;color:#388e3c;font-weight:700">'+t.closed+'</td>'
         +'<td style="text-align:center;color:var(--g400)">'+( avg?fmtAge(avg):'—')+'</td>'
         +'<td><div style="display:flex;align-items:center;gap:6px">'
@@ -9494,7 +9502,8 @@ function drawAlertPieChart(canvasId, countsObj, title, colorMap){
 // ── สนามแข่งช่าง: เปรียบเทียบ % ปิดงาน แบบนักวิ่งแข่งกัน ──
 function drawTechRaceChart(canvas, techList){
   var list = techList.map(function(t){
-    var pct = t.total ? Math.round(t.closed/t.total*100) : 0;
+    var techDone = t.closed + (t.submittedClearance||0); // ── ช่างทำหน้าที่ตัวเองเสร็จแล้ว รวมที่ส่งเคลียร์รอ Stock ตัด SAP ──
+    var pct = t.total ? Math.round(techDone/t.total*100) : 0;
     return {name:t.name, pct:pct, total:t.total, closed:t.closed};
   }).sort(function(a,b){ return b.pct-a.pct; });
 
@@ -9787,7 +9796,7 @@ function exportReportCSV(){
         case 'pendingManager':    return r.StatusApproval==='PENDING_MANAGER';
         case 'waitStock': return r.StatusApproval==='APPROVED'&&r.StatusStock==='PENDING';
         case 'inUse':     return r.StatusStock==='ACKNOWLEDGED'||r.StatusStock==='PICKED_UP';
-        case 'waitClear': return r.StatusStock==='PICKED_UP';
+        case 'waitClear': return r.StatusStock==='PICKED_UP'||r.StatusStock==='PENDING_CLEARANCE';
         case 'closed':    return r.StatusStock==='CLEARED';
         default: return true;
       }
@@ -10221,19 +10230,21 @@ function exportSelectedReport(){
     });
   } else if(type==='technician'){
     filename = 'รายงานตามช่าง_'+dateStr;
-    headers = ['ชื่อช่าง','ใบเบิกทั้งหมด','ดำเนินการ','รอเคลียร์','ปิดแล้ว','% ปิดงาน'];
+    headers = ['ชื่อช่าง','ใบเบิกทั้งหมด','ดำเนินการ','รอเคลียร์','ส่งเคลียร์แล้ว (รอ Stock ตัด SAP)','ปิดแล้ว','% งานฝั่งช่างเสร็จ'];
     var techMap={};
     reqs.forEach(function(r){
       var n=r.RequesterName||r.RequesterEmail||'ไม่ระบุ';
-      if(!techMap[n]) techMap[n]={name:n,total:0,inProgress:0,waitClear:0,closed:0};
+      if(!techMap[n]) techMap[n]={name:n,total:0,inProgress:0,waitClear:0,submittedClearance:0,closed:0};
       techMap[n].total++;
       if(r.StatusStock==='CLEARED') techMap[n].closed++;
       else if(r.StatusStock==='PICKED_UP') techMap[n].waitClear++;
+      else if(r.StatusStock==='PENDING_CLEARANCE') techMap[n].submittedClearance++;
       else techMap[n].inProgress++;
     });
     Object.values(techMap).forEach(function(t){
-      var pct=t.total?Math.round(t.closed/t.total*100):0;
-      rows.push([t.name,t.total,t.inProgress,t.waitClear,t.closed,pct+'%']);
+      var techDone = t.closed + t.submittedClearance;
+      var pct=t.total?Math.round(techDone/t.total*100):0;
+      rows.push([t.name,t.total,t.inProgress,t.waitClear,t.submittedClearance,t.closed,pct+'%']);
     });
   } else if(type==='slowmove'){
     filename = 'อะไหล่ไม่เคลื่อนไหว_'+dateStr;
