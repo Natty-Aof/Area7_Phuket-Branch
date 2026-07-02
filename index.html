@@ -549,7 +549,8 @@ textarea.fc{min-height:70px;resize:vertical;}
           <input type="date" id="rptTo2" class="fc" style="width:150px;font-size:12px">
           <button class="btn bgd bsm" onclick="applyReportDateFilter()">🔍 โหลดรายงาน</button>
           <button class="btn bo bsm" onclick="clearReportDateFilter()">ล้างตัวกรอง (ดูทั้งหมด)</button>
-          <div id="rptDateFilterStatus" style="font-size:11px;color:var(--g400);margin-left:4px"></div>
+          <button class="btn bo bsm" onclick="exportReportCSV()" style="margin-left:auto">📥 Export Excel/CSV</button>
+          <div id="rptDateFilterStatus" style="font-size:11px;color:var(--g400);margin-left:4px;width:100%"></div>
         </div>
 
         <!-- ① Alert Panel ──────────────────────────────── -->
@@ -610,10 +611,9 @@ textarea.fc{min-height:70px;resize:vertical;}
             </div>
             <div style="display:flex;gap:6px">
               <button class="btn bo bsm" onclick="printPendingReport()" style="font-size:11px">🖨️ พิมพ์รายงาน</button>
-              <button class="btn bo bsm" onclick="showShortageAnalysis()" style="font-size:11px">📊 วิเคราะห์ขาดบ่อย</button>
+              <button class="btn bo bsm" onclick="document.getElementById('rptReturnReport').scrollIntoView({behavior:'smooth',block:'center'})" style="font-size:11px">📊 ดูการวิเคราะห์ขาดบ่อย + สั่ง HQ ↓</button>
             </div>
           </div>
-          <div id="shortageAnalysis" style="display:none"></div>
           <div id="rptPendingIssue"><div class="tc tm" style="padding:20px">กด "โหลดรายงาน" ค่ะ</div></div>
         </div>
 
@@ -9631,11 +9631,34 @@ function filterReportBy(filter){
 }
 
 function exportReportCSV(){
-  var reqs  = typeof DEMO_REQS  !=='undefined' ? DEMO_REQS  : [];
-  var items = typeof DEMO_ITEMS !=='undefined' ? DEMO_ITEMS : [];
-  var now   = new Date();
+  // ── ใช้ข้อมูลจริงชุดเดียวกับที่แสดงในหน้ารายงาน (เคารพตัวกรองวันที่ปัจจุบัน) ──
+  var reqs  = window._fullReqs  || [];
+  var items = window._fullItems || [];
+
+  // ถ้ามีการกดกรองหมวดในตาราง "งานที่ต้องติดตาม" อยู่ ให้ export เฉพาะหมวดนั้น
+  if(typeof _rptTrackFilter !== 'undefined' && _rptTrackFilter){
+    reqs = reqs.filter(function(r){
+      switch(_rptTrackFilter.key){
+        case 'waitAppr':  return r.StatusApproval==='PENDING_SUPERVISOR'||r.StatusApproval==='PENDING_MANAGER';
+        case 'pendingSupervisor': return r.StatusApproval==='PENDING_SUPERVISOR';
+        case 'pendingManager':    return r.StatusApproval==='PENDING_MANAGER';
+        case 'waitStock': return r.StatusApproval==='APPROVED'&&r.StatusStock==='PENDING';
+        case 'inUse':     return r.StatusStock==='ACKNOWLEDGED'||r.StatusStock==='PICKED_UP';
+        case 'waitClear': return r.StatusStock==='PICKED_UP';
+        case 'closed':    return r.StatusStock==='CLEARED';
+        default: return true;
+      }
+    });
+  }
+
+  if(!reqs.length){ toast('ไม่มีข้อมูลให้ export ค่ะ ลองปรับช่วงเวลาหรือล้างตัวกรองดูนะคะ','error'); return; }
+
+  var now = new Date();
   function ageDays3(ds){
     if(!ds) return 0;
+    if(ds.indexOf('T')>=0 || ds.indexOf('-')>=0){
+      var d=new Date(ds); if(!isNaN(d)) return Math.floor((now-d)/86400000);
+    }
     var p=ds.split('/'); if(p.length<3) return 0;
     var y=parseInt(p[2]); if(y>2500) y-=543;
     return Math.floor((now-new Date(y,parseInt(p[1])-1,parseInt(p[0])))/86400000);
@@ -9654,8 +9677,9 @@ function exportReportCSV(){
   reqs.forEach(function(r){
     var age=ageDays3(r.OpenDate);
     var stLabel=stMap[r.StatusApproval]||r.StatusApproval;
-    if(items.length){
-      items.forEach(function(item){
+    var myItems = items.filter(function(it){ return it.ReqID===r.ReqID; });
+    if(myItems.length){
+      myItems.forEach(function(item){
         var req    = item.Qty||0;
         var iss    = typeof item.IssuedQty!=='undefined'?(item.IssuedQty||0):req;
         var ret    = item.ReturnedQty||0;
@@ -9673,7 +9697,7 @@ function exportReportCSV(){
   });
 
   var nl = String.fromCharCode(10);
-  var csv='﻿'+rows.map(function(r){
+  var csv='\ufeff'+rows.map(function(r){
     return r.map(function(c){return '"'+String(c||'').replace(/"/g,'""')+'"';}).join(',');
   }).join(nl);
   var blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
@@ -9682,7 +9706,7 @@ function exportReportCSV(){
   a.download='report_'+new Date().toLocaleDateString('th-TH').replace(/\//g,'-')+'.csv';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  toast('Export CSV แล้วค่ะ — รวมรายการอะไหล่ทุกชิ้น','success');
+  toast('Export CSV แล้วค่ะ — '+reqs.length+' ใบเบิก ('+(rows.length-1)+' แถวรายการอะไหล่)','success');
 }
 
 // Auto load เมื่อเข้าหน้ารายงาน
@@ -9744,74 +9768,6 @@ function printPendingReport(){
   win.document.close();
 }
 
-// ── วิเคราะห์อะไหล่ขาดบ่อย ──────────────────────────────────
-function showShortageAnalysis(){
-  var el = document.getElementById('shortageAnalysis');
-  if(!el) return;
-  if(el.style.display !== 'none'){ el.style.display='none'; return; }
-
-  var items = typeof DEMO_ITEMS !== 'undefined' ? DEMO_ITEMS : [];
-  var reqs  = typeof DEMO_REQS  !== 'undefined' ? DEMO_REQS  : [];
-
-  // รวม shortage ต่อ Part No.
-  var shortMap = {};
-  reqs.forEach(function(r){
-    if(r.StatusStock==='CLEARED') return;
-    items.forEach(function(item){
-      var issued  = typeof item.IssuedQty!=='undefined' ? (item.IssuedQty||0) : (item.Qty||0);
-      var req     = item.Qty||0;
-      var pending = Math.max(0, req - issued);
-      if(pending <= 0) return;
-      var pn = item.PartNo;
-      if(!shortMap[pn]) shortMap[pn] = {pn:pn, name:getPartName(pn), totalReq:0, totalIssued:0, totalPending:0, count:0};
-      shortMap[pn].totalReq    += req;
-      shortMap[pn].totalIssued += issued;
-      shortMap[pn].totalPending+= pending;
-      shortMap[pn].count++;
-    });
-  });
-
-  var list = Object.values(shortMap).sort(function(a,b){ return b.totalPending-a.totalPending; });
-
-  if(!list.length){
-    el.innerHTML='<div style="background:#e8f5e9;border-radius:8px;padding:12px 16px;font-size:13px;color:#2d6a4f;margin-bottom:12px">✅ ไม่มีอะไหล่ค้างจ่ายในขณะนี้ค่ะ</div>';
-    el.style.display='';
-    return;
-  }
-
-  var maxPend = list[0].totalPending || 1;
-  var html = '<div style="background:#fff9e6;border:1px solid #c9a84c;border-radius:8px;padding:14px 16px;margin-bottom:12px">'
-    +'<div style="font-size:13px;font-weight:700;color:#6b4f00;margin-bottom:10px">📊 วิเคราะห์อะไหล่ที่ขาดบ่อย</div>'
-    +'<div style="font-size:11px;color:#8d7000;margin-bottom:12px">อะไหล่ที่ Stock ไม่สามารถจ่ายได้ครบในหลายใบเบิก ควรเพิ่มสั่งซื้อหรือติดตาม</div>'
-    +'<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>'
-    +'<th style="background:#c9a84c;color:#fff;padding:6px 10px;text-align:left">ชื่ออะไหล่</th>'
-    +'<th style="background:#c9a84c;color:#fff;padding:6px 10px;text-align:center">ขอรวม</th>'
-    +'<th style="background:#c9a84c;color:#fff;padding:6px 10px;text-align:center;color:#90ee90">จ่ายได้</th>'
-    +'<th style="background:#c9a84c;color:#fff;padding:6px 10px;text-align:center">ขาด</th>'
-    +'<th style="background:#c9a84c;color:#fff;padding:6px 10px">สัดส่วนขาด</th>'
-    +'</tr></thead><tbody>'
-    +list.map(function(p,i){
-      var w = Math.round(p.totalPending/maxPend*100);
-      var fillColor = i===0?'#b71c1c':i<3?'#e65100':'#c9a84c';
-      return '<tr style="background:'+(i%2===0?'#fff':'#fffdf0')+'">'
-        +'<td style="padding:7px 10px;font-weight:600">'+(i===0?'⚠️ ':i<3?'🔶 ':'')+(p.name||p.pn)+'</td>'
-        +'<td style="padding:7px 10px;text-align:center">'+p.totalReq+'</td>'
-        +'<td style="padding:7px 10px;text-align:center;color:var(--gm)">'+p.totalIssued+'</td>'
-        +'<td style="padding:7px 10px;text-align:center;font-weight:700;color:var(--red)">'+p.totalPending+'</td>'
-        +'<td style="padding:7px 10px">'
-        +'<div style="display:flex;align-items:center;gap:6px">'
-        +'<div style="flex:1;height:8px;background:#eee;border-radius:4px">'
-        +'<div style="width:'+w+'%;height:100%;background:'+fillColor+';border-radius:4px"></div></div>'
-        +'<span style="font-size:11px;color:'+fillColor+';font-weight:700;min-width:30px">'+Math.round(p.totalPending/p.totalReq*100)+'%</span>'
-        +'</div></td></tr>';
-    }).join('')
-    +'</tbody></table>'
-    +'<div style="margin-top:10px;font-size:11px;color:#8d7000">💡 แนะนำ: อะไหล่ที่ขาดบ่อยควรเพิ่ม Min Stock และแจ้งฝ่ายจัดซื้อค่ะ</div>'
-    +'</div>';
-
-  el.innerHTML = html;
-  el.style.display = '';
-}
 
 
 function printSlowMoveReport(){
