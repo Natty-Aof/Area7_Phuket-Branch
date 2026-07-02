@@ -326,15 +326,6 @@ textarea.fc{min-height:70px;resize:vertical;}
           <div id="rptDateFilterStatus" style="font-size:11px;color:var(--g400);margin-left:4px;width:100%"></div>
         </div>
 
-        <!-- ① Alert Panel ──────────────────────────────── -->
-        <div id="rptAlertPanel" class="card" style="display:none;border-left:4px solid var(--red);background:#fff5f5;padding:14px 16px">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-            <span style="font-size:18px">🚨</span>
-            <strong style="color:var(--red);font-size:14px">รายการที่ต้องตรวจสอบด่วน</strong>
-          </div>
-          <div id="rptAlertList"></div>
-        </div>
-
         <!-- ② KPI Cards ─────────────────────────────────── -->
         <div id="rptKPIRow" style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px"></div>
 
@@ -342,6 +333,15 @@ textarea.fc{min-height:70px;resize:vertical;}
         <div class="card" style="padding:14px 16px">
           <div style="font-size:13px;font-weight:700;color:var(--gd);margin-bottom:12px">🔄 Workflow Pipeline</div>
           <div id="rptPipeline" style="display:flex;align-items:center;gap:0;overflow-x:auto;padding-bottom:4px"></div>
+        </div>
+
+        <!-- ① Alert Panel ──────────────────────────────── -->
+        <div id="rptAlertPanel" class="card" style="display:none;border-left:4px solid var(--red);background:#fff5f5;padding:14px 16px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <span style="font-size:18px">🚨</span>
+            <strong style="color:var(--red);font-size:14px">รายการที่ต้องตรวจสอบด่วน</strong>
+          </div>
+          <div id="rptAlertList"></div>
         </div>
 
         <!-- 📋 รายการใบเบิกล่าสุด ─────────────────────── -->
@@ -4299,6 +4299,7 @@ function stChip(s){
     'STOCK_NOTIFIED': ['chip-blu', '📨 แจ้ง Stock แล้ว'],
     'ACKNOWLEDGED':   ['chip-gld', '📦 Stock จัดของแล้ว'],
     'PICKED_UP':      ['chip-blu', '✋ ช่างรับแล้ว'],
+    'PENDING_CLEARANCE': ['chip-gld', '📝 รอ Stock ตัด SAP'],
     'CLEARED':        ['chip-grn', '✅ ปิดงานแล้ว'],
     'REJECTED':       ['chip-red', '✕ ปฏิเสธ']
   };
@@ -9153,7 +9154,7 @@ function _renderFullReport(){
       overdueEl.innerHTML='<div class="tc tm" style="padding:24px;color:var(--gm)">✅ ไม่มีงานค้างค่ะ</div>';
     } else {
       var stMap={'PENDING_SUPERVISOR':'⏳ รอหัวหน้าช่าง','PENDING_MANAGER':'⏳ รอผู้จัดการ',
-        'PENDING':'📦 รอจ่ายอะไหล่','ACKNOWLEDGED':'🔧 จัดของแล้ว','PICKED_UP':'✋ รอเคลียร์','PARTIAL':'⚠️ รายการขาดจ่าย'};
+        'PENDING':'📦 รอจ่ายอะไหล่','ACKNOWLEDGED':'🔧 จัดของแล้ว','PICKED_UP':'✋ รอเคลียร์','PENDING_CLEARANCE':'📝 รอ Stock ตัด SAP','PARTIAL':'⚠️ รายการขาดจ่าย'};
       var h='<div class="tw"><table class="it" style="font-size:12px"><thead><tr>'
         +'<th>เลขใบเบิก</th><th>วันที่เบิก</th><th>Job No.</th><th>ลูกค้า</th>'
         +'<th>ผู้เบิก</th><th style="text-align:center">อายุใบเบิก</th><th>สถานะ</th><th></th>'
@@ -9183,6 +9184,8 @@ function _renderFullReport(){
       alerts.push('ใบเบิก <strong>'+r.ReqID+'</strong> ('+( r.RequesterName||r.RequesterEmail)+') รออนุมัติมาแล้ว <strong>'+fmtAge(d)+'</strong>');
     if(r.StatusStock==='PICKED_UP'&&d>=7)
       alerts.push('ใบเบิก <strong>'+r.ReqID+'</strong> ('+( r.RequesterName||r.RequesterEmail)+') ยังไม่เคลียร์ มาแล้ว <strong>'+fmtAge(d)+'</strong>');
+    if(r.StatusStock==='PENDING_CLEARANCE'&&d>=3)
+      alerts.push('ใบเบิก <strong>'+r.ReqID+'</strong> ('+( r.RequesterName||r.RequesterEmail)+') ช่างส่งเคลียร์แล้ว แต่ยังไม่ตัด SAP / ยังไม่ปิดงาน มาแล้ว <strong>'+fmtAge(d)+'</strong>');
     if(r.StatusApproval==='APPROVED'&&r.StatusStock==='PENDING'&&d>=2)
       alerts.push('ใบเบิก <strong>'+r.ReqID+'</strong> อนุมัติแล้วแต่ยังไม่จ่ายของ มาแล้ว <strong>'+fmtAge(d)+'</strong>');
   });
