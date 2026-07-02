@@ -281,7 +281,6 @@ textarea.fc{min-height:70px;resize:vertical;}
     </div>
     <nav id="snav">
       <div class="ni active" data-pg="dashboard" onclick="go('dashboard')"><span class="ic">📊</span> Dashboard</div>
-      <div class="ni" data-pg="report" onclick="go('report')"><span class="ic">📊</span> รายงาน</div>
       <div class="ni" data-pg="create" onclick="go('create')"><span class="ic">📝</span> เปิดใบเบิก</div>
       <div class="ni" data-pg="list" onclick="go('list')"><span class="ic">📋</span> รายการใบเบิก</div>
       <div class="ni hidden" id="nApproval" data-pg="approval" onclick="go('approval')"><span class="ic">✅</span> รออนุมัติ<span class="badge" id="apBadge">0</span></div>
@@ -313,13 +312,152 @@ textarea.fc{min-height:70px;resize:vertical;}
 
       <!-- DASHBOARD -->
       <div id="pg-dashboard">
-        <div class="sg" id="statGrid"></div>
         <div id="mgToolsBar"></div>
         <div class="card">
           <div class="ct">📋 รายการใบเบิกล่าสุด</div>
           <div class="tw"><table><thead><tr><th>เลขที่</th><th>วันที่</th><th>Job No.</th><th>ผู้เบิก</th><th>ลูกค้า</th><th>สถานะอนุมัติ</th><th>สถานะ Stock</th><th></th></tr></thead>
           <tbody id="dashTbl"><tr><td colspan="8" class="tc tm" style="padding:24px">กำลังโหลด...</td></tr></tbody></table></div>
         </div>
+
+
+        <!-- ⓪ ตัวกรองช่วงเวลา ──────────────────────────── -->
+        <div class="card" style="padding:12px 16px;margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <div style="font-size:12px;font-weight:700;color:var(--gd)">📅 ช่วงเวลา (ตามวันที่เปิดใบเบิก):</div>
+          <input type="date" id="rptFrom2" class="fc" style="width:150px;font-size:12px">
+          <span style="color:var(--g400);font-size:12px">ถึง</span>
+          <input type="date" id="rptTo2" class="fc" style="width:150px;font-size:12px">
+          <button class="btn bgd bsm" onclick="applyReportDateFilter()">🔍 โหลดรายงาน</button>
+          <button class="btn bo bsm" onclick="clearReportDateFilter()">ล้างตัวกรอง (ดูทั้งหมด)</button>
+          <button class="btn bo bsm" onclick="exportReportCSV()" style="margin-left:auto">📥 Export Excel/CSV</button>
+          <div id="rptDateFilterStatus" style="font-size:11px;color:var(--g400);margin-left:4px;width:100%"></div>
+        </div>
+
+        <!-- ① Alert Panel ──────────────────────────────── -->
+        <div id="rptAlertPanel" class="card" style="display:none;border-left:4px solid var(--red);background:#fff5f5;padding:14px 16px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <span style="font-size:18px">🚨</span>
+            <strong style="color:var(--red);font-size:14px">รายการที่ต้องตรวจสอบด่วน</strong>
+          </div>
+          <div id="rptAlertList"></div>
+        </div>
+
+        <!-- ② KPI Cards ─────────────────────────────────── -->
+        <div id="rptKPIRow" style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px"></div>
+
+        <!-- ③ Workflow Pipeline ─────────────────────────── -->
+        <div class="card" style="padding:14px 16px">
+          <div style="font-size:13px;font-weight:700;color:var(--gd);margin-bottom:12px">🔄 Workflow Pipeline</div>
+          <div id="rptPipeline" style="display:flex;align-items:center;gap:0;overflow-x:auto;padding-bottom:4px"></div>
+        </div>
+
+        <!-- ④ งานที่ต้องติดตาม ────────────────────────── -->
+        <div class="card" style="padding:14px 16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+            <div style="font-size:13px;font-weight:700;color:var(--gd)">⏰ งานที่ต้องติดตาม <span id="rptTrackFilterLabel" style="font-weight:400;color:var(--g400)"></span></div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <div style="font-size:11px;color:var(--g400)">สีแถวตามอายุค้าง:</div>
+              <span style="background:#fffde7;border:1px solid #f9a825;border-radius:4px;padding:3px 8px;color:#f57f17;font-size:11px">🟡 3-6 เดือน</span>
+              <span style="background:#fff3e0;border:1px solid #e65100;border-radius:4px;padding:3px 8px;color:#e65100;font-size:11px">🟠 6-12 เดือน</span>
+              <span style="background:#ffebee;border:1px solid var(--red);border-radius:4px;padding:3px 8px;color:var(--red);font-size:11px">🔴 1-2 ปี</span>
+              <span style="background:#b71c1c;border-radius:4px;padding:3px 8px;color:#fff;font-size:11px">⚠️ เกิน 2 ปี วิกฤต</span>
+              <button class="btn bo bsm" onclick="printOverdueReport()" style="font-size:11px">🖨️ พิมพ์</button>
+            </div>
+          </div>
+          <div id="rptOverdueTable"><div class="tc tm" style="padding:20px">กด "โหลดรายงาน" ค่ะ</div></div>
+        </div>
+
+        <!-- ⑤ รายงานตามช่าง ───────────────────────────── -->
+        <div class="card" style="padding:14px 16px">
+          <div style="font-size:13px;font-weight:700;color:var(--gd);margin-bottom:10px">👷 รายงานตามช่าง</div>
+          <div id="rptTechTable"><div class="tc tm" style="padding:20px">กด "โหลดรายงาน" ค่ะ</div></div>
+        </div>
+
+        <!-- ⑥ Top 5 อะไหล่จ่ายออกจริง ─────────────────── -->
+        <div class="card" style="padding:14px 16px">
+          <div style="font-size:13px;font-weight:700;color:var(--gd);margin-bottom:10px">📊 Top 10 อะไหล่ที่จ่ายออกจริง</div>
+          <div style="width:100%;overflow-x:auto;background:#fafdfb;border-radius:10px;padding:8px 0">
+            <canvas id="rptChart" style="width:100%;display:block;border-radius:8px"></canvas>
+          </div>
+          <div id="rptTopParts" style="margin-top:12px"></div>
+        </div>
+
+        <!-- ⑦ รายการค้างจ่าย ──────────────────────────── -->
+        <div class="card" style="padding:14px 16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--gd)">⏳ รายการค้างจ่าย</div>
+              <div style="font-size:11px;color:var(--g400);margin-top:2px">รายการที่ Stock จ่ายได้ไม่ครบตามที่ขอ — เมื่อจ่ายครบแล้วรายการจะหายออกไป</div>
+            </div>
+            <div style="display:flex;gap:6px">
+              <button class="btn bo bsm" onclick="printPendingReport()" style="font-size:11px">🖨️ พิมพ์รายงาน</button>
+              <button class="btn bo bsm" onclick="document.getElementById('rptReturnReport').scrollIntoView({behavior:'smooth',block:'center'})" style="font-size:11px">📊 ดูการวิเคราะห์ขาดบ่อย + สั่ง HQ ↓</button>
+            </div>
+          </div>
+          <div id="rptPendingIssue"><div class="tc tm" style="padding:20px">กด "โหลดรายงาน" ค่ะ</div></div>
+        </div>
+
+        <!-- ⑧ รายการรอคืน / รอเคลียร์ ─────────────────── -->
+        <div class="card" style="padding:14px 16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+            <div style="font-size:13px;font-weight:700;color:var(--red)">⚠️ รายการอะไหล่ขาดจ่าย — ต้องเบิกเพิ่มจาก HQ</div>
+            <div style="display:flex;gap:6px">
+              <button class="btn bsm" id="boFilterAll" onclick="setRptShortageFilter('all')" style="background:var(--gd);color:#fff;border-color:var(--gd);font-size:11px">ทั้งหมด</button>
+              <button class="btn bo bsm" id="boFilterPending" onclick="setRptShortageFilter('pending')" style="font-size:11px">🔴 ยังขาด</button>
+              <button class="btn bo bsm" id="boFilterOrdered" onclick="setRptShortageFilter('ordered')" style="font-size:11px">🟡 รอ HQ</button>
+              <button class="btn bo bsm" id="boFilterReceived" onclick="setRptShortageFilter('received')" style="font-size:11px">✅ ได้แล้ว</button>
+            </div>
+          </div>
+          <div id="rptReturnReport"><div class="tc tm" style="padding:20px">กด "โหลดรายงาน" ค่ะ</div></div>
+        </div>
+
+        <!-- ⑨ รายงานการจ่ายแยกตามประเภทงาน ─────────────── -->
+        <div class="card" style="padding:14px 16px">
+          <div style="font-size:13px;font-weight:700;color:var(--gd);margin-bottom:4px">📦 การจ่ายอะไหล่แยกตามประเภทงาน</div>
+          <div style="font-size:11px;color:var(--g400);margin-bottom:12px">วิเคราะห์ว่าอะไหล่ถูกจ่ายออกไปเพื่อกิจกรรมอะไร — ซ่อมรถเช่า / สัมปทาน / ขาย / โอนสาขา / คืน สนญ.</div>
+          <div id="rptMovementChart"></div>
+          <div id="rptMovementTable" style="margin-top:12px"></div>
+        </div>
+
+        <!-- ⑩ รายงานอะไหล่ไม่เคลื่อนไหว ──────────────── -->
+        <div id="rptSlowMove" class="card" style="padding:14px 16px">
+          <div style="font-size:13px;font-weight:700;color:var(--gd);margin-bottom:10px">🐢 รายงานอะไหล่ไม่เคลื่อนไหว</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="slowMoveBtns">
+            <button class="btn bgd bsm" onclick="showSlowMove(3)"   data-months="3">3 เดือน</button>
+            <button class="btn bo bsm"  onclick="showSlowMove(6)"   data-months="6">6 เดือน</button>
+            <button class="btn bo bsm"  onclick="showSlowMove(12)"  data-months="12">1 ปี</button>
+            <button class="btn bo bsm"  onclick="showSlowMove(24)"  data-months="24">2 ปี</button>
+            <button class="btn bo bsm"  onclick="showSlowMove(999)" data-months="999">ไม่เคลื่อนไหวเลย</button>
+          </div>
+          <div id="slowMoveContent"><div class="tc tm" style="padding:24px">เลือกช่วงเวลาค่ะ</div></div>
+        </div>
+
+        <!-- ⑩ Export & Load ──────────────────────────────── -->
+        <div class="card" style="padding:14px 16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--gd);margin-bottom:4px">📥 Export รายงาน</div>
+              <div style="font-size:11px;color:var(--g400)">เลือกรายงานที่ต้องการ Export เป็น CSV (เปิดด้วย Excel ได้เลย)</div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <button class="btn bgd" onclick="loadFullReport()" style="font-size:12px">📊 โหลดรายงาน</button>
+              <div style="width:1px;height:28px;background:var(--g200)"></div>
+              <select class="fc" id="exportTypeSelect" style="width:200px;font-size:12px">
+                <option value="requisition">ใบเบิกทั้งหมด</option>
+                <option value="overdue">งานค้าง / ต้องติดตาม</option>
+                <option value="pending">รายการค้างจ่าย</option>
+                <option value="return">รายการรอคืน/เคลียร์</option>
+                <option value="movement">การจ่ายแยกตามประเภท</option>
+                <option value="technician">รายงานตามช่าง</option>
+                <option value="slowmove">อะไหล่ไม่เคลื่อนไหว</option>
+              </select>
+              <button class="btn bp" onclick="exportSelectedReport()" style="font-size:12px">📥 Export</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="rptSummary" class="hidden"><div class="sg" id="rptStats"></div></div>
+        <div id="rptEmpty"   class="hidden"><div class="card tc tm" style="padding:40px">ไม่พบข้อมูล</div></div>
+
       </div>
 
       <!-- CREATE -->
@@ -539,147 +677,6 @@ textarea.fc{min-height:70px;resize:vertical;}
       </div>
 
       <!-- REPORT -->
-      <div id="pg-report" class="hidden">
-
-        <!-- ⓪ ตัวกรองช่วงเวลา ──────────────────────────── -->
-        <div class="card" style="padding:12px 16px;margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-          <div style="font-size:12px;font-weight:700;color:var(--gd)">📅 ช่วงเวลา (ตามวันที่เปิดใบเบิก):</div>
-          <input type="date" id="rptFrom2" class="fc" style="width:150px;font-size:12px">
-          <span style="color:var(--g400);font-size:12px">ถึง</span>
-          <input type="date" id="rptTo2" class="fc" style="width:150px;font-size:12px">
-          <button class="btn bgd bsm" onclick="applyReportDateFilter()">🔍 โหลดรายงาน</button>
-          <button class="btn bo bsm" onclick="clearReportDateFilter()">ล้างตัวกรอง (ดูทั้งหมด)</button>
-          <button class="btn bo bsm" onclick="exportReportCSV()" style="margin-left:auto">📥 Export Excel/CSV</button>
-          <div id="rptDateFilterStatus" style="font-size:11px;color:var(--g400);margin-left:4px;width:100%"></div>
-        </div>
-
-        <!-- ① Alert Panel ──────────────────────────────── -->
-        <div id="rptAlertPanel" class="card" style="display:none;border-left:4px solid var(--red);background:#fff5f5;padding:14px 16px">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-            <span style="font-size:18px">🚨</span>
-            <strong style="color:var(--red);font-size:14px">รายการที่ต้องตรวจสอบด่วน</strong>
-          </div>
-          <div id="rptAlertList"></div>
-        </div>
-
-        <!-- ② KPI Cards ─────────────────────────────────── -->
-        <div id="rptKPIRow" style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px"></div>
-
-        <!-- ③ Workflow Pipeline ─────────────────────────── -->
-        <div class="card" style="padding:14px 16px">
-          <div style="font-size:13px;font-weight:700;color:var(--gd);margin-bottom:12px">🔄 Workflow Pipeline</div>
-          <div id="rptPipeline" style="display:flex;align-items:center;gap:0;overflow-x:auto;padding-bottom:4px"></div>
-        </div>
-
-        <!-- ④ งานที่ต้องติดตาม ────────────────────────── -->
-        <div class="card" style="padding:14px 16px">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-            <div style="font-size:13px;font-weight:700;color:var(--gd)">⏰ งานที่ต้องติดตาม <span id="rptTrackFilterLabel" style="font-weight:400;color:var(--g400)"></span></div>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-              <div style="font-size:11px;color:var(--g400)">สีแถวตามอายุค้าง:</div>
-              <span style="background:#fffde7;border:1px solid #f9a825;border-radius:4px;padding:3px 8px;color:#f57f17;font-size:11px">🟡 3-6 เดือน</span>
-              <span style="background:#fff3e0;border:1px solid #e65100;border-radius:4px;padding:3px 8px;color:#e65100;font-size:11px">🟠 6-12 เดือน</span>
-              <span style="background:#ffebee;border:1px solid var(--red);border-radius:4px;padding:3px 8px;color:var(--red);font-size:11px">🔴 1-2 ปี</span>
-              <span style="background:#b71c1c;border-radius:4px;padding:3px 8px;color:#fff;font-size:11px">⚠️ เกิน 2 ปี วิกฤต</span>
-              <button class="btn bo bsm" onclick="printOverdueReport()" style="font-size:11px">🖨️ พิมพ์</button>
-            </div>
-          </div>
-          <div id="rptOverdueTable"><div class="tc tm" style="padding:20px">กด "โหลดรายงาน" ค่ะ</div></div>
-        </div>
-
-        <!-- ⑤ รายงานตามช่าง ───────────────────────────── -->
-        <div class="card" style="padding:14px 16px">
-          <div style="font-size:13px;font-weight:700;color:var(--gd);margin-bottom:10px">👷 รายงานตามช่าง</div>
-          <div id="rptTechTable"><div class="tc tm" style="padding:20px">กด "โหลดรายงาน" ค่ะ</div></div>
-        </div>
-
-        <!-- ⑥ Top 5 อะไหล่จ่ายออกจริง ─────────────────── -->
-        <div class="card" style="padding:14px 16px">
-          <div style="font-size:13px;font-weight:700;color:var(--gd);margin-bottom:10px">📊 Top 10 อะไหล่ที่จ่ายออกจริง</div>
-          <div style="width:100%;overflow-x:auto;background:#fafdfb;border-radius:10px;padding:8px 0">
-            <canvas id="rptChart" style="width:100%;display:block;border-radius:8px"></canvas>
-          </div>
-          <div id="rptTopParts" style="margin-top:12px"></div>
-        </div>
-
-        <!-- ⑦ รายการค้างจ่าย ──────────────────────────── -->
-        <div class="card" style="padding:14px 16px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
-            <div>
-              <div style="font-size:13px;font-weight:700;color:var(--gd)">⏳ รายการค้างจ่าย</div>
-              <div style="font-size:11px;color:var(--g400);margin-top:2px">รายการที่ Stock จ่ายได้ไม่ครบตามที่ขอ — เมื่อจ่ายครบแล้วรายการจะหายออกไป</div>
-            </div>
-            <div style="display:flex;gap:6px">
-              <button class="btn bo bsm" onclick="printPendingReport()" style="font-size:11px">🖨️ พิมพ์รายงาน</button>
-              <button class="btn bo bsm" onclick="document.getElementById('rptReturnReport').scrollIntoView({behavior:'smooth',block:'center'})" style="font-size:11px">📊 ดูการวิเคราะห์ขาดบ่อย + สั่ง HQ ↓</button>
-            </div>
-          </div>
-          <div id="rptPendingIssue"><div class="tc tm" style="padding:20px">กด "โหลดรายงาน" ค่ะ</div></div>
-        </div>
-
-        <!-- ⑧ รายการรอคืน / รอเคลียร์ ─────────────────── -->
-        <div class="card" style="padding:14px 16px">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-            <div style="font-size:13px;font-weight:700;color:var(--red)">⚠️ รายการอะไหล่ขาดจ่าย — ต้องเบิกเพิ่มจาก HQ</div>
-            <div style="display:flex;gap:6px">
-              <button class="btn bsm" id="boFilterAll" onclick="setRptShortageFilter('all')" style="background:var(--gd);color:#fff;border-color:var(--gd);font-size:11px">ทั้งหมด</button>
-              <button class="btn bo bsm" id="boFilterPending" onclick="setRptShortageFilter('pending')" style="font-size:11px">🔴 ยังขาด</button>
-              <button class="btn bo bsm" id="boFilterOrdered" onclick="setRptShortageFilter('ordered')" style="font-size:11px">🟡 รอ HQ</button>
-              <button class="btn bo bsm" id="boFilterReceived" onclick="setRptShortageFilter('received')" style="font-size:11px">✅ ได้แล้ว</button>
-            </div>
-          </div>
-          <div id="rptReturnReport"><div class="tc tm" style="padding:20px">กด "โหลดรายงาน" ค่ะ</div></div>
-        </div>
-
-        <!-- ⑨ รายงานการจ่ายแยกตามประเภทงาน ─────────────── -->
-        <div class="card" style="padding:14px 16px">
-          <div style="font-size:13px;font-weight:700;color:var(--gd);margin-bottom:4px">📦 การจ่ายอะไหล่แยกตามประเภทงาน</div>
-          <div style="font-size:11px;color:var(--g400);margin-bottom:12px">วิเคราะห์ว่าอะไหล่ถูกจ่ายออกไปเพื่อกิจกรรมอะไร — ซ่อมรถเช่า / สัมปทาน / ขาย / โอนสาขา / คืน สนญ.</div>
-          <div id="rptMovementChart"></div>
-          <div id="rptMovementTable" style="margin-top:12px"></div>
-        </div>
-
-        <!-- ⑩ รายงานอะไหล่ไม่เคลื่อนไหว ──────────────── -->
-        <div id="rptSlowMove" class="card" style="padding:14px 16px">
-          <div style="font-size:13px;font-weight:700;color:var(--gd);margin-bottom:10px">🐢 รายงานอะไหล่ไม่เคลื่อนไหว</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="slowMoveBtns">
-            <button class="btn bgd bsm" onclick="showSlowMove(3)"   data-months="3">3 เดือน</button>
-            <button class="btn bo bsm"  onclick="showSlowMove(6)"   data-months="6">6 เดือน</button>
-            <button class="btn bo bsm"  onclick="showSlowMove(12)"  data-months="12">1 ปี</button>
-            <button class="btn bo bsm"  onclick="showSlowMove(24)"  data-months="24">2 ปี</button>
-            <button class="btn bo bsm"  onclick="showSlowMove(999)" data-months="999">ไม่เคลื่อนไหวเลย</button>
-          </div>
-          <div id="slowMoveContent"><div class="tc tm" style="padding:24px">เลือกช่วงเวลาค่ะ</div></div>
-        </div>
-
-        <!-- ⑩ Export & Load ──────────────────────────────── -->
-        <div class="card" style="padding:14px 16px">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-            <div>
-              <div style="font-size:13px;font-weight:700;color:var(--gd);margin-bottom:4px">📥 Export รายงาน</div>
-              <div style="font-size:11px;color:var(--g400)">เลือกรายงานที่ต้องการ Export เป็น CSV (เปิดด้วย Excel ได้เลย)</div>
-            </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-              <button class="btn bgd" onclick="loadFullReport()" style="font-size:12px">📊 โหลดรายงาน</button>
-              <div style="width:1px;height:28px;background:var(--g200)"></div>
-              <select class="fc" id="exportTypeSelect" style="width:200px;font-size:12px">
-                <option value="requisition">ใบเบิกทั้งหมด</option>
-                <option value="overdue">งานค้าง / ต้องติดตาม</option>
-                <option value="pending">รายการค้างจ่าย</option>
-                <option value="return">รายการรอคืน/เคลียร์</option>
-                <option value="movement">การจ่ายแยกตามประเภท</option>
-                <option value="technician">รายงานตามช่าง</option>
-                <option value="slowmove">อะไหล่ไม่เคลื่อนไหว</option>
-              </select>
-              <button class="btn bp" onclick="exportSelectedReport()" style="font-size:12px">📥 Export</button>
-            </div>
-          </div>
-        </div>
-
-        <div id="rptSummary" class="hidden"><div class="sg" id="rptStats"></div></div>
-        <div id="rptEmpty"   class="hidden"><div class="card tc tm" style="padding:40px">ไม่พบข้อมูล</div></div>
-
-      </div>
 
       <!-- PRINT -->
       <!-- PRINT -->
@@ -1210,7 +1207,6 @@ textarea.fc{min-height:70px;resize:vertical;}
   <div class="msh"></div>
   <div class="msi" onclick="go('close');closeMore()"><span>🔄</span> เคลียร์ใบเบิก</div>
   <div class="msi" onclick="go('list');closeMore()"><span>📋</span> รายการใบเบิก</div>
-  <div class="msi" onclick="go('report');closeMore()"><span>📊</span> รายงาน</div>
   <div class="msi" onclick="go('stockcard');closeMore()"><span>🗂️</span> Stock Card</div>
   <div class="msi" onclick="go('vehiclehistory');closeMore()"><span>🚗</span> ประวัติรถ</div>
   <div class="msi" onclick="go('inspection');closeMore()"><span>📋</span> ใบตรวจสภาพรถ <span id="insBadge2" class="bdg hidden"></span></div>
@@ -1788,7 +1784,7 @@ function _goWithoutPush(page){
   if(pg) pg.classList.remove('hidden');
   var t=document.getElementById('pgTitle');
   if(t) t.textContent=pgTitles[page]||page;
-  if(page==='dashboard') loadDashboard();
+  if(page==='dashboard'){ loadDashboard(); loadReportPage(); }
   if(page==='create'){initCreate();}
   if(page==='list') { _initListMonth(); loadList(); }
   if(page==='approval') loadApproval();
@@ -1800,7 +1796,6 @@ function _goWithoutPush(page){
   if(page==='close') loadCloseSel();
   if(page==='print') loadPrintSel();
   if(page==='profile') loadProfile();
-  if(page==='report') loadReportPage();
   if(page==='changereq') loadChangeReqPage();
   if(page==='vehiclehistory'){ loadVehiclesDB(); }
   if(page==='stockcount'){
@@ -2337,7 +2332,7 @@ function go(page){
   if(pg) pg.classList.remove('hidden');
   var t=document.getElementById('pgTitle');
   if(t) t.textContent=pgTitles[page]||page;
-  if(page==='dashboard') loadDashboard();
+  if(page==='dashboard'){ loadDashboard(); loadReportPage(); }
   if(page==='create'){initCreate();}
   if(page==='list') { _initListMonth(); loadList(); }  // โหลดรายการอัตโนมัติเมื่อเข้าหน้า
   if(page==='approval') loadApproval();
@@ -2349,7 +2344,6 @@ function go(page){
   if(page==='close') loadCloseSel();
   if(page==='print') loadPrintSel();
   if(page==='profile') loadProfile();
-  if(page==='report') loadReportPage();
   if(page==='changereq') loadChangeReqPage();
   if(page==='inspection') loadInspectionPage();
   if(page==='vehiclehistory'){
@@ -10666,11 +10660,12 @@ function deleteCurrentReq(){
     if(!u || !u.email || !u.role) return;
     CU = u;
     var _validPg = ['dashboard','create','list','approval','stock','pickup','close','print',
-      'profile','jobs','stockcard','stockcount','changereq','vehiclehistory','sales','inventory','report'];
+      'profile','jobs','stockcard','stockcount','changereq','vehiclehistory','sales','inventory'];
     var restorePage = function(){
       if(typeof initApp !== 'function') return;
       initApp();
       var hash = window.location.hash.replace('#','');
+      if(hash === 'report') hash = 'dashboard'; // ── หน้ารายงานย้ายมารวมกับ Dashboard แล้ว ──
       if(hash && _validPg.indexOf(hash) >= 0){
         go(hash);
       }
