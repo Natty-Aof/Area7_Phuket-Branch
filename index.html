@@ -335,16 +335,6 @@ textarea.fc{min-height:70px;resize:vertical;}
           <div id="rptPipeline" style="display:flex;align-items:center;gap:0;overflow-x:auto;padding-bottom:4px"></div>
         </div>
 
-        <!-- ① Alert Panel ──────────────────────────────── -->
-        <div id="rptAlertPanel" class="card" style="display:none;border-left:4px solid var(--red);background:#fff5f5;padding:14px 16px">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-            <span style="font-size:18px">🚨</span>
-            <strong style="color:var(--red);font-size:14px">รายการที่ต้องตรวจสอบด่วน</strong>
-          </div>
-          <div id="rptAlertCharts"></div>
-          <div id="rptAlertList"></div>
-        </div>
-
         <!-- 📋 รายการใบเบิกล่าสุด ─────────────────────── -->
         <div class="card">
           <div class="ct">📋 รายการใบเบิกล่าสุด</div>
@@ -352,18 +342,21 @@ textarea.fc{min-height:70px;resize:vertical;}
           <tbody id="dashTbl"><tr><td colspan="8" class="tc tm" style="padding:24px">กำลังโหลด...</td></tr></tbody></table></div>
         </div>
 
-        <!-- ④ งานที่ต้องติดตาม ────────────────────────── -->
-        <div class="card" style="padding:14px 16px">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-            <div style="font-size:13px;font-weight:700;color:var(--gd)">⏰ งานที่ต้องติดตาม <span id="rptTrackFilterLabel" style="font-weight:400;color:var(--g400)"></span></div>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-              <div style="font-size:11px;color:var(--g400)">สีแถวตามอายุค้าง:</div>
-              <span style="background:#fffde7;border:1px solid #f9a825;border-radius:4px;padding:3px 8px;color:#f57f17;font-size:11px">🟡 3-6 เดือน</span>
-              <span style="background:#fff3e0;border:1px solid #e65100;border-radius:4px;padding:3px 8px;color:#e65100;font-size:11px">🟠 6-12 เดือน</span>
-              <span style="background:#ffebee;border:1px solid var(--red);border-radius:4px;padding:3px 8px;color:var(--red);font-size:11px">🔴 1-2 ปี</span>
-              <span style="background:#b71c1c;border-radius:4px;padding:3px 8px;color:#fff;font-size:11px">⚠️ เกิน 2 ปี วิกฤต</span>
-              <button class="btn bo bsm" onclick="printOverdueReport()" style="font-size:11px">🖨️ พิมพ์</button>
-            </div>
+        <!-- ①+④ รวม: รายการที่ต้องตรวจสอบด่วน / งานที่ต้องติดตาม ─── -->
+        <div id="rptOverduePanel" class="card" style="display:none;border-left:4px solid var(--red);background:#fff5f5;padding:14px 16px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <span style="font-size:18px">🚨</span>
+            <strong style="color:var(--red);font-size:14px">รายการที่ต้องตรวจสอบด่วน / งานที่ต้องติดตาม</strong>
+            <span id="rptTrackFilterLabel" style="font-weight:400;color:var(--g400);font-size:12px"></span>
+          </div>
+          <div id="rptAlertCharts"></div>
+          <div style="display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+            <div style="font-size:11px;color:var(--g400)">สีแถวตามอายุค้าง:</div>
+            <span style="background:#fffde7;border:1px solid #f9a825;border-radius:4px;padding:3px 8px;color:#f57f17;font-size:11px">🟡 3-6 เดือน</span>
+            <span style="background:#fff3e0;border:1px solid #e65100;border-radius:4px;padding:3px 8px;color:#e65100;font-size:11px">🟠 6-12 เดือน</span>
+            <span style="background:#ffebee;border:1px solid var(--red);border-radius:4px;padding:3px 8px;color:var(--red);font-size:11px">🔴 1-2 ปี</span>
+            <span style="background:#b71c1c;border-radius:4px;padding:3px 8px;color:#fff;font-size:11px">⚠️ เกิน 2 ปี วิกฤต</span>
+            <button class="btn bo bsm" onclick="printOverdueReport()" style="font-size:11px">🖨️ พิมพ์</button>
           </div>
           <div id="rptOverdueTable"><div class="tc tm" style="padding:20px">กด "โหลดรายงาน" ค่ะ</div></div>
         </div>
@@ -9122,10 +9115,18 @@ function _renderFullReport(){
     }).join('');
   }
 
-  // ── 3. งานค้างนาน (Overdue) ─────────────────────────────
+  // ── 3+4. รวม: งานค้างนาน + สรุปกราฟ (Alert Panel เดิม) ──────
   var overdueEl=document.getElementById('rptOverdueTable');
+  var overduePanelEl=document.getElementById('rptOverduePanel');
   var filterLabelEl = document.getElementById('rptTrackFilterLabel');
   if(filterLabelEl) filterLabelEl.textContent = _rptTrackFilter ? '— กรอง: '+_rptTrackFilter.label+' (กดซ้ำเพื่อล้างตัวกรอง)' : '';
+  function _rptCatFor(r){
+    if(r.StatusApproval==='PENDING_SUPERVISOR'||r.StatusApproval==='PENDING_MANAGER') return 'รออนุมัติ';
+    if(r.StatusStock==='PICKED_UP') return 'ยังไม่เคลียร์';
+    if(r.StatusStock==='PENDING_CLEARANCE') return 'รอตัด SAP';
+    if(r.StatusApproval==='APPROVED'&&r.StatusStock==='PENDING') return 'รอจ่ายของ';
+    return 'อื่นๆ';
+  }
   if(overdueEl){
     var trackSource = (_rptTrackFilter && _rptTrackFilter.key==='closed')
       ? reqs.filter(function(r){return r.StatusStock==='CLEARED';})
@@ -9154,6 +9155,26 @@ function _renderFullReport(){
       })
       .map(function(r){return Object.assign({},r,{_days:ageDays(r.OpenDate)});})
       .sort(function(a,b){return b._days-a._days;});
+
+    if(overduePanelEl) overduePanelEl.style.display = tracked.length ? '' : 'none';
+
+    // ── สรุปเป็น Pie Chart 2 มุม: ตามประเภทปัญหา / ตามช่าง (ใช้ข้อมูลชุดเดียวกับตาราง) ──
+    var chartsEl = document.getElementById('rptAlertCharts');
+    if(chartsEl && tracked.length){
+      var catCount = {}; tracked.forEach(function(r){ var c=_rptCatFor(r); catCount[c]=(catCount[c]||0)+1; });
+      var techCount = {}; tracked.forEach(function(r){ var who=r.RequesterName||r.RequesterEmail||'ไม่ระบุ'; techCount[who]=(techCount[who]||0)+1; });
+      chartsEl.innerHTML =
+        '<div style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap">'
+        +'<div style="background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);display:flex;justify-content:center"><canvas id="rptAlertPieCat"></canvas></div>'
+        +'<div style="background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);display:flex;justify-content:center"><canvas id="rptAlertPieTech"></canvas></div>'
+        +'</div>';
+      var catColors = {'รออนุมัติ':'#1565c0','ยังไม่เคลียร์':'#c9a84c','รอตัด SAP':'#e65100','รอจ่ายของ':'#6a1599','อื่นๆ':'#78909c'};
+      drawAlertPieChart('rptAlertPieCat', catCount, 'แยกตามประเภทปัญหา ('+tracked.length+' รายการ)', catColors);
+      drawAlertPieChart('rptAlertPieTech', techCount, 'แยกตามช่างที่ค้าง', null);
+    } else if(chartsEl){
+      chartsEl.innerHTML = '';
+    }
+
     if(!tracked.length){
       overdueEl.innerHTML='<div class="tc tm" style="padding:24px;color:var(--gm)">✅ ไม่มีงานค้างค่ะ</div>';
     } else {
@@ -9178,42 +9199,6 @@ function _renderFullReport(){
       h+='</tbody></table></div>';
       overdueEl.innerHTML=h;
     }
-  }
-
-  // ── 4. Alert Panel ──────────────────────────────────────
-  var alerts=[];
-  reqs.forEach(function(r){
-    var d=ageDays(r.OpenDate);
-    var who = r.RequesterName||r.RequesterEmail||'ไม่ระบุ';
-    if((r.StatusApproval==='PENDING_SUPERVISOR'||r.StatusApproval==='PENDING_MANAGER')&&d>=3)
-      alerts.push({cat:'รออนุมัติ', tech:who, html:'ใบเบิก <strong>'+r.ReqID+'</strong> ('+who+') รออนุมัติมาแล้ว <strong>'+fmtAge(d)+'</strong>'});
-    if(r.StatusStock==='PICKED_UP'&&d>=7)
-      alerts.push({cat:'ยังไม่เคลียร์', tech:who, html:'ใบเบิก <strong>'+r.ReqID+'</strong> ('+who+') ยังไม่เคลียร์ มาแล้ว <strong>'+fmtAge(d)+'</strong>'});
-    if(r.StatusStock==='PENDING_CLEARANCE'&&d>=3)
-      alerts.push({cat:'รอตัด SAP', tech:who, html:'ใบเบิก <strong>'+r.ReqID+'</strong> ('+who+') ช่างส่งเคลียร์แล้ว แต่ยังไม่ตัด SAP / ยังไม่ปิดงาน มาแล้ว <strong>'+fmtAge(d)+'</strong>'});
-    if(r.StatusApproval==='APPROVED'&&r.StatusStock==='PENDING'&&d>=2)
-      alerts.push({cat:'รอจ่ายของ', tech:who, html:'ใบเบิก <strong>'+r.ReqID+'</strong> อนุมัติแล้วแต่ยังไม่จ่ายของ มาแล้ว <strong>'+fmtAge(d)+'</strong>'});
-  });
-  var ap=document.getElementById('rptAlertPanel'), al=document.getElementById('rptAlertList');
-  if(ap&&al){
-    if(alerts.length){
-      // ── สรุปเป็น Pie Chart 2 มุม: ตามประเภทปัญหา / ตามช่าง ──
-      var chartsEl = document.getElementById('rptAlertCharts');
-      if(chartsEl){
-        var catCount = {}; alerts.forEach(function(a){ catCount[a.cat]=(catCount[a.cat]||0)+1; });
-        var techCount = {}; alerts.forEach(function(a){ techCount[a.tech]=(techCount[a.tech]||0)+1; });
-        chartsEl.innerHTML =
-          '<div style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap">'
-          +'<div style="background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);display:flex;justify-content:center"><canvas id="rptAlertPieCat"></canvas></div>'
-          +'<div style="background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);display:flex;justify-content:center"><canvas id="rptAlertPieTech"></canvas></div>'
-          +'</div>';
-        var catColors = {'รออนุมัติ':'#1565c0','ยังไม่เคลียร์':'#c9a84c','รอตัด SAP':'#e65100','รอจ่ายของ':'#6a1599'};
-        drawAlertPieChart('rptAlertPieCat', catCount, 'แยกตามประเภทปัญหา ('+alerts.length+' รายการ)', catColors);
-        drawAlertPieChart('rptAlertPieTech', techCount, 'แยกตามช่างที่ค้าง', null);
-      }
-      al.innerHTML=alerts.map(function(a){return '<div style="padding:6px 10px;margin-bottom:4px;background:rgba(183,28,28,.07);border-radius:6px;font-size:13px">⚠️ '+a.html+'</div>';}).join('');
-      ap.style.display='';
-    } else { ap.style.display='none'; }
   }
 
   // ── 5. รายงานช่าง ────────────────────────────────────────
