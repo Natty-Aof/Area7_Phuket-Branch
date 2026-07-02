@@ -9162,7 +9162,11 @@ function _renderFullReport(){
     var chartsEl = document.getElementById('rptAlertCharts');
     if(chartsEl && tracked.length){
       var catCount = {}; tracked.forEach(function(r){ var c=_rptCatFor(r); catCount[c]=(catCount[c]||0)+1; });
-      var techCount = {}; tracked.forEach(function(r){ var who=r.RequesterName||r.RequesterEmail||'ไม่ระบุ'; techCount[who]=(techCount[who]||0)+1; });
+      // ── นับตามผู้รับผิดชอบ "ปัจจุบัน" — ถ้ารอตัด SAP แล้ว ลูกบอลอยู่ที่ Stock ไม่ใช่ช่างแล้ว ──
+      var techCount = {}; tracked.forEach(function(r){
+        var who = r.StatusStock==='PENDING_CLEARANCE' ? 'อนุวิทย์ คำคง (Stock)' : (r.RequesterName||r.RequesterEmail||'ไม่ระบุ');
+        techCount[who]=(techCount[who]||0)+1;
+      });
       chartsEl.innerHTML =
         '<div style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap">'
         +'<div style="background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);display:flex;justify-content:center"><canvas id="rptAlertPieCat"></canvas></div>'
@@ -9170,7 +9174,7 @@ function _renderFullReport(){
         +'</div>';
       var catColors = {'รออนุมัติ':'#1565c0','ยังไม่เคลียร์':'#c9a84c','รอตัด SAP':'#e65100','รอจ่ายของ':'#6a1599','อื่นๆ':'#78909c'};
       drawAlertPieChart('rptAlertPieCat', catCount, 'แยกตามประเภทปัญหา ('+tracked.length+' รายการ)', catColors);
-      drawAlertPieChart('rptAlertPieTech', techCount, 'แยกตามช่างที่ค้าง', null);
+      drawAlertPieChart('rptAlertPieTech', techCount, 'แยกตามผู้รับผิดชอบปัจจุบัน', null);
     } else if(chartsEl){
       chartsEl.innerHTML = '';
     }
@@ -9531,9 +9535,9 @@ function drawTechRaceChart(canvas, techList){
     ctx.strokeStyle = color; ctx.lineWidth = 8; ctx.lineCap='round';
     ctx.beginPath(); ctx.moveTo(trackX0, y); ctx.lineTo(runX, y); ctx.stroke();
 
-    // นักวิ่ง 🏃 (ตัวใหญ่ขึ้น)
+    // ม้าแข่ง 🏇 (หันหน้าไปทาง % / เส้นชัย)
     ctx.font = '34px Arial'; ctx.textAlign='center';
-    ctx.fillText('🏃', runX, y+12);
+    ctx.fillText('🏇', runX, y+12);
 
     // เส้นชัย 🏁 (ตัวใหญ่ขึ้น)
     ctx.font = '28px Arial';
