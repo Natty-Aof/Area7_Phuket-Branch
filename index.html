@@ -541,6 +541,17 @@ textarea.fc{min-height:70px;resize:vertical;}
       <!-- REPORT -->
       <div id="pg-report" class="hidden">
 
+        <!-- ⓪ ตัวกรองช่วงเวลา ──────────────────────────── -->
+        <div class="card" style="padding:12px 16px;margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <div style="font-size:12px;font-weight:700;color:var(--gd)">📅 ช่วงเวลา (ตามวันที่เปิดใบเบิก):</div>
+          <input type="date" id="rptFrom2" class="fc" style="width:150px;font-size:12px">
+          <span style="color:var(--g400);font-size:12px">ถึง</span>
+          <input type="date" id="rptTo2" class="fc" style="width:150px;font-size:12px">
+          <button class="btn bgd bsm" onclick="applyReportDateFilter()">🔍 โหลดรายงาน</button>
+          <button class="btn bo bsm" onclick="clearReportDateFilter()">ล้างตัวกรอง (ดูทั้งหมด)</button>
+          <div id="rptDateFilterStatus" style="font-size:11px;color:var(--g400);margin-left:4px"></div>
+        </div>
+
         <!-- ① Alert Panel ──────────────────────────────── -->
         <div id="rptAlertPanel" class="card" style="display:none;border-left:4px solid var(--red);background:#fff5f5;padding:14px 16px">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
@@ -562,7 +573,7 @@ textarea.fc{min-height:70px;resize:vertical;}
         <!-- ④ งานที่ต้องติดตาม ────────────────────────── -->
         <div class="card" style="padding:14px 16px">
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-            <div style="font-size:13px;font-weight:700;color:var(--gd)">⏰ งานที่ต้องติดตาม</div>
+            <div style="font-size:13px;font-weight:700;color:var(--gd)">⏰ งานที่ต้องติดตาม <span id="rptTrackFilterLabel" style="font-weight:400;color:var(--g400)"></span></div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <div style="font-size:11px;color:var(--g400)">สีแถวตามอายุค้าง:</div>
               <span style="background:#fffde7;border:1px solid #f9a825;border-radius:4px;padding:3px 8px;color:#f57f17;font-size:11px">🟡 3-6 เดือน</span>
@@ -4822,13 +4833,13 @@ submitPickup = function() {
 
 // ── REPORT ────────────────────────────────────────────────────
 function loadReportPage(){
-  // set default date range = 30 วันล่าสุด
-  var from = document.getElementById('rptFrom');
-  var to = document.getElementById('rptTo');
+  // set default date range = 90 วันล่าสุด (กันตารางยาวเกินไป — อ๊อฟปรับเองได้)
+  var from = document.getElementById('rptFrom2');
+  var to = document.getElementById('rptTo2');
   if(from && to && !from.value){
     var now = new Date();
     to.value = now.toISOString().split('T')[0];
-    now.setDate(now.getDate()-30);
+    now.setDate(now.getDate()-90);
     from.value = now.toISOString().split('T')[0];
   }
   // โหลดรายงานอัตโนมัติเมื่อเข้าหน้า
@@ -6634,92 +6645,87 @@ function showSlowMove(months){
   var el = document.getElementById('slowMoveContent');
   if(!el) return;
 
-  el.innerHTML = '<div class="tc" style="padding:16px">⏳ กำลังโหลด...</div>';
+  el.innerHTML = '<div class="tc" style="padding:16px">⏳ กำลังโหลดข้อมูลจริงจาก Stock Card...</div>';
 
-  var db = typeof PARTS_DB !== 'undefined' ? PARTS_DB : [];
-  if(!db.length){
-    el.innerHTML = '<div class="tc tm" style="padding:20px">ยังไม่มีข้อมูล PARTS_DB ค่ะ</div>';
-    return;
-  }
+  // ── ดึงข้อมูลจริงจาก backend (คำนวณจากประวัติ Stock Card จริง ไม่ใช่ข้อมูลปลอม) ──
+  callAPI('getSlowMovingParts', {months: months}).then(function(res){
+    if(!res.success){
+      el.innerHTML = '<div class="tc tm" style="padding:20px">❌ '+(res.message||'โหลดไม่สำเร็จ')+'</div>';
+      return;
+    }
+    var slowItems = res.data || [];
+    var labelMap = {3:'3 เดือน', 6:'6 เดือน', 12:'1 ปี', 24:'2 ปี', 36:'3 ปี', 999:'ไม่เคลื่อนไหวเลย'};
+    var label = labelMap[months] || months + ' เดือน';
 
-  var labelMap = {3:'3 เดือน', 6:'6 เดือน', 12:'1 ปี', 24:'2 ปี', 36:'3 ปี', 999:'ไม่เคลื่อนไหวเลย'};
-  var label = labelMap[months] || months + ' เดือน';
-  var maxItems = months >= 999 ? 50 : Math.min(months * 3, 50);
+    if(!slowItems.length){
+      el.innerHTML = '<div class="tc tm" style="padding:24px">✅ ไม่มีรายการในช่วงนี้ค่ะ</div>';
+      return;
+    }
 
-  // Logic: Stock ที่สูง = น่าจะไม่เคลื่อนไหว (demo ไม่มี transaction date จริง)
-  var slowItems = db
-    .filter(function(p){ return (p.inStock||0) > 0; })
-    .sort(function(a,b){ return b.inStock - a.inStock; })
-    .slice(0, maxItems);
+    var totalQty = slowItems.reduce(function(s,p){ return s+(p.inStock||0); }, 0);
 
-  if(!slowItems.length){
-    el.innerHTML = '<div class="tc tm" style="padding:24px">✅ ไม่มีรายการในช่วงนี้ค่ะ</div>';
-    return;
-  }
-
-  var totalQty = slowItems.reduce(function(s,p){ return s+(p.inStock||0); }, 0);
-  var outOfStock = slowItems.filter(function(p){ return p.inStock <= 0; }).length;
-
-  // ── Summary cards ────────────────────────────────────────
-  var html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">'
-    +'<div class="sc" style="text-align:center;border-left:4px solid #e65100">'
-    +'<div class="lb">ไม่เคลื่อนไหว '+label+'</div>'
-    +'<div class="vl" style="color:#e65100;font-size:22px">'+slowItems.length+'</div></div>'
-    +'<div class="sc" style="text-align:center;border-left:4px solid #c9a84c">'
-    +'<div class="lb">จำนวนรวมที่ค้างสต็อก</div>'
-    +'<div class="vl" style="color:#c9a84c;font-size:22px">'+totalQty.toLocaleString()+'</div></div>'
-    +'<div class="sc" style="text-align:center;border-left:4px solid var(--gm)">'
-    +'<div class="lb">⚠️ ควรพิจารณาจำหน่าย/คืน</div>'
-    +'<div class="vl" style="color:var(--gm);font-size:22px">'+slowItems.filter(function(p){return p.inStock>100;}).length+'</div></div>'
-    +'</div>';
-
-  // คำแนะนำ
-  if(months <= 6){
-    html += '<div style="background:#fff9e6;border:1px solid #c9a84c;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#6b4f00">'
-      +'💡 <strong>แนะนำ:</strong> ตรวจสอบอะไหล่ที่ไม่เคลื่อนไหวเกิน '+label+' ว่ายังจำเป็นหรือสามารถคืน/จำหน่ายได้'
+    // ── Summary cards ────────────────────────────────────────
+    var html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">'
+      +'<div class="sc" style="text-align:center;border-left:4px solid #e65100">'
+      +'<div class="lb">ไม่เคลื่อนไหว '+label+'</div>'
+      +'<div class="vl" style="color:#e65100;font-size:22px">'+slowItems.length+'</div></div>'
+      +'<div class="sc" style="text-align:center;border-left:4px solid #c9a84c">'
+      +'<div class="lb">จำนวนรวมที่ค้างสต็อก</div>'
+      +'<div class="vl" style="color:#c9a84c;font-size:22px">'+totalQty.toLocaleString()+'</div></div>'
+      +'<div class="sc" style="text-align:center;border-left:4px solid var(--gm)">'
+      +'<div class="lb">⚠️ ควรพิจารณาจำหน่าย/คืน</div>'
+      +'<div class="vl" style="color:var(--gm);font-size:22px">'+slowItems.filter(function(p){return p.inStock>100;}).length+'</div></div>'
       +'</div>';
-  }
 
-  // ── ตาราง ────────────────────────────────────────────────
-  html += '<div style="display:flex;justify-content:flex-end;margin-bottom:6px">'
-    +'<button class="btn bo bsm" onclick="printSlowMoveReport()" style="font-size:11px">🖨️ พิมพ์รายงาน</button>'
-    +'</div>';
+    // คำแนะนำ
+    if(months <= 6){
+      html += '<div style="background:#fff9e6;border:1px solid #c9a84c;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#6b4f00">'
+        +'💡 <strong>แนะนำ:</strong> ตรวจสอบอะไหล่ที่ไม่เคลื่อนไหวเกิน '+label+' ว่ายังจำเป็นหรือสามารถคืน/จำหน่ายได้'
+        +'</div>';
+    }
 
-  html += '<div class="tw"><table class="it" style="font-size:13px"><thead><tr style="font-size:13px;font-weight:700">'
-    +'<th>Part No.</th><th>ชื่ออะไหล่</th><th>หมวด</th>'
-    +'<th style="text-align:center">คงเหลือ</th>'
-    +'<th style="text-align:center">จ่ายจริงรวม</th>'
-    +'<th style="text-align:center">ไม่เคลื่อนไหว</th>'
-    +'<th>เคลื่อนไหวล่าสุด</th>'
-    +'<th>ที่เก็บ</th><th>สถานะ</th>'
-    +'</tr></thead><tbody>';
+    // ── ตาราง ────────────────────────────────────────────────
+    html += '<div style="display:flex;justify-content:flex-end;margin-bottom:6px">'
+      +'<button class="btn bo bsm" onclick="printSlowMoveReport()" style="font-size:11px">🖨️ พิมพ์รายงาน</button>'
+      +'</div>';
 
-  slowItems.forEach(function(p, i){
-    var risk = p.inStock > 100
-      ? '<span class="chip chip-red" style="font-size:11px">⚠️ ค้างสต็อก</span>'
-      : p.inStock > 50
-      ? '<span class="chip chip-gld" style="font-size:11px">🔶 ระวัง</span>'
-      : '<span class="chip chip-gry" style="font-size:11px;background:#f0f0f0;color:#666">ติดตาม</span>';
-    var issued = (window._scDemoEntries||[])
-      .filter(function(e){ return e.PartNo===p.partNo && e.Type!=='IN' && e.Type!=='ADJUST'; })
-      .reduce(function(s,e){ return s+(e.Qty||0); }, 0);
-    var lastMove = '06/06/2569';
-    var noMoveTxt = months >= 999 ? '>3 ปี' : months >= 12 ? Math.floor(months/12)+' ปี' : months+' เดือน';
-    html += '<tr style="height:40px;'+(i%2===0?'':'background:#f9fdf9;')+'">'
-      +'<td style="font-size:11px;font-weight:600;color:var(--g400);padding:8px 10px">'+p.partNo+'</td>'
-      +'<td style="font-weight:600;padding:8px 10px">'+(p.nameEN||p.nameTH||'-')+'</td>'
-      +'<td style="font-size:11px;color:var(--g400);padding:8px 10px">'+(p.group||'-')+'</td>'
-      +'<td style="text-align:center;font-weight:700;color:#e65100;font-size:15px;padding:8px 10px">'+p.inStock+'</td>'
-      +'<td style="text-align:center;color:var(--g400);padding:8px 10px">'+(issued||'—')+'</td>'
-      +'<td style="text-align:center;font-weight:700;color:var(--red);padding:8px 10px">'+noMoveTxt+'</td>'
-      +'<td style="font-size:11px;color:var(--g400);padding:8px 10px">'+lastMove+'</td>'
-      +'<td style="font-size:12px;padding:8px 10px">'+(p.location||'—')+'</td>'
-      +'<td style="padding:8px 10px">'+risk+'</td>'
-      +'</tr>';
+    html += '<div class="tw"><table class="it" style="font-size:13px"><thead><tr style="font-size:13px;font-weight:700">'
+      +'<th>Part No.</th><th>ชื่ออะไหล่</th><th>หมวด</th>'
+      +'<th style="text-align:center">คงเหลือ</th>'
+      +'<th style="text-align:center">จ่ายจริงรวม</th>'
+      +'<th style="text-align:center">ไม่เคลื่อนไหว</th>'
+      +'<th>เคลื่อนไหวล่าสุด</th>'
+      +'<th>ที่เก็บ</th><th>สถานะ</th>'
+      +'</tr></thead><tbody>';
+
+    slowItems.forEach(function(p, i){
+      var risk = p.inStock > 100
+        ? '<span class="chip chip-red" style="font-size:11px">⚠️ ค้างสต็อก</span>'
+        : p.inStock > 50
+        ? '<span class="chip chip-gld" style="font-size:11px">🔶 ระวัง</span>'
+        : '<span class="chip chip-gry" style="font-size:11px;background:#f0f0f0;color:#666">ติดตาม</span>';
+      var noMoveTxt = (p.daysSince===null||p.daysSince===undefined)
+        ? 'ไม่เคยมีประวัติ'
+        : p.daysSince>=730 ? Math.floor(p.daysSince/365)+' ปี'
+        : p.daysSince>=60  ? Math.floor(p.daysSince/30)+' เดือน'
+        : p.daysSince+' วัน';
+      var lastMove = p.lastMoveAt ? new Date(p.lastMoveAt).toLocaleDateString('th-TH') : '— ไม่เคยมีประวัติ';
+      html += '<tr style="height:40px;'+(i%2===0?'':'background:#f9fdf9;')+'">'
+        +'<td style="font-size:11px;font-weight:600;color:var(--g400);padding:8px 10px">'+p.partNo+'</td>'
+        +'<td style="font-weight:600;padding:8px 10px">'+(p.nameEN||p.nameTH||'-')+'</td>'
+        +'<td style="font-size:11px;color:var(--g400);padding:8px 10px">'+(p.group||'-')+'</td>'
+        +'<td style="text-align:center;font-weight:700;color:#e65100;font-size:15px;padding:8px 10px">'+p.inStock+'</td>'
+        +'<td style="text-align:center;color:var(--g400);padding:8px 10px">'+(p.totalOut||0)+'</td>'
+        +'<td style="text-align:center;font-weight:700;color:var(--red);padding:8px 10px">'+noMoveTxt+'</td>'
+        +'<td style="font-size:11px;color:var(--g400);padding:8px 10px">'+lastMove+'</td>'
+        +'<td style="font-size:12px;padding:8px 10px">'+(p.location||'—')+'</td>'
+        +'<td style="padding:8px 10px">'+risk+'</td>'
+        +'</tr>';
+    });
+
+    html += '</tbody></table></div>';
+    el.innerHTML = html;
   });
-
-  html += '</tbody></table></div>';
-  el.innerHTML = html;
 }
 
 
@@ -8968,12 +8974,47 @@ function getPartName(partNo){
 }
 
 function loadFullReport(){
+  var filter = {};
+  var from = (document.getElementById('rptFrom2')||{}).value;
+  var to   = (document.getElementById('rptTo2')||{}).value;
+  if(from) filter.dateFrom = from;
+  if(to)   filter.dateTo   = to;
   // ดึงข้อมูลจริงจาก backend ก่อน แล้วค่อย render
-  callAPI('getReport',{}).then(function(res){
+  callAPI('getReport',filter).then(function(res){
     window._fullReqs  = res.data  || [];
     window._fullItems = res.items || [];
+    var statusEl = document.getElementById('rptDateFilterStatus');
+    if(statusEl){
+      statusEl.textContent = (from||to)
+        ? '📊 กำลังดูช่วง '+(from||'เริ่มต้น')+' ถึง '+(to||'ปัจจุบัน')+' ('+window._fullReqs.length+' รายการ)'
+        : '📊 กำลังดูข้อมูลทั้งหมด ('+window._fullReqs.length+' รายการ) — แนะนำเลือกช่วงเวลาถ้ารายการเยอะ';
+    }
     _renderFullReport();
+    if(typeof renderMovementReport === 'function') renderMovementReport();
   });
+}
+
+function applyReportDateFilter(){
+  toast('กำลังโหลดรายงาน...','info');
+  loadFullReport();
+}
+
+function clearReportDateFilter(){
+  var from = document.getElementById('rptFrom2');
+  var to   = document.getElementById('rptTo2');
+  if(from) from.value = '';
+  if(to)   to.value   = '';
+  _rptTrackFilter = null;
+  loadFullReport();
+}
+
+// ── ตัวกรองหมวดสำหรับตาราง "งานที่ต้องติดตาม" — กดการ์ด/pipeline เพื่อกรอง ──
+var _rptTrackFilter = null; // {key, label} หรือ null = ดูทั้งหมด
+function setRptTrackFilter(key, label){
+  _rptTrackFilter = (_rptTrackFilter && _rptTrackFilter.key===key) ? null : {key:key, label:label};
+  _renderFullReport();
+  var tbl = document.getElementById('rptOverdueTable');
+  if(tbl) tbl.scrollIntoView({behavior:'smooth', block:'center'});
 }
 
 function _renderFullReport(){
@@ -9036,16 +9077,17 @@ function _renderFullReport(){
   var kpiRow = document.getElementById('rptKPIRow');
   if(kpiRow){
     var kpis=[
-      {label:'ใบเบิกทั้งหมด',   val:total,     color:'var(--gd)', icon:'📋'},
-      {label:'รออนุมัติ',        val:waitAppr,  color:'#e65100',   icon:'⏳'},
-      {label:'รอจ่ายอะไหล่',    val:waitStock, color:'#1565c0',   icon:'📦'},
-      {label:'รายการขาดจ่าย',     val:partIssued,color:'#6a1599',   icon:'⚠️'},
-      {label:'กำลังใช้งาน',     val:inUse,     color:'#2d6a4f',   icon:'🔧'},
-      {label:'รอเคลียร์',       val:waitClear, color:'#c9a84c',   icon:'📝'},
-      {label:'ค้างเกิน 7 วัน',  val:overdue7,  color:overdue7>0?'#b71c1c':'#aaa', icon:'🚨'},
+      {label:'ใบเบิกทั้งหมด',   val:total,     color:'var(--gd)', icon:'📋', fk:null},
+      {label:'รออนุมัติ',        val:waitAppr,  color:'#e65100',   icon:'⏳', fk:'waitAppr'},
+      {label:'รอจ่ายอะไหล่',    val:waitStock, color:'#1565c0',   icon:'📦', fk:'waitStock'},
+      {label:'รายการขาดจ่าย',     val:partIssued,color:'#6a1599',   icon:'⚠️', fk:'partIssued'},
+      {label:'กำลังใช้งาน',     val:inUse,     color:'#2d6a4f',   icon:'🔧', fk:'inUse'},
+      {label:'รอเคลียร์',       val:waitClear, color:'#c9a84c',   icon:'📝', fk:'waitClear'},
+      {label:'ค้างเกิน 7 วัน',  val:overdue7,  color:overdue7>0?'#b71c1c':'#aaa', icon:'🚨', fk:'overdue7'},
     ];
     kpiRow.innerHTML=kpis.map(function(k){
-      return '<div class="kpi-card" style="cursor:pointer;background:#fff;border:1px solid var(--g200);border-radius:10px;padding:12px 10px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.06)">'
+      var isActive = _rptTrackFilter && _rptTrackFilter.key===k.fk;
+      return '<div class="kpi-card" onclick="setRptTrackFilter('+(k.fk?"'"+k.fk+"'":'null')+',\''+k.label+'\')" style="cursor:pointer;background:#fff;border:'+(isActive?'2px solid '+k.color:'1px solid var(--g200)')+';border-radius:10px;padding:12px 10px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.06)">'
         +'<div style="font-size:20px">'+k.icon+'</div>'
         +'<div style="font-size:26px;font-weight:700;color:'+k.color+';line-height:1.2">'+k.val+'</div>'
         +'<div style="font-size:11px;color:var(--g400);margin-top:4px">'+k.label+'</div>'
@@ -9057,21 +9099,22 @@ function _renderFullReport(){
   var pipelineEl = document.getElementById('rptPipeline');
   if(pipelineEl){
     var steps=[
-      {label:'ทั้งหมด',         count:total,     color:'#1a4a2e'},
-      {label:'รอหัวหน้าช่าง',   count:reqs.filter(function(r){return r.StatusApproval==='PENDING_SUPERVISOR';}).length, color:'#e65100'},
-      {label:'รอผู้จัดการ',     count:reqs.filter(function(r){return r.StatusApproval==='PENDING_MANAGER';}).length,    color:'#1565c0'},
-      {label:'รอจ่ายของ',       count:waitStock, color:'#6a1599'},
-      {label:'รายการขาดจ่าย',     count:partIssued,color:'#8e24aa'},
-      {label:'ใช้งาน',          count:inUse,     color:'#2d6a4f'},
-      {label:'รอเคลียร์',       count:waitClear, color:'#c9a84c'},
-      {label:'ปิดงาน',          count:closed,    color:'#388e3c'},
+      {label:'ทั้งหมด',         count:total,     color:'#1a4a2e', fk:null},
+      {label:'รอหัวหน้าช่าง',   count:reqs.filter(function(r){return r.StatusApproval==='PENDING_SUPERVISOR';}).length, color:'#e65100', fk:'pendingSupervisor'},
+      {label:'รอผู้จัดการ',     count:reqs.filter(function(r){return r.StatusApproval==='PENDING_MANAGER';}).length,    color:'#1565c0', fk:'pendingManager'},
+      {label:'รอจ่ายของ',       count:waitStock, color:'#6a1599', fk:'waitStock'},
+      {label:'รายการขาดจ่าย',     count:partIssued,color:'#8e24aa', fk:'partIssued'},
+      {label:'ใช้งาน',          count:inUse,     color:'#2d6a4f', fk:'inUse'},
+      {label:'รอเคลียร์',       count:waitClear, color:'#c9a84c', fk:'waitClear'},
+      {label:'ปิดงาน',          count:closed,    color:'#388e3c', fk:'closed'},
     ];
     var maxP=Math.max.apply(null,steps.slice(1,7).map(function(s){return s.count;}));
     pipelineEl.innerHTML=steps.map(function(s,i){
       var isBot=i>0&&i<7&&s.count===maxP&&s.count>0;
+      var isActive = _rptTrackFilter && _rptTrackFilter.key===s.fk;
       var arr=i<steps.length-1?'<div style="font-size:14px;color:#bbb;padding:0 2px">▶</div>':'';
       return '<div style="display:flex;align-items:center">'
-        +'<div style="background:'+(isBot?'#fff5f5':'#fff')+';border:'+(isBot?'2px solid #ef5350':'1px solid var(--g200)')+';border-radius:8px;padding:8px 10px;text-align:center;min-width:80px">'
+        +'<div onclick="setRptTrackFilter('+(s.fk?"'"+s.fk+"'":'null')+',\''+s.label+'\')" style="cursor:pointer;background:'+(isActive?'#e8f5e9':(isBot?'#fff5f5':'#fff'))+';border:'+(isActive?'2px solid #2d6a4f':(isBot?'2px solid #ef5350':'1px solid var(--g200)'))+';border-radius:8px;padding:8px 10px;text-align:center;min-width:80px">'
         +(isBot?'<div style="font-size:8px;color:var(--red);font-weight:700">⚠️ คอขวด</div>':'')
         +'<div style="font-size:20px;font-weight:700;color:'+s.color+'">'+s.count+'</div>'
         +'<div style="font-size:9px;color:var(--g400);white-space:nowrap">'+s.label+'</div>'
@@ -9081,8 +9124,34 @@ function _renderFullReport(){
 
   // ── 3. งานค้างนาน (Overdue) ─────────────────────────────
   var overdueEl=document.getElementById('rptOverdueTable');
+  var filterLabelEl = document.getElementById('rptTrackFilterLabel');
+  if(filterLabelEl) filterLabelEl.textContent = _rptTrackFilter ? '— กรอง: '+_rptTrackFilter.label+' (กดซ้ำเพื่อล้างตัวกรอง)' : '';
   if(overdueEl){
-    var tracked=reqs.filter(function(r){return r.StatusStock!=='CLEARED';})
+    var trackSource = (_rptTrackFilter && _rptTrackFilter.key==='closed')
+      ? reqs.filter(function(r){return r.StatusStock==='CLEARED';})
+      : reqs.filter(function(r){return r.StatusStock!=='CLEARED';});
+    var tracked=trackSource
+      .filter(function(r){
+        if(!_rptTrackFilter) return true;
+        switch(_rptTrackFilter.key){
+          case 'waitAppr':  return r.StatusApproval==='PENDING_SUPERVISOR'||r.StatusApproval==='PENDING_MANAGER';
+          case 'pendingSupervisor': return r.StatusApproval==='PENDING_SUPERVISOR';
+          case 'pendingManager':    return r.StatusApproval==='PENDING_MANAGER';
+          case 'waitStock': return r.StatusApproval==='APPROVED'&&r.StatusStock==='PENDING';
+          case 'inUse':     return r.StatusStock==='ACKNOWLEDGED'||r.StatusStock==='PICKED_UP';
+          case 'waitClear': return r.StatusStock==='PICKED_UP';
+          case 'closed':    return true; // กรองด้วย trackSource แล้ว
+          case 'overdue7':  return ageDays(r.OpenDate)>=7;
+          case 'partIssued':
+            if(r.StatusApproval!=='APPROVED') return false;
+            return items.some(function(it){
+              if(it.ReqID!==r.ReqID) return false;
+              var issued = typeof it.IssuedQty!=='undefined'?(it.IssuedQty||0):(it.Qty||0);
+              return Math.max(0,(it.Qty||0)-issued) > 0;
+            });
+          default: return true;
+        }
+      })
       .map(function(r){return Object.assign({},r,{_days:ageDays(r.OpenDate)});})
       .sort(function(a,b){return b._days-a._days;});
     if(!tracked.length){
@@ -9789,13 +9858,10 @@ function renderMovementReport(){
   var chartEl = document.getElementById('rptMovementChart');
   var tableEl = document.getElementById('rptMovementTable');
   if(!chartEl || !tableEl) return;
-  chartEl.innerHTML = '<div class="tc" style="padding:20px">⏳ กำลังโหลด...</div>';
-  // ดึงข้อมูลจริงจาก backend มาเก็บใน global แล้วเรียก render
-  callAPI('getReport',{}).then(function(res){
-    window._realReqs  = res.data  || [];
-    window._realItems = res.items || [];
-    _renderMovementReportOLD();
-  });
+  // ใช้ข้อมูลเดียวกับส่วนอื่นของหน้ารายงาน (เคารพตัวกรองช่วงเวลาเดียวกัน) — ไม่ fetch ซ้ำ
+  window._realReqs  = window._fullReqs  || [];
+  window._realItems = window._fullItems || [];
+  _renderMovementReportOLD();
 }
 
 function _renderMovementReportOLD(){
