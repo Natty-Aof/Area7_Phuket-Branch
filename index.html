@@ -492,6 +492,9 @@ textarea.fc{min-height:70px;resize:vertical;}
               <div id="custWarn" style="display:none;margin-top:4px;background:#fff3e0;padding:6px 10px;border-radius:6px;font-size:12px;color:#e65100">
                 ⚠️ กรุณาเลือกชื่อโครงการจากรายการค่ะ
               </div>
+              <div style="margin-top:4px">
+                <a href="javascript:void(0)" onclick="openAddCustomerModal(function(name){ _pickCust(encodeURIComponent(name),encodeURIComponent(name)); })" style="font-size:11px;color:var(--gm);text-decoration:underline">➕ ไม่พบชื่อลูกค้า? เพิ่มลูกค้าใหม่</a>
+              </div>
             </div>
           </div>
           <div class="fr">
@@ -1130,6 +1133,7 @@ textarea.fc{min-height:70px;resize:vertical;}
             <div style="font-size:15px;font-weight:700">🚗 ประวัติการซ่อม/เปลี่ยนอะไหล่ตาม Serial No.</div>
             <div style="font-size:11px;opacity:.8;margin-top:2px">ค้นหา Serial No. หรือสแกน QR Code รถ → ดูประวัติ + พิมพ์ Label</div>
           </div>
+          <button onclick="openAddCustomerModal()" style="background:#fff;color:#1a237e;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">➕ เพิ่มลูกค้า/รถใหม่</button>
           <button onclick="openBatchQRPrint()" style="background:#fff;color:#1a237e;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">🖨️ ปริ้น QR ทีเดียว</button>
         </div>
 
@@ -1490,6 +1494,9 @@ textarea.fc{min-height:70px;resize:vertical;}
             <input class="fc" id="soCustName" placeholder="พิมพ์ชื่อบริษัท / โครงการ..." oninput="onSOCustInput(this)" autocomplete="off">
             <span id="soCustIcon" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none"></span>
             <div id="soCustSuggest" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:600;background:#fff;border:1.5px solid var(--gm);border-top:none;border-radius:0 0 8px 8px;max-height:200px;overflow-y:auto;box-shadow:0 6px 20px rgba(0,0,0,.12)"></div>
+          </div>
+          <div style="margin-top:4px">
+            <a href="javascript:void(0)" onclick="openAddCustomerModal(function(name){ var el=document.getElementById('soCustName'); if(el){ el.value=name; } })" style="font-size:11px;color:var(--gm);text-decoration:underline">➕ ไม่พบชื่อลูกค้า? เพิ่มลูกค้าใหม่</a>
           </div>
         </div>
         <div class="fg">
@@ -6908,6 +6915,69 @@ var _vhCurrentSerial = ''; // serial ที่กำลังดู
 var _vhAssignItems = [];   // รายการระบุรถตอนเคลียร์
 var _vhDBLastFetch = 0;    // timestamp ที่โหลดล่าสุด
 var _VH_DB_TTL = 5 * 60 * 1000; // 5 นาที
+
+// ── เพิ่มลูกค้า/รถใหม่ — modal ใช้ร่วมกันได้ทุกหน้า (ประวัติรถ, เปิดรายการขาย ฯลฯ) ──
+// onDoneCallback(customerName) จะถูกเรียกหลังบันทึกสำเร็จ (ใส่ชื่อลูกค้าที่เพิ่งเพิ่มกลับไปให้ ถ้าต้องการ)
+function openAddCustomerModal(onDoneCallback){
+  if(!CU || (CU.role!=='MANAGER'&&CU.role!=='ADMIN'&&CU.role!=='STOCK')) return toast('เฉพาะ Manager/Stock/Admin เท่านั้นค่ะ','error');
+  var existing = document.getElementById('addCustModal');
+  if(existing) existing.remove();
+  var modal = document.createElement('div');
+  modal.id = 'addCustModal';
+  modal.className = 'mo';
+  modal.style.zIndex = '3200';
+  modal.innerHTML =
+    '<div class="mow" style="max-width:480px">'
+      +'<div class="moh"><div class="mot">➕ เพิ่มลูกค้า/รถใหม่</div>'
+        +'<button class="mcl" onclick="document.getElementById(\'addCustModal\').remove()">✕</button></div>'
+      +'<div class="mob">'
+        +'<div class="fg"><label class="fl">ชื่อลูกค้า/บริษัท/โรงแรม <span style="color:var(--red)">*</span></label><input class="fc" id="acCustomer" placeholder="เช่น บริษัท ตัวอย่าง จำกัด"></div>'
+        +'<div class="fg"><label class="fl">สถานที่/โครงการ</label><input class="fc" id="acLocation" placeholder="เช่น หาดป่าตอง"></div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+          +'<div class="fg"><label class="fl">Serial No. รถ (ถ้ามี)</label><input class="fc" id="acSerial" placeholder="เว้นว่างได้ถ้ายังไม่มีรถ"></div>'
+          +'<div class="fg"><label class="fl">ประเภทรถ</label><input class="fc" id="acVehicleType" placeholder="เช่น Club Car"></div>'
+        +'</div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+          +'<div class="fg"><label class="fl">รุ่น</label><input class="fc" id="acModel"></div>'
+          +'<div class="fg"><label class="fl">เบอร์รถ</label><input class="fc" id="acCarNo"></div>'
+        +'</div>'
+        +'<div class="fg"><label class="fl">หมายเหตุ</label><input class="fc" id="acNote"></div>'
+        +'<div style="font-size:11px;color:var(--g400);margin-top:4px">💡 กรอกแค่ "ชื่อลูกค้า" หรือ "สถานที่" อย่างใดอย่างหนึ่งก็พอ — ถ้ายังไม่มีเลข Serial รถ ระบบจะสร้างรหัสชั่วคราวให้อัตโนมัติ (ลูกค้าที่มาซื้ออะไหล่เฉยๆ ไม่มีรถในระบบก็เพิ่มได้)</div>'
+      +'</div>'
+      +'<div class="mof">'
+        +'<button class="btn bo" onclick="document.getElementById(\'addCustModal\').remove()">ยกเลิก</button>'
+        +'<button class="btn bp" onclick="saveNewCustomer()">💾 บันทึก</button>'
+      +'</div>'
+    +'</div>';
+  document.body.appendChild(modal);
+  modal.style.display = 'flex';
+  window._acDoneCallback = onDoneCallback || null;
+}
+
+function saveNewCustomer(){
+  var customer = (document.getElementById('acCustomer')||{}).value.trim();
+  var location = (document.getElementById('acLocation')||{}).value.trim();
+  if(!customer && !location) return toast('กรุณาระบุชื่อลูกค้าหรือสถานที่อย่างน้อย 1 อย่างค่ะ','error');
+  var data = {
+    customer: customer,
+    location: location,
+    serialNo: (document.getElementById('acSerial')||{}).value.trim(),
+    vehicleType: (document.getElementById('acVehicleType')||{}).value.trim(),
+    model: (document.getElementById('acModel')||{}).value.trim(),
+    carNo: (document.getElementById('acCarNo')||{}).value.trim(),
+    note: (document.getElementById('acNote')||{}).value.trim(),
+  };
+  toast('กำลังบันทึก...','info');
+  callAPI('createVehicleCustomer', data).then(function(res){
+    toast(res.success?'✅ เพิ่มแล้วค่ะ':'❌ '+(res.message||'เกิดข้อผิดพลาด'), res.success?'success':'error');
+    if(res.success){
+      var m = document.getElementById('addCustModal'); if(m) m.remove();
+      _vhDBLastFetch = 0; // ── บังคับให้โหลดรายชื่อลูกค้าใหม่รอบถัดไป ไม่ใช้ cache เก่า ──
+      if(typeof window._acDoneCallback === 'function') window._acDoneCallback(customer||location);
+      window._acDoneCallback = null;
+    }
+  });
+}
 
 function loadVehiclesDB(){
   var now = Date.now();
