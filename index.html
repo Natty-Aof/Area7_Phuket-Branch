@@ -10093,7 +10093,12 @@ function renderMovementReport(){
   // ใช้ข้อมูลเดียวกับส่วนอื่นของหน้ารายงาน (เคารพตัวกรองช่วงเวลาเดียวกัน) — ไม่ fetch ซ้ำ
   window._realReqs  = window._fullReqs  || [];
   window._realItems = window._fullItems || [];
-  _renderMovementReportOLD();
+  // ── ดึงข้อมูล "เปิดการขาย" มาด้วย เพราะเดิมไม่เคยรวมเข้ามาคำนวณเลย ──
+  // (การขายอะไหล่หน้าร้านเป็นคนละระบบกับใบเบิก จึงต้องดึงแยกมาอีกที)
+  callAPI('getSalesOrders', {}).then(function(res){
+    window._realSalesOrders = (res && res.success) ? (res.data||[]) : [];
+    _renderMovementReportOLD();
+  });
 }
 
 function _renderMovementReportOLD(){
@@ -10104,6 +10109,7 @@ function _renderMovementReportOLD(){
   // ใช้ข้อมูลจริงจาก backend (ไม่ใช่ DEMO)
   var reqs  = window._realReqs  || [];
   var items = window._realItems || [];
+  var salesOrders = window._realSalesOrders || [];
   var scDemo= [];
 
   // สร้าง movement summary
@@ -10113,11 +10119,15 @@ function _renderMovementReportOLD(){
   reqs.forEach(function(r){
     if(r.StatusApproval !== 'APPROVED' && r.StatusStock !== 'CLEARED') return;
     var purpose = (r.Purpose||'').toLowerCase();
-    var type = 'OUT_RENTAL';
+    var type = null; // ── แก้: ไม่เดาเป็น OUT_RENTAL อัตโนมัติอีกต่อไป ถ้าจับคำไม่ได้ ──
     if(purpose.indexOf('อุบัติ')>=0 || purpose.indexOf('accident')>=0 || purpose.indexOf('ชน')>=0) type='OUT_ACCIDENT';
     else if(purpose.indexOf('warranty')>=0 || purpose.indexOf('ประกัน')>=0 || purpose.indexOf('เคลม')>=0) type='OUT_WARRANTY';
+    else if(purpose.indexOf('ขาย')>=0 || purpose.indexOf('sale')>=0) type='OUT_SALE';
+    else if(purpose.indexOf('โอนสาขา')>=0 || purpose.indexOf('branch')>=0) type='OUT_BRANCH';
+    else if(purpose.indexOf('คืน')>=0 && (purpose.indexOf('สนญ')>=0 || purpose.indexOf('hq')>=0)) type='OUT_HQ';
     else if(purpose.indexOf('เช่า')>=0 || purpose.indexOf('rental')>=0) type='OUT_RENTAL';
     else if(purpose.indexOf('สัมปทาน')>=0 || purpose.indexOf('contract')>=0) type='OUT_CONTRACT';
+    else type='OUT_OTHER'; // ── ไม่เข้าเงื่อนไขไหนเลย → เข้าหมวด "อื่นๆ" ตรงๆ ไม่ปนกับรถเช่า ──
 
     items.filter(function(it){ return it.ReqID===r.ReqID; }).forEach(function(item){
       var qty = typeof item.IssuedQty!=='undefined' ? (item.IssuedQty||0) : (item.Qty||0);
@@ -10127,6 +10137,22 @@ function _renderMovementReportOLD(){
       typeMap[type].totalQty += qty;
       typeMap[type].totalReqs++;
       if(!typeMap[type].parts[pn]) typeMap[type].parts[pn] = {qty:0, name:getPartName(pn)};
+      typeMap[type].parts[pn].qty += qty;
+    });
+  });
+
+  // ── จากรายการขาย (Sales Orders) ที่จัดของแล้ว — เดิมไม่เคยถูกนับรวมเข้ามาเลย ──
+  salesOrders.forEach(function(so){
+    if(String(so.Status||'').toUpperCase() !== 'DISPATCHED') return;
+    var type = 'OUT_SALE';
+    (so.Items||[]).forEach(function(item){
+      var qty = parseFloat(item.Qty)||0;
+      if(qty <= 0) return;
+      var pn = item.PartNo;
+      if(!typeMap[type]) typeMap[type] = {type:type, totalQty:0, totalReqs:0, parts:{}};
+      typeMap[type].totalQty += qty;
+      typeMap[type].totalReqs++;
+      if(!typeMap[type].parts[pn]) typeMap[type].parts[pn] = {qty:0, name:getPartName(pn)||item.NameEN||''};
       typeMap[type].parts[pn].qty += qty;
     });
   });
