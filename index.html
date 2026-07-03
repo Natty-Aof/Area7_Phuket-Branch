@@ -257,6 +257,13 @@ textarea.fc{min-height:70px;resize:vertical;}
     <h2>ระบบใบเบิกอะไหล่</h2>
     <p>ระบบใบเบิกอะไหล่ - Phuket Branch</p>
     <div id="gBtn"></div>
+    <div id="lineWarnBanner" style="display:none;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:14px 16px;margin:0 auto 14px;max-width:320px;text-align:left">
+      <div style="font-weight:700;color:#856404;margin-bottom:6px;font-size:14px">⚠️ เปิดผ่าน LINE ล็อกอินไม่ได้ค่ะ</div>
+      <div style="font-size:13px;color:#856404;line-height:1.6">Google ไม่อนุญาตให้ล็อกอินผ่านเบราว์เซอร์ในแอปอื่น (เช่น LINE) กรุณาเปิดในเบราว์เซอร์ปกติแทนค่ะ:<br>
+      1. แตะ <strong>"⋯"</strong> มุมขวาบน<br>
+      2. เลือก <strong>"เปิดด้วยเบราว์เซอร์อื่น"</strong></div>
+      <button onclick="copyPageLink()" style="margin-top:10px;padding:8px 14px;border:1px solid #856404;border-radius:6px;background:#fff;color:#856404;font-size:13px;cursor:pointer;width:100%">📋 คัดลอกลิงก์ไปวางในเบราว์เซอร์</button>
+    </div>
     <div style="margin-top:10px">
       <button onclick="manualGoogleLogin()" style="display:flex;align-items:center;gap:8px;margin:0 auto;padding:10px 20px;border:1px solid #dadce0;border-radius:4px;background:#fff;cursor:pointer;font-size:14px;color:#3c4043">
         <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:18px;height:18px">
@@ -1845,6 +1852,27 @@ function _goWithoutPush(page){
   }
   loadGSI();
 })();
+
+// ── ตรวจจับว่าเปิดผ่านเบราว์เซอร์ในแอป LINE (Google บล็อกล็อกอินในนี้) ──
+(function(){
+  var ua = navigator.userAgent || '';
+  if(/\bLine\//i.test(ua)){
+    var el = document.getElementById('lineWarnBanner');
+    if(el) el.style.display = 'block';
+  }
+})();
+
+function copyPageLink(){
+  var url = window.location.href;
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(function(){
+      if(typeof toast==='function') toast('คัดลอกลิงก์แล้วค่ะ ไปวางใน Chrome/Safari ได้เลย','success');
+      else alert('คัดลอกลิงก์แล้วค่ะ');
+    }).catch(function(){ prompt('คัดลอกลิงก์นี้ไปวางในเบราว์เซอร์:', url); });
+  } else {
+    prompt('คัดลอกลิงก์นี้ไปวางในเบราว์เซอร์:', url);
+  }
+}
 
 function manualGoogleLogin(){
   if(typeof google === 'undefined' || !google.accounts){
