@@ -1748,16 +1748,8 @@ function refreshPartImgUI(partNo){
 var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby-rTLvOfXzKVwAqnD3MLLcD74880fouFeFlHt1epXokAElIfkRBOvQf28q_yUF8cGPlw/exec';
 var GOOGLE_CLIENT_ID = '869824889081-n11nu7d53fso299hpr58ch4n6tmfal4t.apps.googleusercontent.com';
 
-// ── BEYOND GREEN EMAIL → ROLE MAP ────────────────────────────
-// พนักงานที่มีอีเมล @beyond-green.co.th จะเข้าระบบได้อัตโนมัติตาม role ด้านล่าง
-var BG_EMAIL_ROLES = {
-  'artitry@beyond-green.co.th':      { role:'SUPERVISOR', name:'หัวหน้าช่าง' },
-  'natthareeya@beyond-green.co.th':  { role:'MANAGER',    name:'ณัฐรีญา' },
-  'Hathaichanok@beyond-green.co.th': { role:'STOCK',      name:'หทัยชนก' },
-  'anuwit@beyond-green.co.th':       { role:'STOCK',      name:'อนุวิท' },
-  'sittinan@beyond-green.co.th':     { role:'STOCK',      name:'สิทธิณัน' },
-};
-// อีเมล @beyond-green.co.th ที่ไม่ได้ระบุ role ข้างบน → TECHNICIAN อัตโนมัติ
+// ── หมายเหตุ: เดิมมี BG_EMAIL_ROLES เก็บชื่อ/role ของพนักงานบางคนตายตัวในโค้ด
+// ทำให้แก้ชื่อในชีท Users แล้วไม่มีผล — ลบออกแล้ว ตอนนี้ทุกคนดึงชื่อ/role จากชีท Users เสมอ
 
 // ── STATE ────────────────────────────────────────────────────
 var CU = null; // currentUser
@@ -1948,18 +1940,7 @@ function onGSI(resp){
   var p = resp._raw || parseJWT(resp.credential);
   var emailLower = (p.email||'').toLowerCase();
 
-  // ── ตรวจ BG_EMAIL_ROLES ก่อน (hardcode สำหรับ admin สำคัญ) ──
-  var matchKey = Object.keys(BG_EMAIL_ROLES).find(function(k){
-    return k.toLowerCase() === emailLower;
-  });
-  if(matchKey){
-    var profile = BG_EMAIL_ROLES[matchKey];
-    CU = { email:p.email, name:profile.name, role:profile.role };
-    initApp();
-    return;
-  }
-
-  // ── ดึง role จาก Sheet Users ──
+  // ── ดึง role/ชื่อจาก Sheet Users เสมอ (แหล่งข้อมูลเดียว ไม่มีชื่อ hardcode ค้างในโค้ดอีกต่อไป) ──
   callAPI('getUserRole', {}, p.email).then(function(res){
     if(res && res.success && res.role && res.role !== 'DENIED'){
       CU = {email:p.email, name:res.name||p.name||p.email.split('@')[0], role:res.role};
@@ -10026,6 +10007,7 @@ function printOverdueReport(){
     +'th{background:#1a4a2e;color:#fff;padding:7px 10px;text-align:left}'
     +'td{padding:7px 10px;border-bottom:1px solid #eee}'
     +'tr:nth-child(even){background:#f9fdf9}'
+    +'th:last-child,td:last-child{display:none}' /* ── ซ่อนคอลัมน์ปุ่ม "ดู" ตอนพิมพ์ ── */
     +'@media print{@page{size:A4 landscape;margin:10mm}}</style>'
     +'</head><body>'
     +'<h2>⏰ งานที่ต้องติดตาม — ระบบใบเบิกอะไหล่ - Phuket Branch</h2>'
