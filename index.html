@@ -9909,6 +9909,8 @@ function exportReportCSV(){
   // ── ใช้ข้อมูลจริงชุดเดียวกับที่แสดงในหน้ารายงาน (เคารพตัวกรองวันที่ปัจจุบัน) ──
   var reqs  = window._fullReqs  || [];
   var items = window._fullItems || [];
+  var itemsByReqId = {};
+  items.forEach(function(it){ (itemsByReqId[it.ReqID] || (itemsByReqId[it.ReqID]=[])).push(it); });
 
   // ถ้ามีการกดกรองหมวดในตาราง "งานที่ต้องติดตาม" อยู่ ให้ export เฉพาะหมวดนั้น
   if(typeof _rptTrackFilter !== 'undefined' && _rptTrackFilter){
@@ -10121,10 +10123,12 @@ function _renderMovementReportOLD(){
     var purpose = (r.Purpose||'').toLowerCase();
     var type = null; // ── แก้: ไม่เดาเป็น OUT_RENTAL อัตโนมัติอีกต่อไป ถ้าจับคำไม่ได้ ──
     if(purpose.indexOf('อุบัติ')>=0 || purpose.indexOf('accident')>=0 || purpose.indexOf('ชน')>=0) type='OUT_ACCIDENT';
-    else if(purpose.indexOf('warranty')>=0 || purpose.indexOf('ประกัน')>=0 || purpose.indexOf('เคลม')>=0) type='OUT_WARRANTY';
     else if(purpose.indexOf('ขาย')>=0 || purpose.indexOf('sale')>=0) type='OUT_SALE';
     else if(purpose.indexOf('โอนสาขา')>=0 || purpose.indexOf('branch')>=0) type='OUT_BRANCH';
     else if(purpose.indexOf('คืน')>=0 && (purpose.indexOf('สนญ')>=0 || purpose.indexOf('hq')>=0)) type='OUT_HQ';
+    // ── แก้บั๊ก: "เคลมไม่ได้" ไม่ใช่การเคลมประกันจริง ต้องแยกจาก "เคลมได้" ไม่ใช่เช็คแค่คำว่า "เคลม" เฉยๆ ──
+    else if(purpose.indexOf('เคลมได้')>=0) type='OUT_WARRANTY';
+    else if((purpose.indexOf('warranty')>=0 || purpose.indexOf('ประกัน')>=0) && purpose.indexOf('เคลมไม่ได้')<0) type='OUT_WARRANTY';
     else if(purpose.indexOf('เช่า')>=0 || purpose.indexOf('rental')>=0) type='OUT_RENTAL';
     else if(purpose.indexOf('สัมปทาน')>=0 || purpose.indexOf('contract')>=0) type='OUT_CONTRACT';
     else type='OUT_OTHER'; // ── ไม่เข้าเงื่อนไขไหนเลย → เข้าหมวด "อื่นๆ" ตรงๆ ไม่ปนกับรถเช่า ──
@@ -10360,22 +10364,35 @@ function exportSelectedReport(){
   } else if(type==='movement'){
     filename = 'การจ่ายตามประเภทงาน_'+dateStr;
     headers = ['ประเภทงาน','เลขใบเบิก','Job No.','ลูกค้า','ผู้เบิก','Part No.','ชื่ออะไหล่','จ่ายจริง'];
+    var typeLabels2 = {OUT_RENTAL:'รถเช่า',OUT_CONTRACT:'รถสัมปทาน',OUT_ACCIDENT:'เคลมอุบัติ',OUT_WARRANTY:'เคลม Warranty',OUT_SALE:'เปิดการขาย',OUT_BRANCH:'โอนสาขา',OUT_HQ:'คืน สนญ.',OUT_OTHER:'อื่นๆ'};
     reqs.forEach(function(r){
       if(r.StatusApproval!=='APPROVED'&&r.StatusStock!=='CLEARED') return;
       var purpose=(r.Purpose||'').toLowerCase();
-      var type2='รถเช่า';
-      if(purpose.indexOf('อุบัติ')>=0||purpose.indexOf('accident')>=0||purpose.indexOf('ชน')>=0) type2='เคลมอุบัติ';
-      else if(purpose.indexOf('warranty')>=0||purpose.indexOf('ประกัน')>=0||purpose.indexOf('เคลม')>=0) type2='เคลม Warranty';
-      else if(purpose.indexOf('เช่า')>=0||purpose.indexOf('rental')>=0) type2='รถเช่า';
-      else if(purpose.indexOf('สัมปทาน')>=0||purpose.indexOf('contract')>=0) type2='รถสัมปทาน';
-      else if(r.ReqID.indexOf('0001')>=0) type2='รถเช่า';
-      else if(r.ReqID.indexOf('0002')>=0) type2='รถสัมปทาน';
-      else if(r.ReqID.indexOf('0003')>=0) type2='เคลมอุบัติ';
-      else if(r.ReqID.indexOf('0004')>=0) type2='เคลม Warranty';
-      items.forEach(function(item){
+      var type2=null;
+      if(purpose.indexOf('อุบัติ')>=0||purpose.indexOf('accident')>=0||purpose.indexOf('ชน')>=0) type2='OUT_ACCIDENT';
+      else if(purpose.indexOf('ขาย')>=0||purpose.indexOf('sale')>=0) type2='OUT_SALE';
+      else if(purpose.indexOf('โอนสาขา')>=0||purpose.indexOf('branch')>=0) type2='OUT_BRANCH';
+      else if(purpose.indexOf('คืน')>=0&&(purpose.indexOf('สนญ')>=0||purpose.indexOf('hq')>=0)) type2='OUT_HQ';
+      // ── แก้บั๊ก: "เคลมไม่ได้" ไม่ใช่การเคลมประกันจริง ต้องเช็ค "เคลมได้" แยกจาก "เคลมไม่ได้" ──
+      else if(purpose.indexOf('เคลมได้')>=0) type2='OUT_WARRANTY';
+      else if((purpose.indexOf('warranty')>=0||purpose.indexOf('ประกัน')>=0)&&purpose.indexOf('เคลมไม่ได้')<0) type2='OUT_WARRANTY';
+      else if(purpose.indexOf('เช่า')>=0||purpose.indexOf('rental')>=0) type2='OUT_RENTAL';
+      else if(purpose.indexOf('สัมปทาน')>=0||purpose.indexOf('contract')>=0) type2='OUT_CONTRACT';
+      else type2='OUT_OTHER';
+      // ── แก้บั๊ก: เดิมวน items ทั้งระบบโดยไม่กรองตาม ReqID ทำให้จับคู่อะไหล่ผิดใบเบิกทั้งหมด ──
+      (itemsByReqId[r.ReqID]||[]).forEach(function(item){
         var iss=typeof item.IssuedQty!=='undefined'?(item.IssuedQty||0):(item.Qty||0);
         if(iss<=0) return;
-        rows.push([type2,r.ReqID,r.JobNo,r.CustomerName,r.RequesterName||'',item.PartNo,getPartName(item.PartNo),iss]);
+        rows.push([typeLabels2[type2]||type2,r.ReqID,r.JobNo,r.CustomerName,r.RequesterName||'',item.PartNo,getPartName(item.PartNo),iss]);
+      });
+    });
+    // ── เพิ่มรายการขาย (Sales Orders ที่จัดของแล้ว) เข้ามาด้วย เดิมไม่เคยรวมเลย ──
+    (window._realSalesOrders||[]).forEach(function(so){
+      if(String(so.Status||'').toUpperCase()!=='DISPATCHED') return;
+      (so.Items||[]).forEach(function(item){
+        var qty=parseFloat(item.Qty)||0;
+        if(qty<=0) return;
+        rows.push(['เปิดการขาย',so.SONo,'—',so.CustName||so.CustomerName||'','—',item.PartNo,getPartName(item.PartNo)||item.NameEN||'',qty]);
       });
     });
   } else if(type==='technician'){
