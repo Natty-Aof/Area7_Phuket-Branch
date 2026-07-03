@@ -230,6 +230,14 @@ textarea.fc{min-height:70px;resize:vertical;}
   .md{width:100%;max-width:100%;max-height:95vh;border-radius:16px 16px 0 0;margin-top:auto;} .mo{align-items:flex-end;}
   .card{padding:14px;} .sc{padding:12px 14px;} .sc .vl{font-size:24px;}
   .fb{flex-direction:column;} .fb .fg{min-width:unset;width:100%;}
+  /* ── Dashboard/รายงาน: การ์ด KPI 7 ช่องบีบเกินไปบนมือถือ ให้เลื่อนแนวนอนแทน ── */
+  #rptKPIRow{display:flex!important;overflow-x:auto;-webkit-overflow-scrolling:touch;gap:8px;padding-bottom:6px;scroll-snap-type:x proximity;}
+  #rptKPIRow>div{flex:0 0 118px;scroll-snap-align:start;}
+  /* ── Workflow Pipeline: บอกใบ้ว่าเลื่อนได้ + กันโดนบีบจนอ่านไม่ออก ── */
+  #rptPipeline{-webkit-overflow-scrolling:touch;}
+  /* ── กราฟวงกลม/สนามแข่ง/ตารางกว้าง: ให้เลื่อนแนวนอนได้แทนที่จะโดนตัดขอบจอ ── */
+  #rptAlertCharts>div{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;}
+  #rptAlertCharts canvas{flex-shrink:0;}
 }
 @media print {
   body * { visibility: hidden; }
@@ -412,7 +420,7 @@ textarea.fc{min-height:70px;resize:vertical;}
         <div class="card" style="padding:14px 16px">
           <div style="font-size:13px;font-weight:700;color:var(--gd);margin-bottom:4px">📦 การจ่ายอะไหล่แยกตามประเภทงาน</div>
           <div style="font-size:11px;color:var(--g400);margin-bottom:12px">วิเคราะห์ว่าอะไหล่ถูกจ่ายออกไปเพื่อกิจกรรมอะไร — ซ่อมรถเช่า / สัมปทาน / ขาย / โอนสาขา / คืน สนญ.</div>
-          <div id="rptMovementChart"></div>
+          <div id="rptMovementChart" style="overflow-x:auto;-webkit-overflow-scrolling:touch"></div>
           <div id="rptMovementTable" style="margin-top:12px"></div>
         </div>
 
@@ -9048,26 +9056,28 @@ function _renderFullReport(){
   function getPending(item){  return Math.max(0, getRequested(item) - getIssued(item)); }
   function getOutstanding(item){ return Math.max(0, getIssued(item) - getReturned(item)); }
 
-  // ── 1. KPI Cards ────────────────────────────────────────
-  var total     = reqs.length;
-  var waitAppr  = reqs.filter(function(r){return r.StatusApproval==='PENDING_SUPERVISOR'||r.StatusApproval==='PENDING_MANAGER';}).length;
-  var waitStock = reqs.filter(function(r){return r.StatusApproval==='APPROVED'&&r.StatusStock==='PENDING';}).length;
-  // รายการขาดจ่าย: ดูจาก items ของแต่ละ req (กรองตาม ReqID)
-  var partIssued = 0;
+  // ── 1. KPI Cards (ปรับให้เร็วขึ้น: วนลูปครั้งเดียว + จัดกลุ่ม items ด้วย Map แทนการวน items ซ้ำในทุกใบเบิก) ──
+  var total = reqs.length;
+  var itemsByReqId = {};
+  items.forEach(function(it){ (itemsByReqId[it.ReqID] || (itemsByReqId[it.ReqID]=[])).push(it); });
+
+  var waitAppr=0, waitStock=0, partIssued=0, inUse=0, waitClear=0, closed=0, overdue7=0;
   reqs.forEach(function(r){
-    if(r.StatusStock==='CLEARED') return;
-    if(r.StatusApproval!=='APPROVED') return;
-    items.filter(function(it){ return it.ReqID===r.ReqID; }).forEach(function(item){
-      var pending = Math.max(0, (item.Qty||0) - (typeof item.IssuedQty!=='undefined' ? (item.IssuedQty||0) : (item.Qty||0)));
-      if(pending > 0) partIssued++;
-    });
+    var sa=r.StatusApproval, ss=r.StatusStock;
+    if(sa==='PENDING_SUPERVISOR'||sa==='PENDING_MANAGER') waitAppr++;
+    if(sa==='APPROVED'&&ss==='PENDING') waitStock++;
+    if(ss==='ACKNOWLEDGED'||ss==='PICKED_UP') inUse++;
+    if(ss==='PICKED_UP'||ss==='PENDING_CLEARANCE') waitClear++; // รวม PENDING_CLEARANCE กัน Pipeline ตัวเลขไม่ครบ
+    if(ss==='CLEARED') closed++;
+    if(ageDays(r.OpenDate)>=7 && ss!=='CLEARED') overdue7++;
+    // รายการขาดจ่าย: เช็คเฉพาะใบที่อนุมัติแล้วและยังไม่ปิดงาน
+    if(ss!=='CLEARED' && sa==='APPROVED'){
+      (itemsByReqId[r.ReqID]||[]).forEach(function(item){
+        var pending = Math.max(0, (item.Qty||0) - (typeof item.IssuedQty!=='undefined' ? (item.IssuedQty||0) : (item.Qty||0)));
+        if(pending > 0) partIssued++;
+      });
+    }
   });
-  var inUse     = reqs.filter(function(r){return r.StatusStock==='ACKNOWLEDGED'||r.StatusStock==='PICKED_UP';}).length;
-  // ── รวม PENDING_CLEARANCE (ส่งเคลียร์แล้ว รอ Stock ตัด SAP) เข้ากับ "รอเคลียร์" ──
-  // กันไม่ให้รายการหายไปจาก Pipeline/KPI (เดิมนับแค่ PICKED_UP ทำให้ตัวเลขรวมไม่ครบ)
-  var waitClear = reqs.filter(function(r){return r.StatusStock==='PICKED_UP'||r.StatusStock==='PENDING_CLEARANCE';}).length;
-  var closed    = reqs.filter(function(r){return r.StatusStock==='CLEARED';}).length;
-  var overdue7  = reqs.filter(function(r){return ageDays(r.OpenDate)>=7&&r.StatusStock!=='CLEARED';}).length;
 
   var kpiRow = document.getElementById('rptKPIRow');
   if(kpiRow){
@@ -9147,8 +9157,7 @@ function _renderFullReport(){
           case 'overdue7':  return ageDays(r.OpenDate)>=7;
           case 'partIssued':
             if(r.StatusApproval!=='APPROVED') return false;
-            return items.some(function(it){
-              if(it.ReqID!==r.ReqID) return false;
+            return (itemsByReqId[r.ReqID]||[]).some(function(it){
               var issued = typeof it.IssuedQty!=='undefined'?(it.IssuedQty||0):(it.Qty||0);
               return Math.max(0,(it.Qty||0)-issued) > 0;
             });
@@ -9175,7 +9184,7 @@ function _renderFullReport(){
         +'<div style="background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);display:flex;justify-content:center"><canvas id="rptAlertPieTech"></canvas></div>'
         +'</div>';
       var catColors = {'รออนุมัติ':'#1565c0','ยังไม่เคลียร์':'#c9a84c','รอตัด SAP':'#e65100','รอจ่ายของ':'#6a1599','อื่นๆ':'#78909c'};
-      drawAlertPieChart('rptAlertPieCat', catCount, 'แยกตามประเภทปัญหา ('+tracked.length+' รายการ)', catColors);
+      drawAlertPieChart('rptAlertPieCat', catCount, 'แยกตามประเภทปัญหา ('+tracked.length+' จาก '+reqs.length+' ใบ ยังไม่ปิดงาน)', catColors);
       drawAlertPieChart('rptAlertPieTech', techCount, 'แยกตามผู้รับผิดชอบปัจจุบัน', null);
     } else if(chartsEl){
       chartsEl.innerHTML = '';
@@ -9343,8 +9352,8 @@ function _renderFullReport(){
     var pendingRows=[];
     reqs.forEach(function(r){
       if(r.StatusStock==='CLEARED') return; // ปิดแล้ว ข้ามไป
-      // กรอง items เฉพาะของใบเบิกนี้
-      items.filter(function(it){ return it.ReqID===r.ReqID; }).forEach(function(item){
+      // กรอง items เฉพาะของใบเบิกนี้ (ใช้ Map ที่จัดกลุ่มไว้แล้ว แทนการวน items ซ้ำทุกใบเบิก)
+      (itemsByReqId[r.ReqID]||[]).forEach(function(item){
         var pending=getPending(item); // Requested - Issued
         if(pending<=0) return;
         var issued=getIssued(item);
@@ -9399,8 +9408,8 @@ function _renderFullReport(){
     reqs.forEach(function(r){
       if(r.StatusStock==='CLEARED') return;
       if(r.StatusApproval!=='APPROVED') return;
-      // กรอง items ของใบนี้เท่านั้น
-      var myItems = items.filter(function(it){ return it.ReqID===r.ReqID; });
+      // กรอง items ของใบนี้เท่านั้น (ใช้ Map ที่จัดกลุ่มไว้แล้ว)
+      var myItems = itemsByReqId[r.ReqID]||[];
       myItems.forEach(function(item){
         var requested = parseFloat(item.Qty)||0;
         var issued    = parseFloat(item.IssuedQty!=null&&item.IssuedQty!==''?item.IssuedQty:item.Qty)||0;
@@ -9455,7 +9464,11 @@ function drawAlertPieChart(canvasId, countsObj, title, colorMap){
   if(!total) return;
 
   var dpr  = window.devicePixelRatio || 1;
-  var cssW = 380; // ── ขนาดคงที่ กันกราฟยืดเบ่อเริ่มตามความกว้างกล่อง ──
+  // ── ขนาดกราฟ: ยึดตามพื้นที่ว่างจริงของกล่องแม่ (แบ่งครึ่งสำหรับ 2 กราฟ) แต่ไม่เกิน 380px ──
+  // บนจอมือถือแคบ จะย่อพอประมาณ (ไม่เล็กกว่า 260px) ที่เหลือให้เลื่อนดูได้ (overflow-x:auto ที่ห่อไว้)
+  var outerBox = canvas.parentElement && canvas.parentElement.parentElement && canvas.parentElement.parentElement.parentElement;
+  var availW = outerBox ? (outerBox.getBoundingClientRect().width - 16) / 2 : 380;
+  var cssW = Math.max(260, Math.min(380, availW));
   var legendRows = entries.length;
   var cssH = 210 + legendRows * 26;
   canvas.width  = Math.round(cssW*dpr); canvas.height = Math.round(cssH*dpr);
