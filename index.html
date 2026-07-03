@@ -9133,6 +9133,7 @@ function _renderFullReport(){
   var filterLabelEl = document.getElementById('rptTrackFilterLabel');
   if(filterLabelEl) filterLabelEl.textContent = _rptTrackFilter ? '— กรอง: '+_rptTrackFilter.label+' (กดซ้ำเพื่อล้างตัวกรอง)' : '';
   function _rptCatFor(r){
+    if(r.StatusStock==='CLEARED') return 'ปิดแล้ว';
     if(r.StatusApproval==='PENDING_SUPERVISOR'||r.StatusApproval==='PENDING_MANAGER') return 'รออนุมัติ';
     if(r.StatusStock==='PICKED_UP') return 'ยังไม่เคลียร์';
     if(r.StatusStock==='PENDING_CLEARANCE') return 'รอตัด SAP';
@@ -9140,9 +9141,8 @@ function _renderFullReport(){
     return 'อื่นๆ';
   }
   if(overdueEl){
-    var trackSource = (_rptTrackFilter && _rptTrackFilter.key==='closed')
-      ? reqs.filter(function(r){return r.StatusStock==='CLEARED';})
-      : reqs.filter(function(r){return r.StatusStock!=='CLEARED';});
+    // ── แสดงครบทุกใบเบิก รวมที่ปิดงานแล้ว ไม่ตัดออกแล้ว ──
+    var trackSource = reqs;
     var tracked=trackSource
       .filter(function(r){
         if(!_rptTrackFilter) return true;
@@ -9153,7 +9153,7 @@ function _renderFullReport(){
           case 'waitStock': return r.StatusApproval==='APPROVED'&&r.StatusStock==='PENDING';
           case 'inUse':     return r.StatusStock==='ACKNOWLEDGED'||r.StatusStock==='PICKED_UP';
           case 'waitClear': return r.StatusStock==='PICKED_UP'||r.StatusStock==='PENDING_CLEARANCE';
-          case 'closed':    return true; // กรองด้วย trackSource แล้ว
+          case 'closed':    return r.StatusStock==='CLEARED';
           case 'overdue7':  return ageDays(r.OpenDate)>=7;
           case 'partIssued':
             if(r.StatusApproval!=='APPROVED') return false;
@@ -9173,19 +9173,47 @@ function _renderFullReport(){
     var chartsEl = document.getElementById('rptAlertCharts');
     if(chartsEl && tracked.length){
       var catCount = {}; tracked.forEach(function(r){ var c=_rptCatFor(r); catCount[c]=(catCount[c]||0)+1; });
-      // ── นับตามผู้รับผิดชอบ "ปัจจุบัน" — ถ้ารอตัด SAP แล้ว ลูกบอลอยู่ที่ Stock ไม่ใช่ช่างแล้ว ──
+      // ── นับตามผู้รับผิดชอบ "ปัจจุบัน" — ปิดแล้ว=ไม่มีใครค้าง, รอตัด SAP=ลูกบอลอยู่ที่ Stock ──
       var techCount = {}; tracked.forEach(function(r){
-        var who = r.StatusStock==='PENDING_CLEARANCE' ? 'อนุวิทย์ คำคง (Stock)' : (r.RequesterName||r.RequesterEmail||'ไม่ระบุ');
+        var who = r.StatusStock==='CLEARED' ? 'ปิดงานแล้ว ✅'
+                : r.StatusStock==='PENDING_CLEARANCE' ? 'อนุวิทย์ คำคง (Stock)'
+                : (r.RequesterName||r.RequesterEmail||'ไม่ระบุ');
         techCount[who]=(techCount[who]||0)+1;
       });
       chartsEl.innerHTML =
-        '<div style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap">'
+        '<div style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap;align-items:stretch">'
         +'<div style="background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);display:flex;justify-content:center"><canvas id="rptAlertPieCat"></canvas></div>'
         +'<div style="background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);display:flex;justify-content:center"><canvas id="rptAlertPieTech"></canvas></div>'
+        +'<div id="rptInsightBox" style="flex:1;min-width:260px;background:#fff;border-radius:10px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.06)"></div>'
         +'</div>';
-      var catColors = {'รออนุมัติ':'#1565c0','ยังไม่เคลียร์':'#c9a84c','รอตัด SAP':'#e65100','รอจ่ายของ':'#6a1599','อื่นๆ':'#78909c'};
-      drawAlertPieChart('rptAlertPieCat', catCount, 'แยกตามประเภทปัญหา ('+tracked.length+' จาก '+reqs.length+' ใบ ยังไม่ปิดงาน)', catColors);
+      var catColors = {'รออนุมัติ':'#1565c0','ยังไม่เคลียร์':'#c9a84c','รอตัด SAP':'#e65100','รอจ่ายของ':'#6a1599','ปิดแล้ว':'#388e3c','อื่นๆ':'#78909c'};
+      drawAlertPieChart('rptAlertPieCat', catCount, 'แยกตามสถานะ (ทั้งหมด '+tracked.length+' ใบ)', catColors);
       drawAlertPieChart('rptAlertPieTech', techCount, 'แยกตามผู้รับผิดชอบปัจจุบัน', null);
+
+      // ── สรุปข้อมูลเชิงลึก (rule-based, คำนวณจากข้อมูลจริง) ──
+      var insightEl = document.getElementById('rptInsightBox');
+      if(insightEl){
+        var active = tracked.filter(function(r){ return r.StatusStock!=='CLEARED'; });
+        var insights = [];
+        if(active.length){
+          var oldest = active[0]; // sort แล้วตาม _days มากไปน้อยตั้งแต่ต้น
+          insights.push('🔴 ค้างนานสุด: <strong>'+oldest.ReqID+'</strong> ('+(oldest.RequesterName||'-')+') '+fmtAge(oldest._days)+' แล้ว');
+          var catCounts2 = {}; active.forEach(function(r){ var c=_rptCatFor(r); catCounts2[c]=(catCounts2[c]||0)+1; });
+          var topCat = Object.keys(catCounts2).sort(function(a,b){return catCounts2[b]-catCounts2[a];})[0];
+          insights.push('📊 คอขวดหลัก: <strong>"'+topCat+'"</strong> ('+catCounts2[topCat]+' จาก '+active.length+' ใบที่ยังไม่ปิด — '+Math.round(catCounts2[topCat]/active.length*100)+'%)');
+          var personCounts = {}; active.forEach(function(r){ var p=r.RequesterName||r.RequesterEmail||'ไม่ระบุ'; personCounts[p]=(personCounts[p]||0)+1; });
+          var topPerson = Object.keys(personCounts).sort(function(a,b){return personCounts[b]-personCounts[a];})[0];
+          insights.push('👤 ช่างที่มีใบเบิกค้างเยอะสุด: <strong>'+topPerson+'</strong> ('+personCounts[topPerson]+' ใบ)');
+          var over30 = active.filter(function(r){return r._days>=30;}).length;
+          if(over30>0) insights.push('⚠️ มี <strong>'+over30+' ใบ</strong> ค้างเกิน 1 เดือน ควรเร่งติดตามด่วน');
+          var sapCount = active.filter(function(r){return r.StatusStock==='PENDING_CLEARANCE';}).length;
+          if(sapCount>0) insights.push('📝 <strong>'+sapCount+' ใบ</strong> รอ Stock ตัด SAP เท่านั้น (ฝั่งช่างเสร็จแล้ว) — เร่งตัด SAP จะปิดงานได้ทันที');
+        } else {
+          insights.push('✅ ไม่มีงานค้างเลยค่ะ เก่งมาก!');
+        }
+        insightEl.innerHTML = '<div style="font-size:13px;font-weight:700;color:var(--gd);margin-bottom:10px">🔎 สรุปข้อมูลเชิงลึก</div>'
+          + insights.map(function(t){ return '<div style="font-size:12.5px;color:#444;padding:6px 0;border-bottom:1px dashed #eee;line-height:1.5">'+t+'</div>'; }).join('');
+      }
     } else if(chartsEl){
       chartsEl.innerHTML = '';
     }
@@ -9194,7 +9222,7 @@ function _renderFullReport(){
       overdueEl.innerHTML='<div class="tc tm" style="padding:24px;color:var(--gm)">✅ ไม่มีงานค้างค่ะ</div>';
     } else {
       var stMap={'PENDING_SUPERVISOR':'⏳ รอหัวหน้าช่าง','PENDING_MANAGER':'⏳ รอผู้จัดการ',
-        'PENDING':'📦 รอจ่ายอะไหล่','ACKNOWLEDGED':'🔧 จัดของแล้ว','PICKED_UP':'✋ รอเคลียร์','PENDING_CLEARANCE':'📝 รอ Stock ตัด SAP','PARTIAL':'⚠️ รายการขาดจ่าย'};
+        'PENDING':'📦 รอจ่ายอะไหล่','ACKNOWLEDGED':'🔧 จัดของแล้ว','PICKED_UP':'✋ รอเคลียร์','PENDING_CLEARANCE':'📝 รอ Stock ตัด SAP','CLEARED':'✅ ปิดงานแล้ว','PARTIAL':'⚠️ รายการขาดจ่าย'};
       var h='<div class="tw"><table class="it" style="font-size:12px"><thead><tr>'
         +'<th>เลขใบเบิก</th><th>วันที่เบิก</th><th>Job No.</th><th>ลูกค้า</th>'
         +'<th>ผู้เบิก</th><th style="text-align:center">อายุใบเบิก</th><th>สถานะ</th><th></th>'
