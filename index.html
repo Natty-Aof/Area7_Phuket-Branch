@@ -111,7 +111,7 @@ textarea.fc{min-height:70px;resize:vertical;}
 .moh{padding:14px 18px;border-bottom:1px solid var(--g200);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1;}
 .mot{font-family:'Prompt',sans-serif;font-size:16px;font-weight:600;color:var(--gd);}
 .mob{padding:18px;}
-.mof{padding:12px 18px;border-top:1px solid var(--g200);display:flex;gap:10px;justify-content:flex-end;}
+.mof{padding:12px 18px;border-top:1px solid var(--g200);display:flex;gap:10px;justify-content:flex-end;position:sticky;bottom:0;background:#fff;z-index:1;}
 .mcl{background:none;border:none;cursor:pointer;font-size:20px;color:var(--g400);line-height:1;padding:0;}
 .mcl:hover{color:var(--red);}
 .md{background:#fff;border-radius:var(--r);width:90%;max-width:680px;max-height:90vh;overflow-y:auto;box-shadow:var(--shl);}
@@ -3325,6 +3325,9 @@ function openStockAckModal(reqId){
   modal.classList.remove('hidden');
   modal.classList.add('open');
   callAPI('getRequisitionDetail',{id:reqId}).then(function(res){
+    // ── กันบั๊ก: ถ้าระหว่างรอโหลด มีคนกด "จัดของ" ใบอื่นสลับไปแล้ว ให้ทิ้งผลลัพธ์เก่านี้ ──
+    // (ป้องกันจำนวน/รายการอะไหล่ของใบเบิกหนึ่งไปติดกับอีกใบหนึ่งโดยไม่ตั้งใจ)
+    if(_stockAckReqId !== reqId) return;
     _stockAckItems = res.data ? (res.data.Items||res.data.items||[]) : [];
     var el = document.getElementById('stockAckBody');
     if(!el) return;
