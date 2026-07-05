@@ -2577,6 +2577,7 @@ function addRow(p){
   var th=(p.nameTH||'').replace(/"/g,'&quot;');
   var en=(p.nameEN||'').replace(/"/g,'&quot;');
   var hasData = !!p.partNo;
+  tr.setAttribute('data-selected', hasData ? 'true' : 'false'); // ── ต้องเลือกจากลิสต์เท่านั้น พิมพ์เองเฉยๆ ไม่ผ่าน ──
   tr.innerHTML=''
     +'<td style="position:relative"><div class="acw">'
     +'<input class="fc" placeholder="ค้นหา Part No. / ชื่อ..." data-field="partNo" autocomplete="off" value="'+pn+'"'
@@ -2630,6 +2631,19 @@ function submitReq(){
   var cust = _custSelectedFormal || custDisplay;
   var pp=Array.from(document.querySelectorAll('#purposeGrid input:checked')).map(function(c){return c.value;});
   if(!pp.length) return toast('กรุณาเลือกวัตถุประสงค์','error');
+  // ── ต้องเลือกอะไหล่จากลิสต์เท่านั้น ห้ามพิมพ์เองแล้วไม่กดเลือก ──
+  var badRows = Array.from(document.querySelectorAll('#itemsBody tr')).filter(function(tr){
+    var pnEl = tr.querySelector('[data-field="partNo"]');
+    var hasText = pnEl && pnEl.value.trim();
+    return hasText && tr.getAttribute('data-selected') !== 'true';
+  });
+  if(badRows.length){
+    badRows.forEach(function(tr){
+      var pnEl = tr.querySelector('[data-field="partNo"]');
+      if(pnEl) pnEl.style.borderColor = 'var(--red)';
+    });
+    return toast('กรุณาเลือกอะไหล่จากลิสต์ที่ค้นเจอเท่านั้นค่ะ (พิมพ์เองไม่ได้) ถ้าหาไม่พบ กดลิงก์ "แจ้ง Stock ให้เพิ่มพาร์ทนี้" ที่ใต้ช่องค้นหาได้เลย','error');
+  }
   var items=getItems();
   if(!items.length) return toast('กรุณาเพิ่มรายการอะไหล่','error');
   var reqId=document.getElementById('nId').value.trim();
@@ -2645,6 +2659,15 @@ function submitReq(){
 
 // ── AUTOCOMPLETE ─────────────────────────────────────────────
 function onAC(input, rid){
+  // ── พิมพ์แล้ว = ยังไม่ได้เลือกจากลิสต์ ต้องกดเลือกใหม่ก่อนถึงจะผ่าน ──
+  var tr = document.getElementById(rid);
+  if(tr){
+    tr.setAttribute('data-selected','false');
+    ['nameTH','nameEN'].forEach(function(k){
+      var el = tr.querySelector('[data-field="'+k+'"]');
+      if(el) el.value = '';
+    });
+  }
   var q=input.value.trim().toLowerCase();
   var dd=document.getElementById('ac_'+rid);
   if(!dd) return;
@@ -2654,7 +2677,10 @@ function onAC(input, rid){
   for(var i=0;i<db.length&&res.length<10;i++){
     if(db[i]._search.indexOf(q)>=0) res.push(db[i]);
   }
-  if(!res.length){dd.innerHTML='<div class="aci" style="color:var(--g400)">ไม่พบอะไหล่</div>';dd.classList.add('open');return;}
+  if(!res.length){
+    dd.innerHTML='<div class="aci" style="color:var(--g400)">ไม่พบอะไหล่ที่ค้นหา — <a href="javascript:void(0)" onclick="openNotifyMissingPart(\''+q.replace(/'/g,"\\'")+'\')" style="color:var(--gm);text-decoration:underline">แจ้ง Stock ให้เพิ่มพาร์ทนี้</a></div>';
+    dd.classList.add('open');return;
+  }
   dd.innerHTML=res.map(function(p,i){
     var pj=JSON.stringify(p).split("'").join("&#39;");
     var nth=p.nameTH?'<div class="an">'+hl(p.nameTH,q)+'</div>':'';
@@ -2690,6 +2716,9 @@ function selPart(rid, pJson){
       var el=tr.querySelector('[data-field="'+k+'"]');
       if(el) el.value=fm[k];
     });
+    tr.setAttribute('data-selected','true'); // ── เลือกจากลิสต์แล้ว ผ่านเงื่อนไข ──
+    var pnEl = tr.querySelector('[data-field="partNo"]');
+    if(pnEl) pnEl.style.borderColor='';
     closeAC(rid);
     var qty=tr.querySelector('[data-field="qty"]');
     if(qty) qty.focus();
@@ -4513,6 +4542,50 @@ function selSerial(serialNo){
   var sug = document.getElementById('serialSuggest');
   if(inp) inp.value = serialNo;
   if(sug) sug.style.display = 'none';
+}
+
+// ── แจ้ง Stock ว่าหาอะไหล่ไม่พบในระบบ ขอให้เพิ่มพาร์ทใหม่ ──
+function openNotifyMissingPart(query){
+  var existing = document.getElementById('notifyPartModal');
+  if(existing) existing.remove();
+  var modal = document.createElement('div');
+  modal.id = 'notifyPartModal';
+  modal.className = 'mo';
+  modal.style.zIndex = '3300';
+  modal.innerHTML =
+    '<div class="mow" style="max-width:440px">'
+      +'<div class="moh"><div class="mot">📦 แจ้ง Stock ให้เพิ่มพาร์ท</div>'
+        +'<button class="mcl" onclick="document.getElementById(\'notifyPartModal\').remove()">✕</button></div>'
+      +'<div class="mob">'
+        +'<div class="fg"><label class="fl">ค้นหาแล้วไม่พบ (คำที่พิมพ์)</label><input class="fc" id="npQuery" value="'+(query||'').replace(/"/g,'&quot;')+'"></div>'
+        +'<div class="fg"><label class="fl">Part No. (ถ้ารู้)</label><input class="fc" id="npPartNo" placeholder="เช่น 03PGL0001234567"></div>'
+        +'<div class="fg"><label class="fl">ชื่ออะไหล่ที่ต้องการ</label><input class="fc" id="npName" placeholder="อธิบายอะไหล่ที่ต้องการ"></div>'
+        +'<div class="fg"><label class="fl">หมายเหตุเพิ่มเติม</label><input class="fc" id="npNote" placeholder="เช่น ใช้กับรถรุ่นไหน"></div>'
+      +'</div>'
+      +'<div class="mof">'
+        +'<button class="btn bo" onclick="document.getElementById(\'notifyPartModal\').remove()">ยกเลิก</button>'
+        +'<button class="btn bp" onclick="sendNotifyMissingPart()">📨 ส่งแจ้ง Stock</button>'
+      +'</div>'
+    +'</div>';
+  document.body.appendChild(modal);
+  modal.style.display = 'flex';
+}
+
+function sendNotifyMissingPart(){
+  var data = {
+    query: (document.getElementById('npQuery')||{}).value.trim(),
+    partNo: (document.getElementById('npPartNo')||{}).value.trim(),
+    name: (document.getElementById('npName')||{}).value.trim(),
+    note: (document.getElementById('npNote')||{}).value.trim(),
+  };
+  if(!data.query && !data.name){ return toast('กรุณากรอกอย่างน้อยชื่อหรือคำค้นหาค่ะ','error'); }
+  toast('กำลังส่ง...','info');
+  callAPI('notifyMissingPart', data).then(function(res){
+    toast(res.success?'✅ แจ้ง Stock แล้วค่ะ':'❌ '+(res.message||'เกิดข้อผิดพลาด'), res.success?'success':'error');
+    if(res.success){
+      var m = document.getElementById('notifyPartModal'); if(m) m.remove();
+    }
+  });
 }
 
 function onModelInput(inp){
