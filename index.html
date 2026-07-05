@@ -511,7 +511,9 @@ textarea.fc{min-height:70px;resize:vertical;}
             <div class="fg"><label class="fl">ช่างผู้เบิก</label><input class="fc" id="nReq" readonly></div>
             <div class="fg"><label class="fl">ช่างร่วม (ถ้ามี)</label><input class="fc" id="nCo" placeholder="ชื่อช่างที่ 2, ชื่อช่างที่ 3 ..."></div>
           </div>
-          <div class="fr"><div class="fg"><label class="fl">รุ่นรถ / Vehicle Model</label><div style="position:relative"><input class="fc" id="nModel" placeholder="เช่น Club Car Precedent, Tempo" oninput="onModelInput(this)" autocomplete="off"><div id="modelSuggest" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:500;background:#fff;border:1.5px solid var(--gm);border-top:none;border-radius:0 0 var(--rs) var(--rs);max-height:160px;overflow-y:auto;box-shadow:var(--shm)"></div></div></div><div class="fg"><label class="fl">SERIAL NO. รถ</label><input class="fc" id="nSerial" placeholder="FO-02, FO-13 ..."></div></div>
+          <div class="fr"><div class="fg"><label class="fl">รุ่นรถ / Vehicle Model</label><div style="position:relative"><input class="fc" id="nModel" placeholder="เช่น Club Car Precedent, Tempo" oninput="onModelInput(this)" autocomplete="off"><div id="modelSuggest" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:500;background:#fff;border:1.5px solid var(--gm);border-top:none;border-radius:0 0 var(--rs) var(--rs);max-height:160px;overflow-y:auto;box-shadow:var(--shm)"></div></div></div><div class="fg"><label class="fl">SERIAL NO. รถ <span style="color:var(--red)">*</span></label><div style="position:relative"><input class="fc" id="nSerial" placeholder="พิมพ์เพื่อค้นหาเลขรถจริงในระบบ..." oninput="onSerialInput(this)" autocomplete="off"><div id="serialSuggest" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:500;background:#fff;border:1.5px solid var(--gm);border-top:none;border-radius:0 0 var(--rs) var(--rs);max-height:200px;overflow-y:auto;box-shadow:var(--shm)"></div></div>
+          <div style="font-size:11px;color:var(--g400);margin-top:3px">💡 กรอกให้ตรงกับเลข Serial จริงของรถ (สำคัญมาก ใช้ตรวจสอบประวัติการเปลี่ยนอะไหล่) — ถ้าค้นไม่พบ พิมพ์เองได้ แต่ควรตรงกับที่ลงทะเบียนไว้</div>
+          </div></div>
         </div>
         <div class="card">
           <div class="ct">🎯 วัตถุประสงค์การเบิก<span class="rq">*</span></div>
@@ -4481,6 +4483,37 @@ document.addEventListener('click', function(e){
     }
   }
 });
+
+// ── ค้นหาเลข Serial รถจริงจากฐานข้อมูล Vehicles (กันพิมพ์รหัสมั่ว เช่น "FO-03" ที่ไม่ตรงกับเลขจริง) ──
+function onSerialInput(inp){
+  var val = inp.value.trim().toLowerCase();
+  var sug = document.getElementById('serialSuggest');
+  if(!sug) return;
+  if(!val){ sug.style.display='none'; return; }
+  loadVehiclesDB().then(function(db){
+    var matches = (db||[]).filter(function(v){
+      return (v.SerialNo||'').toLowerCase().indexOf(val)>=0
+        || (v.CarNo||'').toLowerCase().indexOf(val)>=0
+        || (v.Customer||'').toLowerCase().indexOf(val)>=0;
+    }).slice(0, 15);
+    if(!matches.length){
+      sug.innerHTML = '<div style="padding:8px 12px;font-size:12px;color:var(--g400)">ไม่พบในระบบ — พิมพ์ต่อได้ แต่กรุณาเช็คให้ตรงกับเลขจริงของรถ</div>';
+      sug.style.display='block';
+      return;
+    }
+    sug.innerHTML = matches.map(function(v){
+      var label = v.SerialNo + (v.CarNo?' ('+v.CarNo+')':'') + ' — ' + (v.Customer||v.Location||'');
+      return '<div style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #eef2ef" onclick="selSerial(\''+v.SerialNo.replace(/'/g,"\\'")+'\')">'+label+'</div>';
+    }).join('');
+    sug.style.display='block';
+  });
+}
+function selSerial(serialNo){
+  var inp = document.getElementById('nSerial');
+  var sug = document.getElementById('serialSuggest');
+  if(inp) inp.value = serialNo;
+  if(sug) sug.style.display = 'none';
+}
 
 function onModelInput(inp){
   var val = inp.value.trim().toLowerCase();
