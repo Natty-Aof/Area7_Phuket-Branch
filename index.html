@@ -4011,6 +4011,98 @@ function saveSig(){
   });
 }
 
+// ── แก้ไขใบเบิก (เฉพาะ MANAGER/ADMIN) — แก้ข้อมูลหัวใบเบิก + จำนวนอะไหล่ (ไม่แก้รายการอะไหล่/ลบเพิ่มอะไหล่ในนี้) ──
+function openReqEditModal(reqId){
+  if(!CU || (CU.role!=='MANAGER'&&CU.role!=='ADMIN')) return toast('เฉพาะผู้จัดการเท่านั้นที่แก้ไขได้ค่ะ','error');
+  callAPI('getRequisitionDetail',{id:reqId}).then(function(res){
+    if(!res.success) return toast('โหลดข้อมูลไม่ได้ค่ะ','error');
+    var d = res.data;
+    var items = d.Items||d.items||[];
+    var existing = document.getElementById('reqEditModal');
+    if(existing) existing.remove();
+    var modal = document.createElement('div');
+    modal.id = 'reqEditModal';
+    modal.className = 'mo';
+    modal.style.zIndex = '3400';
+    var esc = function(v){ return (v||'').toString().replace(/"/g,'&quot;'); };
+
+    var itemRows = items.map(function(it, i){
+      return '<div class="req-edit-item-row" data-partno="'+esc(it.PartNo)+'" style="display:grid;grid-template-columns:1.6fr 1.4fr 70px 90px 1fr;gap:6px;align-items:center;margin-bottom:6px">'
+        +'<div style="font-size:12px;color:var(--g600);font-weight:600">'+esc(it.PartNo)+'</div>'
+        +'<div style="font-size:12px;color:var(--g600)">'+esc(it.NameTH||it.NameEN)+'</div>'
+        +'<input class="fc req-edit-qty" type="number" min="0" value="'+(it.Qty||0)+'" style="font-size:12px;text-align:center">'
+        +'<input class="fc req-edit-serial" value="'+esc(it.SerialNo)+'" placeholder="Serial" style="font-size:12px">'
+        +'<input class="fc req-edit-note" value="'+esc(it.Note)+'" placeholder="หมายเหตุ" style="font-size:12px">'
+      +'</div>';
+    }).join('');
+
+    modal.innerHTML =
+      '<div class="mow" style="max-width:620px">'
+        +'<div class="moh"><div class="mot">✏️ แก้ไขใบเบิก '+reqId+'</div>'
+          +'<button class="mcl" onclick="document.getElementById(\'reqEditModal\').remove()">✕</button></div>'
+        +'<div class="mob">'
+          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+            +'<div class="fg"><label class="fl">Job No.</label><input class="fc" id="reEditJobNo" value="'+esc(d.JobNo)+'"></div>'
+            +'<div class="fg"><label class="fl">Serial No. รถ</label><input class="fc" id="reEditSerialNos" value="'+esc(d.SerialNos)+'"></div>'
+          +'</div>'
+          +'<div class="fg"><label class="fl">ลูกค้า / โครงการ</label><input class="fc" id="reEditCustomer" value="'+esc(d.CustomerName)+'"></div>'
+          +'<div class="fg"><label class="fl">ช่างร่วม</label><input class="fc" id="reEditCoWorkers" value="'+esc(d.CoWorkers)+'"></div>'
+          +'<div class="fg"><label class="fl">วัตถุประสงค์</label><input class="fc" id="reEditPurpose" value="'+esc(d.Purpose)+'"></div>'
+          +'<div style="border-top:0.5px solid var(--g200);margin-top:10px;padding-top:10px">'
+            +'<div style="font-size:12px;font-weight:700;color:var(--gd);margin-bottom:8px">รายการอะไหล่ (แก้ได้เฉพาะจำนวน/Serial/หมายเหตุ — เพิ่ม/ลบรายการทำที่ปุ่ม "ขออนุมัติแก้ไข" แทน)</div>'
+            +'<div id="reqEditItemsBody">'+(itemRows||'<div class="tc tm" style="padding:10px">ไม่มีรายการ</div>')+'</div>'
+          +'</div>'
+          +'<div class="fg" style="margin-top:10px"><label class="fl">เหตุผลที่แก้ไข <span style="color:var(--red)">*</span></label>'
+            +'<input class="fc" id="reEditReason" placeholder="เช่น แก้ Job No. ให้ตรงกับ SAP"></div>'
+        +'</div>'
+        +'<div class="mof">'
+          +'<button class="btn bo" onclick="document.getElementById(\'reqEditModal\').remove()">ยกเลิก</button>'
+          +'<button class="btn bp" onclick="saveReqEdit(\''+reqId+'\')">💾 บันทึก</button>'
+        +'</div>'
+      +'</div>';
+    document.body.appendChild(modal);
+    modal.style.display = 'flex';
+  });
+}
+
+function saveReqEdit(reqId){
+  var reason = (document.getElementById('reEditReason')||{}).value.trim();
+  if(!reason) return toast('กรุณาระบุเหตุผลที่แก้ไขค่ะ','error');
+  var customer = (document.getElementById('reEditCustomer')||{}).value.trim();
+  if(!customer) return toast('กรุณาระบุชื่อลูกค้าค่ะ','error');
+
+  var items = [];
+  document.querySelectorAll('#reqEditItemsBody .req-edit-item-row').forEach(function(row){
+    items.push({
+      partNo:   row.getAttribute('data-partno'),
+      qty:      parseFloat(row.querySelector('.req-edit-qty').value)||0,
+      serialNo: row.querySelector('.req-edit-serial').value||'',
+      note:     row.querySelector('.req-edit-note').value||'',
+    });
+  });
+
+  var data = {
+    id: reqId,
+    jobNo:      (document.getElementById('reEditJobNo')||{}).value||'',
+    customerName: customer,
+    serialNos:  (document.getElementById('reEditSerialNos')||{}).value||'',
+    coWorkers:  (document.getElementById('reEditCoWorkers')||{}).value||'',
+    purpose:    (document.getElementById('reEditPurpose')||{}).value||'',
+    items: items,
+    editReason: reason,
+  };
+  toast('กำลังบันทึก...','info');
+  callAPI('updateRequisitionFull', data).then(function(res){
+    toast(res.success?'✅ บันทึกแล้วค่ะ':'❌ '+(res.message||'เกิดข้อผิดพลาด'), res.success?'success':'error');
+    if(res.success){
+      var m = document.getElementById('reqEditModal'); if(m) m.remove();
+      closeMo();
+      if(typeof loadList==='function') loadList();
+      if(typeof refreshBadges==='function') refreshBadges(true);
+    }
+  });
+}
+
 // ── DETAIL MODAL ─────────────────────────────────────────────
 function openDetail(reqId){
   callAPI('getRequisitionDetail',{id:reqId}).then(function(res){
@@ -4061,7 +4153,8 @@ function openDetail(reqId){
     // (ลบปุ่ม "รับจัดของ" ออกจาก popup — ให้ไปจัดของที่หน้า "จัดอะไหล่" แทน)
     // เพิ่มปุ่มแก้ไข/ลบสำหรับ MANAGER เสมอ (ต่อจาก foot ปกติ)
     if(CU.role==='MANAGER'||CU.role==='ADMIN'){
-      var managerBtns = '<button class="btn bd bsm" style="margin-left:auto" '
+      var managerBtns = '<button class="btn bo bsm" style="margin-left:auto" onclick="openReqEditModal(\''+d.ReqID+'\')">✏️ แก้ไข</button>'
+        +'<button class="btn bd bsm" '
         +'onclick="if(confirm(\'ยืนยันลบใบเบิก '+d.ReqID+' ?\')){ deleteReq(\''+d.ReqID+'\'); closeMo(); }">🗑️ ลบ</button>';
       foot = foot + managerBtns;
     } else {
