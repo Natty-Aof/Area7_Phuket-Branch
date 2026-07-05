@@ -321,6 +321,7 @@ textarea.fc{min-height:70px;resize:vertical;}
       <div class="ni" data-pg="stockcount" onclick="go('stockcount')" id="nStockCount"><span class="ic">🔢</span> นับสต็อก</div>
       <div class="ni hidden" id="nChangeReq" data-pg="changereq" onclick="go('changereq')"><span class="ic">🔑</span> คำขอแก้ไข<span class="badge" id="crBadge">0</span></div>
       <div class="ni" data-pg="sales" onclick="go('sales')"><span class="ic">🛒</span> ขาย/เบิกจ่ายภายใน</div>
+      <div class="ni" data-pg="specialreq" onclick="go('specialreq')"><span class="ic">📮</span> สั่งซื้ออะไหล่พิเศษ<span class="badge hidden" id="sprBadge">0</span></div>
       <div class="ni" data-pg="inventory" onclick="go('inventory')"><span class="ic">📦</span> คงเหลือ</div>
       <div style="flex:1"></div>
       <div style="height:1px;background:rgba(255,255,255,.15);margin:8px 12px"></div>
@@ -1041,6 +1042,32 @@ textarea.fc{min-height:70px;resize:vertical;}
       </div>
 
       <!-- ═══════════════════════════════════════════════════ -->
+      <!-- SPECIAL PART REQUEST PAGE                            -->
+      <!-- ═══════════════════════════════════════════════════ -->
+      <div id="pg-specialreq" class="hidden">
+        <div class="card" style="padding:14px 16px;margin-bottom:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+            <div>
+              <div style="font-size:14px;font-weight:700;color:var(--gd)">📮 สั่งซื้ออะไหล่พิเศษ</div>
+              <div style="font-size:12px;color:var(--g400);margin-top:2px">สำหรับอะไหล่ที่ยังไม่มีในสต็อก ไม่ต้องรอเปิดใบเบิกก่อน — ร้องขอให้ Stock เตรียม/สั่งซื้อล่วงหน้าได้เลย</div>
+            </div>
+            <button class="btn bp" onclick="openSpecialReqModal()">➕ ขออะไหล่พิเศษ</button>
+          </div>
+        </div>
+        <div id="sprMonitor" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px"></div>
+        <div class="card" style="padding:14px 16px">
+          <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+            <button class="btn bgd bsm" data-sprtab="all" onclick="switchSprTab('all')">ทั้งหมด</button>
+            <button class="btn bo bsm" data-sprtab="mine" onclick="switchSprTab('mine')">ของฉัน</button>
+            <button class="btn bo bsm" data-sprtab="REQUESTED" onclick="switchSprTab('REQUESTED')">รอ Stock ตรวจสอบ</button>
+            <button class="btn bo bsm" data-sprtab="ORDERED" onclick="switchSprTab('ORDERED')">สั่งซื้อแล้ว</button>
+            <button class="btn bo bsm" data-sprtab="RECEIVED" onclick="switchSprTab('RECEIVED')">ได้รับแล้ว</button>
+          </div>
+          <div id="sprList"><div class="tc tm" style="padding:24px">⏳ กำลังโหลด...</div></div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════ -->
       <!-- INVENTORY PAGE                                      -->
       <!-- ═══════════════════════════════════════════════════ -->
       <div id="pg-inventory" class="hidden">
@@ -1254,7 +1281,7 @@ textarea.fc{min-height:70px;resize:vertical;}
   <div class="mow" style="max-width:460px">
     <div class="moh" style="background:linear-gradient(135deg,#1565c0,#1976d2)">
       <div class="mot" style="color:#fff">📋 สั่งอะไหล่เพิ่มจาก HQ</div>
-      <button class="mcl" onclick="document.getElementById('backOrderModal').classList.add('hidden')" style="color:#fff">✕</button>
+      <button class="mcl" onclick="document.getElementById('backOrderModal').style.display='none'" style="color:#fff">✕</button>
     </div>
     <div class="mob">
       <div class="fg"><label class="fl">Part No.</label><input class="fc" id="boPartNo" readonly style="background:#f5f5f5;font-weight:700"></div>
@@ -1268,7 +1295,7 @@ textarea.fc{min-height:70px;resize:vertical;}
       <input type="hidden" id="boSources">
     </div>
     <div class="mof">
-      <button class="btn bd" onclick="document.getElementById('backOrderModal').classList.add('hidden')">ยกเลิก</button>
+      <button class="btn bd" onclick="document.getElementById('backOrderModal').style.display='none'">ยกเลิก</button>
       <button class="btn bp" onclick="submitBackOrder()" style="background:#1565c0;border-color:#1565c0">📋 ยืนยันสั่ง HQ</button>
     </div>
   </div>
@@ -1279,7 +1306,7 @@ textarea.fc{min-height:70px;resize:vertical;}
   <div class="mow" style="max-width:420px">
     <div class="moh" style="background:linear-gradient(135deg,#1b5e20,#2e7d32)">
       <div class="mot" style="color:#fff">✅ รับของจาก HQ</div>
-      <button class="mcl" onclick="document.getElementById('receiveBoModal').classList.add('hidden')" style="color:#fff">✕</button>
+      <button class="mcl" onclick="document.getElementById('receiveBoModal').style.display='none'" style="color:#fff">✕</button>
     </div>
     <div class="mob">
       <div class="fg"><label class="fl">Backorder No.</label><input class="fc" id="rboBoNo" readonly style="background:#f5f5f5;font-weight:700"></div>
@@ -1294,7 +1321,7 @@ textarea.fc{min-height:70px;resize:vertical;}
       </div>
     </div>
     <div class="mof">
-      <button class="btn bd" onclick="document.getElementById('receiveBoModal').classList.add('hidden')">ยกเลิก</button>
+      <button class="btn bd" onclick="document.getElementById('receiveBoModal').style.display='none'">ยกเลิก</button>
       <button class="btn bp" onclick="submitReceiveBO()" style="background:#1b5e20;border-color:#1b5e20">✅ ยืนยันรับของ</button>
     </div>
   </div>
@@ -1816,6 +1843,7 @@ function _goWithoutPush(page){
   if(page==='stock'){loadStock();}
   if(page==='stockcard'){loadStockCard();}
   if(page==='sales'){initSales();}
+  if(page==='specialreq'){loadSpecialReqPage();}
   if(page==='inventory'){loadInventory();}
   if(page==='pickup') loadPickupPage();
   if(page==='close') loadCloseSel();
@@ -2345,7 +2373,7 @@ function roleLabel(r){
 }
 
 // ── NAVIGATE ─────────────────────────────────────────────────
-var pgTitles={dashboard:'Dashboard',create:'เปิดใบเบิกอะไหล่',list:'รายการใบเบิกอะไหล่',approval:'รายการรออนุมัติ',stock:'จัดอะไหล่ / รับคืน',pickup:'รับอะไหล่',close:'เคลียร์ใบเบิก',print:'พิมพ์ใบเบิก',profile:'ลายเซ็นของฉัน',jobs:'จัดการ Job No.',stockcard:'Stock Card',stockcount:'นับสต็อก',changereq:'คำขออนุมัติแก้ไข',vehiclehistory:'ประวัติรถ',sales:'เปิดรายการขาย',inventory:'ยอดคงเหลือ'};
+var pgTitles={dashboard:'Dashboard',create:'เปิดใบเบิกอะไหล่',list:'รายการใบเบิกอะไหล่',approval:'รายการรออนุมัติ',stock:'จัดอะไหล่ / รับคืน',pickup:'รับอะไหล่',close:'เคลียร์ใบเบิก',print:'พิมพ์ใบเบิก',profile:'ลายเซ็นของฉัน',jobs:'จัดการ Job No.',stockcard:'Stock Card',stockcount:'นับสต็อก',changereq:'คำขออนุมัติแก้ไข',vehiclehistory:'ประวัติรถ',sales:'เปิดรายการขาย',inventory:'ยอดคงเหลือ',specialreq:'สั่งซื้ออะไหล่พิเศษ'};
 
 function go(page){
   curPage = page;
@@ -2374,6 +2402,7 @@ function go(page){
   if(page==='stock'){loadStock();}
   if(page==='stockcard'){loadStockCard();}
   if(page==='sales'){initSales();}
+  if(page==='specialreq'){loadSpecialReqPage();}
   if(page==='inventory'){loadInventory();}
   if(page==='pickup') loadPickupPage();
   if(page==='close') loadCloseSel();
@@ -2469,6 +2498,177 @@ function _doRefreshBadges(){
 }
 
 
+
+// ══════════════════════════════════════════════════════════════
+// SPECIAL PART REQUEST — ช่างขอให้ Stock สั่ง/เตรียมอะไหล่ล่วงหน้า
+// ══════════════════════════════════════════════════════════════
+var _sprData = [];
+var _sprTab = 'all';
+
+function loadSpecialReqPage(){
+  var list = document.getElementById('sprList');
+  if(list) list.innerHTML = '<div class="tc tm" style="padding:24px">⏳ กำลังโหลด...</div>';
+  callAPI('getSpecialPartRequests', {}).then(function(res){
+    _sprData = (res && res.success) ? (res.data||[]) : [];
+    renderSprMonitor();
+    renderSprList();
+  });
+}
+
+function renderSprMonitor(){
+  var el = document.getElementById('sprMonitor');
+  if(!el) return;
+  var counts = {REQUESTED:0, ORDERED:0, RECEIVED:0, REJECTED:0};
+  _sprData.forEach(function(r){ if(counts[r.Status]!==undefined) counts[r.Status]++; });
+  var cards = [
+    {label:'รอ Stock ตรวจสอบ', key:'REQUESTED', val:counts.REQUESTED, color:'#e65100', icon:'⏳'},
+    {label:'สั่งซื้อแล้ว',      key:'ORDERED',   val:counts.ORDERED,   color:'#1565c0', icon:'📦'},
+    {label:'ได้รับแล้ว',       key:'RECEIVED',  val:counts.RECEIVED,  color:'#2d6a4f', icon:'✅'},
+    {label:'ปฏิเสธ/ยกเลิก',    key:'REJECTED',  val:counts.REJECTED,  color:'#b71c1c', icon:'✕'},
+  ];
+  el.innerHTML = cards.map(function(c){
+    return '<div class="card" style="text-align:center;padding:14px;cursor:pointer" onclick="switchSprTab(\''+c.key+'\')">'
+      +'<div style="font-size:20px">'+c.icon+'</div>'
+      +'<div style="font-size:26px;font-weight:700;color:'+c.color+'">'+c.val+'</div>'
+      +'<div style="font-size:11px;color:var(--g400);margin-top:2px">'+c.label+'</div></div>';
+  }).join('');
+}
+
+function switchSprTab(tab){
+  _sprTab = tab;
+  document.querySelectorAll('[data-sprtab]').forEach(function(b){
+    b.className = (b.getAttribute('data-sprtab')===tab) ? 'btn bgd bsm' : 'btn bo bsm';
+  });
+  renderSprList();
+}
+
+function renderSprList(){
+  var el = document.getElementById('sprList');
+  if(!el) return;
+  var rows = _sprData;
+  if(_sprTab==='mine') rows = rows.filter(function(r){ return CU && r.RequestedByEmail && r.RequestedByEmail.toLowerCase()===CU.email.toLowerCase(); });
+  else if(_sprTab!=='all') rows = rows.filter(function(r){ return r.Status===_sprTab; });
+
+  if(!rows.length){ el.innerHTML = '<div class="tc tm" style="padding:24px">ไม่มีรายการค่ะ</div>'; return; }
+
+  var stLabel = {REQUESTED:['⏳ รอ Stock ตรวจสอบ','#e65100'], ORDERED:['📦 สั่งซื้อแล้ว','#1565c0'], RECEIVED:['✅ ได้รับแล้ว','#2d6a4f'], REJECTED:['✕ ปฏิเสธ/ยกเลิก','#b71c1c']};
+  var isStock = CU && (CU.role==='STOCK'||CU.role==='MANAGER'||CU.role==='ADMIN');
+
+  el.innerHTML = '<div class="tw"><table class="it" style="font-size:13px"><thead><tr>'
+    +'<th>วันที่ขอ</th><th>Part No.</th><th>ชื่ออะไหล่</th><th style="text-align:center">จำนวน</th>'
+    +'<th>ผู้ขอ</th><th>เหตุผล</th><th>สถานะ</th>'+(isStock?'<th></th>':'')+'</tr></thead><tbody>'
+    + rows.map(function(r){
+      var st = stLabel[r.Status]||['-','#888'];
+      var actionBtns = '';
+      if(isStock && r.Status==='REQUESTED'){
+        actionBtns = '<button class="btn bo bsm" onclick="openSprAction(\''+r.RequestID+'\',\'ORDERED\')">📦 สั่งแล้ว</button> '
+          +'<button class="btn bd bsm" onclick="openSprAction(\''+r.RequestID+'\',\'REJECTED\')">✕ ปฏิเสธ</button>';
+      } else if(isStock && r.Status==='ORDERED'){
+        actionBtns = '<button class="btn bp bsm" onclick="openSprAction(\''+r.RequestID+'\',\'RECEIVED\')">✅ ได้รับแล้ว</button>';
+      }
+      return '<tr>'
+        +'<td style="white-space:nowrap;font-size:12px">'+(r.RequestedAt?new Date(r.RequestedAt).toLocaleDateString('th-TH'):'-')+'</td>'
+        +'<td style="font-size:12px">'+(r.PartNo||'-')+'</td>'
+        +'<td>'+(r.PartName||'-')+'</td>'
+        +'<td style="text-align:center">'+r.Qty+' '+(r.Unit||'')+'</td>'
+        +'<td style="font-size:12px">'+(r.RequestedByName||r.RequestedByEmail)+'</td>'
+        +'<td style="font-size:12px;color:var(--g400)">'+(r.Reason||'-')+'</td>'
+        +'<td><span style="color:'+st[1]+';font-weight:700;font-size:12px">'+st[0]+'</span>'
+          +(r.ExpectedAt?'<div style="font-size:10px;color:var(--g400)">คาดว่าได้: '+r.ExpectedAt+'</div>':'')+'</td>'
+        +(isStock?'<td style="white-space:nowrap">'+actionBtns+'</td>':'')
+        +'</tr>';
+    }).join('')
+    +'</tbody></table></div>';
+}
+
+function openSpecialReqModal(){
+  var existing = document.getElementById('sprAddModal');
+  if(existing) existing.remove();
+  var modal = document.createElement('div');
+  modal.id = 'sprAddModal';
+  modal.className = 'mo';
+  modal.style.zIndex = '3300';
+  modal.innerHTML =
+    '<div class="mow" style="max-width:440px">'
+      +'<div class="moh"><div class="mot">📮 ขออะไหล่พิเศษ</div>'
+        +'<button class="mcl" onclick="document.getElementById(\'sprAddModal\').remove()">✕</button></div>'
+      +'<div class="mob">'
+        +'<div class="fg"><label class="fl">Part No. (ถ้ารู้)</label><input class="fc" id="sprPartNo" placeholder="เช่น 03PGL0001234567"></div>'
+        +'<div class="fg"><label class="fl">ชื่ออะไหล่ <span style="color:var(--red)">*</span></label><input class="fc" id="sprPartName" placeholder="อธิบายอะไหล่ที่ต้องการ"></div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+          +'<div class="fg"><label class="fl">จำนวน</label><input class="fc" id="sprQty" type="number" min="1" value="1"></div>'
+          +'<div class="fg"><label class="fl">หน่วย</label><input class="fc" id="sprUnit" value="ชิ้น"></div>'
+        +'</div>'
+        +'<div class="fg"><label class="fl">เหตุผล/หมายเหตุ</label><input class="fc" id="sprReason" placeholder="เช่น ใช้บ่อย ของหมดสต็อกบ่อย"></div>'
+      +'</div>'
+      +'<div class="mof">'
+        +'<button class="btn bo" onclick="document.getElementById(\'sprAddModal\').remove()">ยกเลิก</button>'
+        +'<button class="btn bp" onclick="submitSpecialReq()">📨 ส่งคำขอ</button>'
+      +'</div>'
+    +'</div>';
+  document.body.appendChild(modal);
+  modal.style.display = 'flex';
+}
+
+function submitSpecialReq(){
+  var data = {
+    partNo:   (document.getElementById('sprPartNo')||{}).value.trim(),
+    partName: (document.getElementById('sprPartName')||{}).value.trim(),
+    qty:      parseFloat((document.getElementById('sprQty')||{}).value)||1,
+    unit:     (document.getElementById('sprUnit')||{}).value||'ชิ้น',
+    reason:   (document.getElementById('sprReason')||{}).value.trim(),
+  };
+  if(!data.partName) return toast('กรุณาระบุชื่ออะไหล่ค่ะ','error');
+  toast('กำลังส่ง...','info');
+  callAPI('createSpecialPartRequest', data).then(function(res){
+    toast(res.success?'✅ ส่งคำขอแล้วค่ะ':'❌ '+(res.message||'เกิดข้อผิดพลาด'), res.success?'success':'error');
+    if(res.success){
+      var m = document.getElementById('sprAddModal'); if(m) m.remove();
+      loadSpecialReqPage();
+    }
+  });
+}
+
+function openSprAction(requestId, newStatus){
+  var existing = document.getElementById('sprActionModal');
+  if(existing) existing.remove();
+  var titleMap = {ORDERED:'📦 บันทึกว่าสั่งซื้อแล้ว', RECEIVED:'✅ บันทึกว่าได้รับของแล้ว', REJECTED:'✕ ปฏิเสธคำขอ'};
+  var modal = document.createElement('div');
+  modal.id = 'sprActionModal';
+  modal.className = 'mo';
+  modal.style.zIndex = '3350';
+  modal.innerHTML =
+    '<div class="mow" style="max-width:420px">'
+      +'<div class="moh"><div class="mot">'+(titleMap[newStatus]||'')+'</div>'
+        +'<button class="mcl" onclick="document.getElementById(\'sprActionModal\').remove()">✕</button></div>'
+      +'<div class="mob">'
+        +(newStatus==='ORDERED' ? '<div class="fg"><label class="fl">วันที่คาดว่าจะได้ของ</label><input class="fc" id="sprExpectedAt" type="date"></div>' : '')
+        +'<div class="fg"><label class="fl">หมายเหตุ</label><input class="fc" id="sprActionNote" placeholder="เช่น เลข PO, สาเหตุที่ปฏิเสธ"></div>'
+      +'</div>'
+      +'<div class="mof">'
+        +'<button class="btn bo" onclick="document.getElementById(\'sprActionModal\').remove()">ยกเลิก</button>'
+        +'<button class="btn bp" onclick="confirmSprAction(\''+requestId+'\',\''+newStatus+'\')">ยืนยัน</button>'
+      +'</div>'
+    +'</div>';
+  document.body.appendChild(modal);
+  modal.style.display = 'flex';
+}
+
+function confirmSprAction(requestId, newStatus){
+  var data = {
+    requestId: requestId, status: newStatus,
+    note: (document.getElementById('sprActionNote')||{}).value||'',
+    expectedAt: (document.getElementById('sprExpectedAt')||{}).value||'',
+  };
+  toast('กำลังบันทึก...','info');
+  callAPI('updateSpecialPartRequestStatus', data).then(function(res){
+    toast(res.success?'✅ อัปเดตแล้วค่ะ':'❌ '+(res.message||'เกิดข้อผิดพลาด'), res.success?'success':'error');
+    if(res.success){
+      var m = document.getElementById('sprActionModal'); if(m) m.remove();
+      loadSpecialReqPage();
+    }
+  });
+}
 
 function loadDashboard(){
   callAPI('getDashboard',{}).then(function(res){
@@ -7979,7 +8179,7 @@ function openBackOrderModal(partNo, nameEN, qtyShort, sources){
   document.getElementById('boExpectedAt').value = '';
   document.getElementById('boNote').value = '';
   document.getElementById('boSources').value = (sources||[]).join(',');
-  document.getElementById('backOrderModal').classList.remove('hidden');
+  document.getElementById('backOrderModal').style.display='flex';
 }
 
 function submitBackOrder(){
@@ -7994,7 +8194,7 @@ function submitBackOrder(){
     sources: document.getElementById('boSources').value.split(',').filter(Boolean),
   }).then(function(res){
     toast(res.message, res.success?'success':'error');
-    if(res.success){ document.getElementById('backOrderModal').classList.add('hidden'); loadBackOrders().then(renderRptShortage); }
+    if(res.success){ document.getElementById('backOrderModal').style.display='none'; loadBackOrders().then(renderRptShortage); }
   });
 }
 
@@ -8004,7 +8204,7 @@ function openReceiveBoModal(boNo, partNo, nameEN, qtyOrdered){
   document.getElementById('rboQtyOrdered').value = qtyOrdered+' ชิ้น';
   document.getElementById('rboQtyReceived').value = qtyOrdered;
   document.getElementById('rboNote').value = '';
-  document.getElementById('receiveBoModal').classList.remove('hidden');
+  document.getElementById('receiveBoModal').style.display='flex';
 }
 
 function submitReceiveBO(){
@@ -8015,7 +8215,7 @@ function submitReceiveBO(){
   callAPI('receiveBackOrder',{boNo:boNo, qtyReceived:qty, note:document.getElementById('rboNote').value, unit:'ชิ้น'})
     .then(function(res){
       toast(res.message, res.success?'success':'error');
-      if(res.success){ document.getElementById('receiveBoModal').classList.add('hidden'); syncStockBalance(); loadBackOrders().then(renderRptShortage); }
+      if(res.success){ document.getElementById('receiveBoModal').style.display='none'; syncStockBalance(); loadBackOrders().then(renderRptShortage); }
     });
 }
 
@@ -11197,7 +11397,7 @@ function deleteCurrentReq(){
     if(!u || !u.email || !u.role) return;
     CU = u;
     var _validPg = ['dashboard','create','list','approval','stock','pickup','close','print',
-      'profile','jobs','stockcard','stockcount','changereq','vehiclehistory','sales','inventory'];
+      'profile','jobs','stockcard','stockcount','changereq','vehiclehistory','sales','inventory','specialreq'];
     var restorePage = function(){
       if(typeof initApp !== 'function') return;
       initApp();
