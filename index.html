@@ -247,7 +247,8 @@ textarea.fc{min-height:70px;resize:vertical;}
   #rptFrom2,#rptTo2{width:100%!important;flex:1 1 130px;}
   /* ── ป้องกันชื่อยาว/ข้อความยาวดันตารางกว้างเกินจอ ── */
   .it td, .it th{white-space:nowrap;}
-  .it td:nth-child(1),.it th:nth-child(1){position:sticky;left:0;background:inherit;z-index:1;}
+  .it td:nth-child(1){position:sticky;left:0;background:inherit;z-index:1;}
+  .it th:nth-child(1){position:sticky;left:0;background:var(--gd);color:#fff;z-index:2;}
 }
 @media print {
   body * { visibility: hidden; }
@@ -2955,13 +2956,13 @@ function renderListFromCache(){
 
   body.innerHTML = '<div class="tw"><table style="width:100%">'
     +'<thead><tr style="background:var(--g100,#f5f5f5)">'
-      +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--g400);white-space:nowrap">เลขที่</th>'
-      +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--g400);white-space:nowrap">วันที่</th>'
-      +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--g400);white-space:nowrap">Job No.</th>'
-      +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--g400);white-space:nowrap">ผู้เบิก</th>'
-      +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--g400);white-space:nowrap">ลูกค้า</th>'
-      +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--g400);white-space:nowrap">สถานะอนุมัติ</th>'
-      +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--g400);white-space:nowrap">สถานะ Stock</th>'
+      +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--g600);white-space:nowrap">เลขที่</th>'
+      +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--g600);white-space:nowrap">วันที่</th>'
+      +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--g600);white-space:nowrap">Job No.</th>'
+      +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--g600);white-space:nowrap">ผู้เบิก</th>'
+      +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--g600);white-space:nowrap">ลูกค้า</th>'
+      +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--g600);white-space:nowrap">สถานะอนุมัติ</th>'
+      +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--g600);white-space:nowrap">สถานะ Stock</th>'
       +'<th></th>'
     +'</tr></thead>'
     +'<tbody>'
@@ -3302,10 +3303,10 @@ function loadStock(){
         if(items.length){
           tbl='<div style="margin-top:10px;border:1px solid var(--g200);border-radius:6px;overflow:hidden">'
             +'<div style="background:var(--g50);padding:6px 10px;font-size:12px;font-weight:700;color:var(--gd);border-bottom:1px solid var(--g200)">📦 รายการอะไหล่ + ตำแหน่งจัดเก็บ</div>'
-            +'<table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--g100)">'
+            +'<table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--gd)">'
             +'<th style="padding:6px 8px;font-size:12px;text-align:left;color:#fff;font-weight:700">อะไหล่</th>'
             +'<th style="padding:6px 8px;font-size:12px;text-align:center;color:#fff;font-weight:700">จำนวน</th>'
-            +'<th style="padding:5px 8px;font-size:11px;text-align:left">📍 ตำแหน่งจัดเก็บ</th>'
+            +'<th style="padding:5px 8px;font-size:11px;text-align:left;color:#fff;font-weight:700">📍 ตำแหน่งจัดเก็บ</th>'
             +'</tr></thead><tbody>'+itRows+'</tbody></table></div>';
         }
         var pendingNote = r.StatusApproval==='PENDING_SUPERVISOR'
@@ -3781,12 +3782,12 @@ function loadCloseDetail(){
         if(adminItems && window._clItemState){
           adminItems.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:13px">'
             +'<thead><tr style="background:#f5f5f5">'
-            +'<th style="padding:8px;text-align:left;border:0.5px solid #ddd">Part No.</th>'
-            +'<th style="padding:8px;text-align:left;border:0.5px solid #ddd">ชื่อ</th>'
-            +'<th style="padding:8px;text-align:center;border:0.5px solid #ddd">จ่ายจริง</th>'
-            +'<th style="padding:8px;text-align:center;border:0.5px solid #ddd;color:var(--gm)">คืนดี</th>'
-            +'<th style="padding:8px;text-align:center;border:0.5px solid #ddd;color:var(--red)">คืนเสีย</th>'
-            +'<th style="padding:8px;text-align:center;border:0.5px solid #ddd">ใช้จริง</th>'
+            +'<th style="padding:8px;text-align:left;border:0.5px solid #ddd;color:#222;font-weight:700">Part No.</th>'
+            +'<th style="padding:8px;text-align:left;border:0.5px solid #ddd;color:#222;font-weight:700">ชื่อ</th>'
+            +'<th style="padding:8px;text-align:center;border:0.5px solid #ddd;color:#222;font-weight:700">จ่ายจริง</th>'
+            +'<th style="padding:8px;text-align:center;border:0.5px solid #ddd;color:var(--gm);font-weight:700">คืนดี</th>'
+            +'<th style="padding:8px;text-align:center;border:0.5px solid #ddd;color:var(--red);font-weight:700">คืนเสีย</th>'
+            +'<th style="padding:8px;text-align:center;border:0.5px solid #ddd;color:#222;font-weight:700">ใช้จริง</th>'
             +'</tr></thead><tbody>'
             + window._clItemState.map(function(it){
               var used = (it.issued||0) - (it.retGood||0) - (it.retBad||0);
@@ -6428,11 +6429,11 @@ function viewSODetail(soNo){
           +'<div style="font-size:12px;font-weight:600;color:var(--gd);margin-bottom:6px">รายการอะไหล่ ('+items.length+' รายการ)</div>'
           +'<div class="tw"><table style="width:100%;border-collapse:collapse">'
             +'<thead><tr style="background:var(--g100)">'
-              +'<th style="padding:6px 10px;text-align:left;font-size:11px;color:var(--g400)">Part No.</th>'
-              +'<th style="padding:6px 10px;text-align:left;font-size:11px;color:var(--g400)">ชื่อ</th>'
-              +'<th style="padding:6px 10px;text-align:center;font-size:11px;color:var(--g400)">จำนวน</th>'
-              +'<th style="padding:6px 10px;text-align:left;font-size:11px;color:var(--g400)">Serial</th>'
-              +'<th style="padding:6px 10px;text-align:left;font-size:11px;color:var(--g400)">หมายเหตุ</th>'
+              +'<th style="padding:6px 10px;text-align:left;font-size:11px;color:var(--g600);font-weight:700">Part No.</th>'
+              +'<th style="padding:6px 10px;text-align:left;font-size:11px;color:var(--g600);font-weight:700">ชื่อ</th>'
+              +'<th style="padding:6px 10px;text-align:center;font-size:11px;color:var(--g600);font-weight:700">จำนวน</th>'
+              +'<th style="padding:6px 10px;text-align:left;font-size:11px;color:var(--g600);font-weight:700">Serial</th>'
+              +'<th style="padding:6px 10px;text-align:left;font-size:11px;color:var(--g600);font-weight:700">หมายเหตุ</th>'
             +'</tr></thead>'
             +'<tbody>'+rows+'</tbody>'
           +'</table></div>'
@@ -8965,16 +8966,16 @@ function _buildSCTable(p, realEntries, el){
   var tableHtml = '<div style="overflow-x:auto">'
     +'<table style="width:100%;border-collapse:collapse;font-size:12px">'
     +'<thead><tr style="background:var(--g100,#f5f5f5)">'
-    +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:500;color:var(--g400);white-space:nowrap;border-bottom:1px solid var(--g200)">วันที่</th>'
-    +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:500;color:var(--g400);border-bottom:1px solid var(--g200)">ประเภท</th>'
-    +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:500;color:var(--g400);border-bottom:1px solid var(--g200)">เอกสารอ้างอิง</th>'
-    +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:500;color:var(--g400);border-bottom:1px solid var(--g200)">ผู้เบิก/บันทึก</th>'
-    +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:500;color:var(--g400);border-bottom:1px solid var(--g200)">ลูกค้า</th>'
+    +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:500;color:var(--g600);white-space:nowrap;border-bottom:1px solid var(--g200)">วันที่</th>'
+    +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:500;color:var(--g600);border-bottom:1px solid var(--g200)">ประเภท</th>'
+    +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:500;color:var(--g600);border-bottom:1px solid var(--g200)">เอกสารอ้างอิง</th>'
+    +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:500;color:var(--g600);border-bottom:1px solid var(--g200)">ผู้เบิก/บันทึก</th>'
+    +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:500;color:var(--g600);border-bottom:1px solid var(--g200)">ลูกค้า</th>'
     +'<th style="padding:7px 10px;text-align:center;font-size:11px;font-weight:500;color:#1b5e20;border-bottom:1px solid var(--g200)">เข้า</th>'
     +'<th style="padding:7px 10px;text-align:center;font-size:11px;font-weight:500;color:#e65100;border-bottom:1px solid var(--g200)">ออก</th>'
     +'<th style="padding:7px 10px;text-align:center;font-size:11px;font-weight:500;color:#b71c1c;border-bottom:1px solid var(--g200)">เสีย</th>'
     +'<th style="padding:7px 10px;text-align:right;font-size:11px;font-weight:500;color:var(--gd);border-bottom:1px solid var(--g200)">คงเหลือ</th>'
-    +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:500;color:var(--g400);border-bottom:1px solid var(--g200)">หมายเหตุ</th>'
+    +'<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:500;color:var(--g600);border-bottom:1px solid var(--g200)">หมายเหตุ</th>'
     +(canDel?'<th style="border-bottom:1px solid var(--g200)"></th>':'')
     +'</tr></thead><tbody>';
 
@@ -9556,7 +9557,7 @@ function _renderFullReport(){
       topEl.innerHTML='<div class="tw"><table class="it" style="font-size:13px"><thead><tr>'
         +'<th style="width:40px;text-align:center">ลำดับ</th>'
         +'<th style="font-size:13px;font-weight:700">ชื่ออะไหล่</th>'
-        +'<th style="font-size:11px;color:var(--g400)">Part No.</th>'
+        +'<th style="font-size:11px;color:var(--g600)">Part No.</th>'
         +'<th style="text-align:center;font-size:13px;font-weight:700">จ่ายจริง</th>'
         +'</tr></thead><tbody>'
         +top10.map(function(p,i){
@@ -9599,7 +9600,7 @@ function _renderFullReport(){
     } else {
       var h3='<div class="tw"><table class="it" style="font-size:13px"><thead><tr style="font-size:13px;font-weight:700">'
         +'<th>เลขใบเบิก</th><th>Job No.</th><th>ลูกค้า</th><th>ผู้เบิก</th>'
-        +'<th>ชื่ออะไหล่</th><th style="font-size:10px;color:var(--g400)">Part No.</th>'
+        +'<th>ชื่ออะไหล่</th><th style="font-size:10px;color:var(--g600)">Part No.</th>'
         +'<th style="text-align:center">ขอเบิก</th>'
         +'<th style="text-align:center;color:var(--gm)">จ่ายจริง</th>'
         +'<th style="text-align:center;color:var(--red)">ค้างจ่าย</th>'
