@@ -2555,8 +2555,8 @@ function renderSprList(){
   var isStock = CU && (CU.role==='STOCK'||CU.role==='MANAGER'||CU.role==='ADMIN');
 
   el.innerHTML = '<div class="tw"><table class="it" style="font-size:13px"><thead><tr>'
-    +'<th>วันที่ขอ</th><th>Part No.</th><th>ชื่ออะไหล่</th><th style="text-align:center">จำนวน</th>'
-    +'<th>ผู้ขอ</th><th>เหตุผล</th><th>สถานะ</th>'+(isStock?'<th></th>':'')+'</tr></thead><tbody>'
+    +'<th>รูป</th><th>วันที่ขอ</th><th>Part No.</th><th>ชื่ออะไหล่</th><th style="text-align:center">จำนวน</th>'
+    +'<th>ผู้ขอ</th><th>เหตุผล/รายละเอียด</th><th>สถานะ</th>'+(isStock?'<th></th>':'')+'</tr></thead><tbody>'
     + rows.map(function(r){
       var st = stLabel[r.Status]||['-','#888'];
       var actionBtns = '';
@@ -2566,13 +2566,22 @@ function renderSprList(){
       } else if(isStock && r.Status==='ORDERED'){
         actionBtns = '<button class="btn bp bsm" onclick="openSprAction(\''+r.RequestID+'\',\'RECEIVED\')">✅ ได้รับแล้ว</button>';
       }
+      var detailBits = [];
+      if(r.CommonName) detailBits.push('เรียกว่า: '+r.CommonName);
+      if(r.VehicleModel) detailBits.push('รถรุ่น: '+r.VehicleModel);
+      if(r.SerialNo) detailBits.push('S/N: '+r.SerialNo);
+      if(r.Reason) detailBits.push(r.Reason);
+      var photoCell = r.PhotoUrl
+        ? '<a href="'+r.PhotoUrl+'" target="_blank"><img src="'+r.PhotoUrl+'" style="width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid var(--g200)"></a>'
+        : '<span style="color:var(--g400);font-size:11px">-</span>';
       return '<tr>'
+        +'<td>'+photoCell+'</td>'
         +'<td style="white-space:nowrap;font-size:12px">'+(r.RequestedAt?new Date(r.RequestedAt).toLocaleDateString('th-TH'):'-')+'</td>'
         +'<td style="font-size:12px">'+(r.PartNo||'-')+'</td>'
         +'<td>'+(r.PartName||'-')+'</td>'
         +'<td style="text-align:center">'+r.Qty+' '+(r.Unit||'')+'</td>'
         +'<td style="font-size:12px">'+(r.RequestedByName||r.RequestedByEmail)+'</td>'
-        +'<td style="font-size:12px;color:var(--g400)">'+(r.Reason||'-')+'</td>'
+        +'<td style="font-size:12px;color:var(--g400)">'+(detailBits.join(' | ')||'-')+'</td>'
         +'<td><span style="color:'+st[1]+';font-weight:700;font-size:12px">'+st[0]+'</span>'
           +(r.ExpectedAt?'<div style="font-size:10px;color:var(--g400)">คาดว่าได้: '+r.ExpectedAt+'</div>':'')+'</td>'
         +(isStock?'<td style="white-space:nowrap">'+actionBtns+'</td>':'')
@@ -2584,6 +2593,7 @@ function renderSprList(){
 function openSpecialReqModal(){
   var existing = document.getElementById('sprAddModal');
   if(existing) existing.remove();
+  window._sprPhotoB64 = '';
   var modal = document.createElement('div');
   modal.id = 'sprAddModal';
   modal.className = 'mo';
@@ -2593,8 +2603,20 @@ function openSpecialReqModal(){
       +'<div class="moh"><div class="mot">📮 ขออะไหล่พิเศษ</div>'
         +'<button class="mcl" onclick="document.getElementById(\'sprAddModal\').remove()">✕</button></div>'
       +'<div class="mob">'
+        +'<div class="fg"><label class="fl">📷 ถ่ายรูปอะไหล่ที่ต้องการ</label>'
+          +'<div id="sprPhotoDrop" style="border:1.5px dashed var(--g200);border-radius:8px;padding:12px;text-align:center;position:relative">'
+            +'<img id="sprPhotoPreview" class="hidden" style="max-width:100%;max-height:180px;border-radius:6px;display:block;margin:0 auto 8px">'
+            +'<input type="file" accept="image/*" capture="environment" id="sprPhotoInput" onchange="onSprPhoto(event)" style="width:100%">'
+            +'<div style="font-size:11px;color:var(--g400);margin-top:4px">ถ่ายจากมือถือได้เลย ระบบจะย่อขนาดรูปให้อัตโนมัติ</div>'
+          +'</div>'
+        +'</div>'
         +'<div class="fg"><label class="fl">Part No. (ถ้ารู้)</label><input class="fc" id="sprPartNo" placeholder="เช่น 03PGL0001234567"></div>'
         +'<div class="fg"><label class="fl">ชื่ออะไหล่ <span style="color:var(--red)">*</span></label><input class="fc" id="sprPartName" placeholder="อธิบายอะไหล่ที่ต้องการ"></div>'
+        +'<div class="fg"><label class="fl">ชื่อที่เรียกกัน (ถ้ามี)</label><input class="fc" id="sprCommonName" placeholder="เช่น ชื่อเล่นที่ทีมช่างเรียกกัน"></div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+          +'<div class="fg"><label class="fl">ใช้กับรถรุ่นอะไร</label><input class="fc" id="sprVehicleModel" placeholder="เช่น Club Car Precedent"></div>'
+          +'<div class="fg"><label class="fl">Serial No. รถ</label><input class="fc" id="sprSerialNo" placeholder="เลข Serial รถ"></div>'
+        +'</div>'
         +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
           +'<div class="fg"><label class="fl">จำนวน</label><input class="fc" id="sprQty" type="number" min="1" value="1"></div>'
           +'<div class="fg"><label class="fl">หน่วย</label><input class="fc" id="sprUnit" value="ชิ้น"></div>'
@@ -2610,13 +2632,26 @@ function openSpecialReqModal(){
   modal.style.display = 'flex';
 }
 
+function onSprPhoto(e){
+  var file = e.target.files[0]; if(!file) return;
+  compressImage(file, function(b64){
+    window._sprPhotoB64 = b64;
+    var pp = document.getElementById('sprPhotoPreview');
+    if(pp){ pp.src = b64; pp.classList.remove('hidden'); }
+  });
+}
+
 function submitSpecialReq(){
   var data = {
-    partNo:   (document.getElementById('sprPartNo')||{}).value.trim(),
-    partName: (document.getElementById('sprPartName')||{}).value.trim(),
-    qty:      parseFloat((document.getElementById('sprQty')||{}).value)||1,
-    unit:     (document.getElementById('sprUnit')||{}).value||'ชิ้น',
-    reason:   (document.getElementById('sprReason')||{}).value.trim(),
+    partNo:       (document.getElementById('sprPartNo')||{}).value.trim(),
+    partName:     (document.getElementById('sprPartName')||{}).value.trim(),
+    commonName:   (document.getElementById('sprCommonName')||{}).value.trim(),
+    vehicleModel: (document.getElementById('sprVehicleModel')||{}).value.trim(),
+    serialNo:     (document.getElementById('sprSerialNo')||{}).value.trim(),
+    qty:          parseFloat((document.getElementById('sprQty')||{}).value)||1,
+    unit:         (document.getElementById('sprUnit')||{}).value||'ชิ้น',
+    reason:       (document.getElementById('sprReason')||{}).value.trim(),
+    photoBase64:  window._sprPhotoB64||'',
   };
   if(!data.partName) return toast('กรุณาระบุชื่ออะไหล่ค่ะ','error');
   toast('กำลังส่ง...','info');
@@ -2624,6 +2659,7 @@ function submitSpecialReq(){
     toast(res.success?'✅ ส่งคำขอแล้วค่ะ':'❌ '+(res.message||'เกิดข้อผิดพลาด'), res.success?'success':'error');
     if(res.success){
       var m = document.getElementById('sprAddModal'); if(m) m.remove();
+      window._sprPhotoB64 = '';
       loadSpecialReqPage();
     }
   });
