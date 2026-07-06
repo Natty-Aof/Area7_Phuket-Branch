@@ -2852,6 +2852,23 @@ function onPhoto(e){
   reader.readAsDataURL(file);
 }
 
+// ── กันกดปุ่มซ้ำตอนระบบหน่วง — ล็อกปุ่มทันทีที่กด โชว์สถานะ "กำลังบันทึก" ชัดเจน ──
+function lockBtn(btn, loadingText){
+  if(!btn || btn.tagName!=='BUTTON') return null;
+  if(btn.disabled) return null; // ล็อกอยู่แล้ว กันกดซ้ำ
+  var original = btn.innerHTML;
+  btn.disabled = true;
+  btn.style.opacity = '0.6';
+  btn.style.cursor = 'not-allowed';
+  btn.innerHTML = loadingText || '⏳ กำลังบันทึก...';
+  return function(){
+    btn.disabled = false;
+    btn.style.opacity = '';
+    btn.style.cursor = '';
+    btn.innerHTML = original;
+  };
+}
+
 function submitReq(){
   if(!CU) return toast('กรุณาเข้าสู่ระบบก่อนค่ะ','error');
   if(window._reqSubmitting) return; // ป้องกันกดซ้ำ
@@ -3747,6 +3764,7 @@ function confirmStockAck(){
   });
   var hasShortage = dispatchedItems.some(function(it){ return it.shortQty > 0; });
   document.getElementById('stockAckModal').classList.add('hidden');
+  toast('กำลังบันทึก...','info');
   callAPI('stockAcknowledge',{id:_stockAckReqId, dispatchedItems:dispatchedItems}).then(function(res){
     if(res.success){
       var msg = hasShortage ? 'จัดของแล้ว — มีของขาด กรุณาติดตามค่ะ' : 'จัดของครบแล้วค่ะ ✅';
@@ -4119,6 +4137,8 @@ function submitClearByTech(){
 
   if(errors.length) return toast(errors.join('\n'),'error');
 
+  var unlockClear = lockBtn(event.target, '⏳ กำลังบันทึก...');
+  if(!unlockClear) return;
   toast('กำลังบันทึก...','info');
 
   var saveVH = vhEntries.length
@@ -4134,9 +4154,10 @@ function submitClearByTech(){
       photoUrl:retPhotoB64||'',
     });
   }).then(function(res){
+    unlockClear();
     toast(res.message, res.success?'success':'error');
     if(res.success){ retPhotoB64=null; window._clItemState=null; setTimeout(function(){go('list');},600); }
-  });
+  }).catch(function(){ unlockClear(); });
 }
 
 // ── Stock ตรวจสอบ + บันทึก SAP → ปิดงาน ──
@@ -4157,6 +4178,9 @@ function submitClose(){
     });
   });
 
+  var unlockClose = lockBtn(event.target, '⏳ กำลังบันทึก...');
+  if(!unlockClose) return;
+  toast('กำลังบันทึก...','info');
   callAPI('confirmCloseByStock',{
     id:reqId,
     imNumber:sap,
@@ -4164,9 +4188,10 @@ function submitClose(){
     returnedItems:returnedItems,
     defectItems:defectItems,
   }).then(function(res){
+    unlockClose();
     toast(res.message,res.success?'success':'error');
     if(res.success){ syncStockBalance(); setTimeout(function(){go('list');},600); }
-  });
+  }).catch(function(){ unlockClose(); });
 }
 
 // ── JOBS ─────────────────────────────────────────────────────
@@ -5190,14 +5215,17 @@ function submitPickup(){
   var reqId = document.getElementById('pickupSel').value;
   if(!reqId) return toast('กรุณาเลือกใบเบิก','error');
   if(!pickupPhotoB64) return toast('กรุณาถ่ายรูปอะไหล่ก่อนยืนยันค่ะ','error');
+  var unlock = lockBtn(event.target, '⏳ กำลังบันทึก...');
+  if(!unlock) return;
   callAPI('confirmPickup',{id:reqId, photoUrl:pickupPhotoB64}).then(function(res){
+    unlock();
     toast(res.message, res.success?'success':'error');
     if(res.success){
       // รีเซ็ตรูป แล้วโหลดหน้า list ใหม่ (เผื่อ Sheet เพิ่งอัปเดต)
       pickupPhotoB64 = null;
       setTimeout(function(){ go('list'); refreshBadges(true); }, 600);
     }
-  });
+  }).catch(function(){ unlock(); });
 }
 
 // ── CLOSE: ช่างเคลียร์ + Stock ตรวจสอบ + ใส่ SAP ──────────────
