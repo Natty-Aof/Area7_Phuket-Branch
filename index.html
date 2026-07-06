@@ -4548,12 +4548,26 @@ function buildPrintData(reqId){
       d.RequesterEmail?callAPI('getSignature',{email:d.RequesterEmail}):Promise.resolve({signatureBase64:''}),
       d.SupervisorEmail?callAPI('getSignature',{email:d.SupervisorEmail}):Promise.resolve({signatureBase64:''}),
       d.ManagerEmail?callAPI('getSignature',{email:d.ManagerEmail}):Promise.resolve({signatureBase64:''}),
-    ]).then(function(sigs){
+      callAPI('getPrintExtras',{id:reqId}),
+    ]).then(function(results){
+      var sigs = results.slice(0,3);
+      var extras = results[3] || {};
+      var defectByPart = extras.defectByPart || {};
       return {reqId:d.ReqID,jobNo:d.JobNo,customer:d.CustomerName,date:d.OpenDate,technician:d.RequesterName,coWorkers:d.CoWorkers||'',serial:d.SerialNos||'',purpose:d.Purpose||'',
-        items:(d.Items||d.items||[]).map(function(i){return {partNo:i.PartNo||'',desc:i.NameEN||i.NameTH||'',qty:i.Qty||'',issued:i.Qty||'',note:i.Note||''};}),
+        items:(d.Items||d.items||[]).map(function(i){
+          var issuedQty = typeof i.IssuedQty!=='undefined' ? (i.IssuedQty||0) : (i.Qty||0);
+          var returnedGood = parseFloat(i.ReturnedQty)||0;
+          var returnedDefect = defectByPart[i.PartNo] || 0;
+          var actuallyUsed = Math.max(0, issuedQty - returnedGood - returnedDefect);
+          return {partNo:i.PartNo||'',desc:i.NameEN||i.NameTH||'',qty:i.Qty||'',issued:issuedQty||'',
+            used:actuallyUsed||'', scrDefect:returnedDefect||'', rlrGood:returnedGood||'', note:i.Note||''};
+        }),
         techSig:sigs[0].signatureBase64||sigs[0].data||'',techName:d.RequesterName||'',techDate:d.OpenDate||'',
         supSig:sigs[1].signatureBase64||sigs[1].data||'',supName:d.SupervisorEmail?'หัวหน้าช่าง':'',supDate:d.SupervisorApprovedAt?new Date(d.SupervisorApprovedAt).toLocaleDateString('th-TH'):'',
         mgrSig:sigs[2].signatureBase64||sigs[2].data||'',mgrName:d.ManagerEmail?'ณัฐรีญา':'',mgrDate:d.ManagerApprovedAt?new Date(d.ManagerApprovedAt).toLocaleDateString('th-TH'):'',
+        // ── ฝั่งขวา "อนุมัติการใช้และคืนอะไหล่" — ช่างส่งเคลียร์ + Stock ปิดงาน ──
+        techClearSig:extras.techClearSig||'', techClearName:extras.techClearName||'', techClearDate:extras.techClearDate||'',
+        stockSig:extras.stockSig||'', stockName:extras.stockName||'', stockDate:extras.stockDate||'',
       };
     });
   });
@@ -4599,9 +4613,9 @@ function renderOld(d){
     +CB(ck('รถเช่า'),'รถเช่า')+CB(ck('วัสดุสิ้นเปลือง'),'วัสดุสิ้นเปลือง')+'</div>';
   var thead='<thead><tr>'+TH('No.',null,2)+TH('Part no.','28mm',2)+TH('รายละเอียด',null,2)+TH('จำนวน',null,1,2)+TH('ใช้จริง','10mm',2)+TH('คืนสภาพของเก่า',null,1,2)+TH('หมายเหตุ','22mm',2)+'</tr><tr>'+TH('เบิก','9mm')+TH('จ่าย','9mm')+TH('SCR<br>ชำรุด','10mm')+TH('RLR<br>อะไหล่ใหม่','14mm')+'</tr></thead>';
   var rows='';
-  for(var i=0;i<15;i++){var it=d.items[i]||{};rows+='<tr style="height:6.2mm">'+TD(i+1,'7mm')+TD(it.partNo||'','28mm','left')+TD(it.desc||'','','left')+TD(it.qty||'','9mm')+TD(it.issued||'','9mm')+TD('','10mm')+TD('','10mm')+TD('','14mm')+TD(it.note||'','22mm','left')+'</tr>';}
+  for(var i=0;i<15;i++){var it=d.items[i]||{};rows+='<tr style="height:6.2mm">'+TD(i+1,'7mm')+TD(it.partNo||'','28mm','left')+TD(it.desc||'','','left')+TD(it.qty||'','9mm')+TD(it.issued||'','9mm')+TD(it.used||'','10mm')+TD(it.scrDefect||'','10mm')+TD(it.rlrGood||'','10mm')+TD(it.note||'','22mm','left')+'</tr>';}
   var lsig=SB('อนุมัติการเบิกอะไหล่',[{role:'ช่างเทคนิค',sig:d.techSig,name:d.techName,date:d.techDate},{role:'หัวหน้าช่าง',sig:d.supSig,name:d.supName,date:d.supDate},{role:'ผู้จัดการสาขา',sig:d.mgrSig,name:d.mgrName,date:d.mgrDate},{role:'ส่วนงานพัสดุ',sig:'',name:'',date:''}]);
-  var rsig=SB('อนุมัติการใช้และคืนอะไหล่',[{role:'ช่างเทคนิค'},{role:'หัวหน้าช่าง'},{role:'ผู้จัดการสาขา'},{role:'ส่วนงานพัสดุ'}]);
+  var rsig=SB('อนุมัติการใช้และคืนอะไหล่',[{role:'ช่างเทคนิค',sig:d.techClearSig,name:d.techClearName,date:d.techClearDate},{role:'หัวหน้าช่าง'},{role:'ผู้จัดการสาขา'},{role:'ส่วนงานพัสดุ',sig:d.stockSig,name:d.stockName,date:d.stockDate}]);
   return WRAP('<div style="text-align:center;font-size:13pt;font-weight:700;margin-bottom:0.5mm">บริษัท บียอนด์ กรีน จำกัด</div><div style="text-align:center;font-size:10.5pt;font-weight:600;margin-bottom:2mm">ใบเบิกอะไหล่ / สรุปการเบิกอะไหล่ / ใบคืนอะไหล่</div>'+INFO(d)+purpose+'<div style="font-size:8.5pt;font-weight:600;margin-bottom:1mm">รายละเอียด :</div><table style="width:100%;border-collapse:collapse">'+thead+'<tbody>'+rows+'</tbody></table><div style="display:grid;grid-template-columns:1fr 1fr;gap:4mm;margin-top:3mm">'+lsig+rsig+'</div>');
 }
 
@@ -4678,10 +4692,9 @@ function renderNew(d){
       +'<td style="'+cs+'text-align:center">'+(it.issued||'')+'</td>'
       +'<td style="'+cs+'text-align:center"></td>'
       +'<td style="'+cs+'text-align:center"></td>'
-      +'<td style="'+cs+'text-align:center"></td>'
-      +'<td style="'+cs+'text-align:center"></td>'
-      +'<td style="'+cs+'text-align:center"></td>'
-      +'<td style="'+cs+'text-align:center"></td>'
+      +'<td style="'+cs+'text-align:center">'+(it.used||'')+'</td>'
+      +'<td style="'+cs+'text-align:center">'+(it.scrDefect||'')+'</td>'
+      +'<td style="'+cs+'text-align:center">'+(it.rlrGood||'')+'</td>'
       +'<td style="'+cs+'text-align:left;font-size:7pt">'+(it.note||'')+'</td>'
       +'</tr>';
   }
@@ -4694,10 +4707,10 @@ function renderNew(d){
     {role:'ผู้รับ',sig:'',name:'',date:''},
   ]);
   var rsig=SB('อนุมัติการใช้และคืนอะไหล่',[
-    {role:'ช่างเทคนิค',sig:'',name:'',date:''},
+    {role:'ช่างเทคนิค',sig:d.techClearSig,name:d.techClearName,date:d.techClearDate},
     {role:'หัวหน้าช่าง',sig:'',name:'',date:''},
     {role:'ผู้จัดการสาขา',sig:'',name:'',date:''},
-    {role:'ส่วนงานพัสดุ',sig:'',name:'',date:''},
+    {role:'ส่วนงานพัสดุ',sig:d.stockSig,name:d.stockName,date:d.stockDate},
     {role:'ผู้รับ',sig:'',name:'',date:''},
   ]);
 
