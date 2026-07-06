@@ -1984,7 +1984,9 @@ function onGSI(resp){
   // ── ดึง role/ชื่อจาก Sheet Users เสมอ (แหล่งข้อมูลเดียว ไม่มีชื่อ hardcode ค้างในโค้ดอีกต่อไป) ──
   callAPI('getUserRole', {}, p.email).then(function(res){
     if(res && res.success && res.role && res.role !== 'DENIED'){
-      CU = {email:p.email, name:res.name||p.name||p.email.split('@')[0], role:res.role};
+      // ── แก้บั๊ก: Role ในชีทเขียนไม่สม่ำเสมอ ("Admin" vs "ADMIN") ทำให้เช็ค CU.role==='ADMIN' พลาด ──
+      // normalize เป็นตัวใหญ่ทั้งหมดตรงนี้ที่เดียว แก้ปัญหาทุกจุดที่เช็ค CU.role ทั่วทั้งแอปพร้อมกัน
+      CU = {email:p.email, name:res.name||p.name||p.email.split('@')[0], role:String(res.role||'').toUpperCase()};
       initApp();
       return;
     }
