@@ -11978,6 +11978,47 @@ function openNewInspection(){
       }
       var chk = document.getElementById('insAllowTechSerial');
       if(chk) chk.checked = r.AllowTechSerial==='YES';
+
+      // ── คืนค่า checklist (ตรวจทั่วไป/โปรแกรม/ออปชั่น) ที่ช่างกรอกไว้ ──
+      try {
+        var general = JSON.parse(r.CheckGeneral||'{}');
+        Object.keys(general).forEach(function(i){
+          var radio = document.querySelector('input[name="insG'+i+'"][value="'+general[i]+'"]');
+          if(radio) radio.checked = true;
+        });
+      } catch(e){}
+      try {
+        var program = JSON.parse(r.CheckProgram||'{}');
+        Object.keys(program).forEach(function(i){
+          var radio = document.querySelector('input[name="insP'+i+'"][value="'+program[i]+'"]');
+          if(radio) radio.checked = true;
+        });
+      } catch(e){}
+      try {
+        var option = JSON.parse(r.CheckOption||'{}');
+        Object.keys(option).forEach(function(i){
+          var radio = document.querySelector('input[name="insO'+i+'"][value="'+option[i]+'"]');
+          if(radio) radio.checked = true;
+        });
+      } catch(e){}
+
+      // ── คืนค่าช่องแบตเตอรี่ 24 ช่อง ──
+      if(r.BatCells){
+        r.BatCells.split(',').forEach(function(val, idx){
+          var cell = document.getElementById('insBat'+(idx+1));
+          if(cell) cell.value = val||'';
+        });
+      }
+
+      // ── คืนค่ารูปถ่ายที่แนบไว้เดิม ──
+      try {
+        var savedPhotos = JSON.parse(r.Photos||'[]');
+        if(Array.isArray(savedPhotos) && savedPhotos.length && typeof _insPhotos !== 'undefined'){
+          _insPhotos = savedPhotos.map(function(p){ return {label:p.label||'', data:p.data||p}; });
+          if(typeof renderInsPhotoGrid === 'function') renderInsPhotoGrid();
+        }
+      } catch(e){}
+
       window._editingData = null;
     }
     tryFill(10);
