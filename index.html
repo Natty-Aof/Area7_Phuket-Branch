@@ -9555,6 +9555,7 @@ function loadFullReport(){
   callAPI('getReport',filter).then(function(res){
     window._fullReqs  = res.data  || [];
     window._fullItems = res.items || [];
+    window._stockUsers = res.stockUsers || [];
     var statusEl = document.getElementById('rptDateFilterStatus');
     if(statusEl){
       statusEl.textContent = (from||to)
@@ -9828,10 +9829,22 @@ function _renderFullReport(){
     else if(r.StatusStock==='PENDING_CLEARANCE'){techMap[n].submittedClearance++;techMap[n].days.push(ageDays(r.OpenDate));}
     else techMap[n].inProgress++;
   });
-  // ── เพิ่ม: ผู้รับผิดชอบฝั่ง Stock (ตัด SAP / ปิดงาน) — เช่น อนุวิทย์ คำคง ──
-  var STOCK_CLOSERS = [
-    {name:'อนุวิทย์ คำคง (Stock)', emails:['anuwit@beyond-green.co.th','anuwitx@gmail.com']},
-  ];
+  // ── เพิ่ม: ผู้รับผิดชอบฝั่ง Stock (ตัด SAP / ปิดงาน) — ดึงจากชีท Users อัตโนมัติ ──
+  // จับกลุ่มตามชื่อคน: คนที่ใช้หลายอีเมลแต่เป็นคนเดียวกัน รวบเป็นแถวเดียว (รวมทุกอีเมล)
+  // แสดงเฉพาะ Stock ที่ทำหน้าที่ตัด SAP จริง (หทัยชนก, อนุวิทย์)
+  var STOCK_NAME_KEYS = ['หทัยชนก','อนุวิทย์','anuwit','hathaichanok'];
+  var stockByPerson = {};
+  (window._stockUsers||[]).forEach(function(u){
+    var nm = String(u.name||'').toLowerCase();
+    // หา key ที่ตรง เพื่อจับคนเดียวกันที่ใช้หลายชื่อ/อีเมล
+    var matchKey = null;
+    if(nm.indexOf('หทัยชนก')>=0 || nm.indexOf('hathaichanok')>=0) matchKey = 'หทัยชนก จันทร์ดี';
+    else if(nm.indexOf('อนุวิทย์')>=0 || nm.indexOf('anuwit')>=0) matchKey = 'อนุวิทย์ คำคง';
+    if(!matchKey) return; // ไม่ใช่ 2 คนนี้ ข้าม
+    if(!stockByPerson[matchKey]) stockByPerson[matchKey] = {name:matchKey+' (Stock)', emails:[]};
+    if(u.email) stockByPerson[matchKey].emails.push(String(u.email).toLowerCase());
+  });
+  var STOCK_CLOSERS = Object.keys(stockByPerson).map(function(k){ return stockByPerson[k]; });
   STOCK_CLOSERS.forEach(function(sc){
     var entry = {name:sc.name, total:0, inProgress:0, waitClear:0, submittedClearance:0, closed:0, days:[]};
     reqs.forEach(function(r){
@@ -9842,7 +9855,8 @@ function _renderFullReport(){
         entry.total++; entry.closed++; entry.days.push(ageDays(r.OpenDate));
       }
     });
-    if(entry.total>0) techMap[sc.name]=entry;
+    // แสดงทุกคนเสมอ แม้ total=0 (ไม่ซ่อนชื่อ Stock ที่ยังไม่มีผลงาน)
+    techMap[sc.name]=entry;
   });
   var techList=Object.values(techMap).sort(function(a,b){return (b.inProgress+b.waitClear)-(a.inProgress+a.waitClear);});
   var techChartCanvas = document.getElementById('rptTechChart');
