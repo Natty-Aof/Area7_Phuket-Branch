@@ -10135,8 +10135,14 @@ function drawTechRaceChart(canvas, techList){
 
   var dpr  = window.devicePixelRatio || 1;
   var cont = canvas.parentElement;
-  var cssW = cont ? Math.max(cont.getBoundingClientRect().width||600, 320) : 600;
-  var ROW_H = 62, PAD_TOP = 46, PAD_BOT = 16, NAME_W = 150, TRACK_R = 46; // เผื่อที่ให้ธง+ตัวเลขทางขวา
+  var cssW = cont ? Math.max(cont.getBoundingClientRect().width||600, 300) : 600;
+  // ── ปรับ layout ตามความกว้างจอ: จอแคบ (มือถือ) ลดคอลัมน์ชื่อ + ฟอนต์เล็กลง กันตัวอักษรทับเส้นแทร็ก ──
+  var isNarrow = cssW < 480;
+  var ROW_H = isNarrow ? 54 : 62, PAD_TOP = 46, PAD_BOT = 16;
+  var NAME_W = isNarrow ? Math.min(112, cssW*0.30) : 150, TRACK_R = 46;
+  var nameFont = isNarrow ? 10 : 12;      // ขนาดฟอนต์ชื่อช่าง
+  var pctReserve = isNarrow ? 34 : 45;    // ที่เผื่อ % ทางขวา
+  var flagReserve = isNarrow ? 30 : 45;   // ที่เผื่อธง 🏁
   var cssH = PAD_TOP + ROW_H*list.length + PAD_BOT;
   canvas.width  = Math.round(cssW*dpr); canvas.height = Math.round(cssH*dpr);
   canvas.style.width = cssW+'px'; canvas.style.height = cssH+'px';
@@ -10144,19 +10150,27 @@ function drawTechRaceChart(canvas, techList){
   ctx.scale(dpr, dpr);
   ctx.clearRect(0,0,cssW,cssH);
 
-  var trackX0 = NAME_W, trackX1 = cssW - TRACK_R - 45; // เผื่อที่ให้ 🏁 + %
+  var trackX0 = NAME_W, trackX1 = cssW - TRACK_R - pctReserve; // เผื่อที่ให้ 🏁 + %
   var trackW = trackX1 - trackX0;
 
   // header
-  ctx.fillStyle = '#1a4a2e'; ctx.font = 'bold 14px Sarabun,Arial,sans-serif'; ctx.textAlign='center';
-  ctx.fillText('🏁 สนามแข่งปิดงาน — % ใบเบิกที่ปิดจบแล้วของแต่ละช่าง', cssW/2, 24);
+  ctx.fillStyle = '#1a4a2e'; ctx.font = 'bold '+(isNarrow?12:14)+'px Sarabun,Arial,sans-serif'; ctx.textAlign='center';
+  ctx.fillText(isNarrow?'🏁 สนามแข่งปิดงาน':'🏁 สนามแข่งปิดงาน — % ใบเบิกที่ปิดจบแล้วของแต่ละช่าง', cssW/2, 24);
+
+  // helper: ตัดชื่อยาวไม่ให้ล้นคอลัมน์ชื่อ (กันทับเส้นแทร็ก)
+  function fitName(txt, maxW){
+    if(ctx.measureText(txt).width <= maxW) return txt;
+    var t = txt;
+    while(t.length>1 && ctx.measureText(t+'…').width > maxW) t = t.slice(0,-1);
+    return t+'…';
+  }
 
   list.forEach(function(t, i){
     var y = PAD_TOP + i*ROW_H + ROW_H/2;
     // ชื่อช่าง
-    ctx.fillStyle = '#333'; ctx.font = (i===0?'bold ':'')+'12px Sarabun,Arial,sans-serif'; ctx.textAlign='left';
+    ctx.fillStyle = '#333'; ctx.font = (i===0?'bold ':'')+nameFont+'px Sarabun,Arial,sans-serif'; ctx.textAlign='left';
     var medal = i===0?'🥇 ':i===1?'🥈 ':i===2?'🥉 ':'';
-    ctx.fillText(medal+t.name, 4, y+4);
+    ctx.fillText(fitName(medal+t.name, NAME_W-6), 4, y+4);
 
     // เส้นแทร็ก (ประ)
     ctx.strokeStyle = '#dfe7e2'; ctx.lineWidth = 8; ctx.lineCap = 'round';
@@ -10173,7 +10187,7 @@ function drawTechRaceChart(canvas, techList){
     // ม้าแข่ง 🏇 (พลิกให้หันหน้าไปทาง % / เส้นชัย) — 3 อันดับท้ายสุดใช้เต่า 🐢 แทน
     var isBottom3 = i >= list.length - 3 && list.length > 3;
     var raceEmoji = isBottom3 ? '🐢' : '🏇';
-    ctx.font = '34px Arial'; ctx.textAlign='center';
+    ctx.font = (isNarrow?28:34)+'px Arial'; ctx.textAlign='center';
     ctx.save();
     ctx.translate(runX, y+12);
     ctx.scale(-1, 1);
@@ -10181,12 +10195,12 @@ function drawTechRaceChart(canvas, techList){
     ctx.restore();
 
     // เส้นชัย 🏁 (ตัวใหญ่ขึ้น)
-    ctx.font = '28px Arial';
-    ctx.fillText('🏁', trackX1+20, y+10);
+    ctx.font = (isNarrow?22:28)+'px Arial'; ctx.textAlign='center';
+    ctx.fillText('🏁', trackX1+(isNarrow?14:20), y+10);
 
     // % ตัวเลข
-    ctx.fillStyle = color; ctx.font = 'bold 14px Sarabun,Arial,sans-serif'; ctx.textAlign='left';
-    ctx.fillText(t.pct+'%', trackX1+42, y+5);
+    ctx.fillStyle = color; ctx.font = 'bold '+(isNarrow?12:14)+'px Sarabun,Arial,sans-serif'; ctx.textAlign='left';
+    ctx.fillText(t.pct+'%', trackX1+(isNarrow?30:42), y+5);
   });
 }
 
