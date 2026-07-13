@@ -322,6 +322,7 @@ textarea.fc{min-height:70px;resize:vertical;}
       <div class="ni hidden" id="nChangeReq" data-pg="changereq" onclick="go('changereq')"><span class="ic">🔑</span> คำขอแก้ไข<span class="badge" id="crBadge">0</span></div>
       <div class="ni" data-pg="sales" onclick="go('sales')"><span class="ic">🛒</span> ขาย/เบิกจ่ายภายใน</div>
       <div class="ni" data-pg="specialreq" onclick="go('specialreq')"><span class="ic">📮</span> สั่งซื้ออะไหล่พิเศษ<span class="badge hidden" id="sprBadge">0</span></div>
+      <div class="ni hidden" id="nMaster" data-pg="master" onclick="go('master')"><span class="ic">🗂️</span> จัดการอะไหล่/รถ</div>
       <div class="ni" data-pg="inventory" onclick="go('inventory')"><span class="ic">📦</span> คงเหลือ</div>
       <div style="flex:1"></div>
       <div style="height:1px;background:rgba(255,255,255,.15);margin:8px 12px"></div>
@@ -1064,6 +1065,52 @@ textarea.fc{min-height:70px;resize:vertical;}
             <button class="btn bo bsm" data-sprtab="RECEIVED" onclick="switchSprTab('RECEIVED')">ได้รับแล้ว</button>
           </div>
           <div id="sprList"><div class="tc tm" style="padding:24px">⏳ กำลังโหลด...</div></div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════ -->
+      <!-- MASTER DATA — จัดการอะไหล่ / รถ                     -->
+      <!-- ═══════════════════════════════════════════════════ -->
+      <div id="pg-master" class="hidden">
+        <div class="card" style="padding:14px 16px;margin-bottom:12px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn bgd bsm" data-mtab="parts" onclick="switchMasterTab('parts')">🔧 อะไหล่</button>
+            <button class="btn bo bsm" data-mtab="vehicles" onclick="switchMasterTab('vehicles')">🚙 รถ / ลูกค้า</button>
+          </div>
+          <div style="font-size:11px;color:var(--g400);margin-top:8px">
+            💡 การ "ลบ" คือ<b>ปิดการใช้งาน</b> — ข้อมูลเดิมยังอยู่ครบ ใบเบิกเก่ายังอ่านได้ และเปิดกลับมาใช้ใหม่ได้ทุกเมื่อ
+          </div>
+        </div>
+
+        <!-- แท็บอะไหล่ -->
+        <div id="mTabParts">
+          <div class="card" style="padding:14px 16px;margin-bottom:12px">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <input class="fc" id="mPartSearch" placeholder="🔍 ค้นหา Part No. / ชื่ออะไหล่..." style="flex:1;min-width:200px" oninput="renderMasterParts()">
+              <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--g400);white-space:nowrap">
+                <input type="checkbox" id="mShowInactive" onchange="loadMasterParts()"> แสดงที่ปิดใช้งาน
+              </label>
+              <button class="btn bp bsm" onclick="openPartEditModal()">➕ เพิ่มอะไหล่</button>
+            </div>
+            <div id="mPartCount" style="font-size:12px;color:var(--g400);margin-top:8px"></div>
+          </div>
+          <div class="card" style="padding:0;overflow:hidden">
+            <div id="mPartList"><div class="tc tm" style="padding:24px">⏳ กำลังโหลด...</div></div>
+          </div>
+        </div>
+
+        <!-- แท็บรถ -->
+        <div id="mTabVehicles" class="hidden">
+          <div class="card" style="padding:14px 16px;margin-bottom:12px">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <input class="fc" id="mVehSearch" placeholder="🔍 ค้นหา Serial / เลขรถ / ลูกค้า / สถานที่..." style="flex:1;min-width:200px" oninput="renderMasterVehicles()">
+              <button class="btn bp bsm" onclick="openAddCustomerModal()">➕ เพิ่มรถ/ลูกค้า</button>
+            </div>
+            <div id="mVehCount" style="font-size:12px;color:var(--g400);margin-top:8px"></div>
+          </div>
+          <div class="card" style="padding:0;overflow:hidden">
+            <div id="mVehList"><div class="tc tm" style="padding:24px">⏳ กำลังโหลด...</div></div>
+          </div>
         </div>
       </div>
 
@@ -1843,6 +1890,7 @@ function _goWithoutPush(page){
   if(page==='stockcard'){loadStockCard();}
   if(page==='sales'){initSales();}
   if(page==='specialreq'){loadSpecialReqPage();}
+  if(page==='master'){loadMasterPage();}
   if(page==='inventory'){loadInventory();}
   if(page==='pickup') loadPickupPage();
   if(page==='close') loadCloseSel();
@@ -2340,9 +2388,124 @@ function initApp(){
     if(ns) ns.classList.remove('hidden');
     if(bs) bs.classList.remove('hidden');
   }
+  // เมนูจัดการข้อมูลหลัก — เฉพาะ Stock / Manager / Admin
+  if(['STOCK','MANAGER','ADMIN'].indexOf(CU.role)>=0){
+    var nm=document.getElementById('nMaster');
+    if(nm) nm.classList.remove('hidden');
+  }
   loadMinStockData();
-  syncStockBalance();  // ดึงยอดเคลื่อนไหวมาปรับ PARTS_DB ให้เป็นยอดจริง
+  // โหลดอะไหล่จากชีท (ฐานเดียว) — มี cache ให้เร็ว, syncStockBalance ถูกเรียกข้างในแล้ว
+  loadPartsMaster();
   go('dashboard');
+}
+
+// ══════════════════════════════════════════════════════════════
+// PARTS MASTER — โหลดอะไหล่จากชีท (ฐานเดียว) + cache ในเครื่องให้เร็ว
+// ══════════════════════════════════════════════════════════════
+// ชีท Parts = ตัวจริงเสมอ (แก้/เพิ่ม/ลบผ่านเมนูจัดการแล้วมีผลทันที)
+// parts_data.js = ใช้เป็นค่าเริ่มต้นตอนยังไม่มี cache เท่านั้น (จะเลิกใช้ในอนาคต)
+//
+// เร็ว: ครั้งแรกโหลดจากชีท (~1-2 วิ) แล้วเก็บ cache
+//       ครั้งต่อไปแสดงจาก cache ทันที + เช็คอัปเดตเบื้องหลัง
+var _PARTS_CACHE_KEY = 'bg_parts_master_v1';
+var _partsLoading = false;
+
+function _readPartsCache(){
+  try {
+    var raw = localStorage.getItem(_PARTS_CACHE_KEY);
+    if(!raw) return null;
+    var o = JSON.parse(raw);
+    if(!o || !Array.isArray(o.data) || !o.data.length) return null;
+    return o;
+  } catch(e){ return null; }
+}
+
+function _writePartsCache(data){
+  try {
+    localStorage.setItem(_PARTS_CACHE_KEY, JSON.stringify({
+      at: Date.now(), data: data
+    }));
+  } catch(e){ /* เต็ม/ปิดอยู่ — ไม่เป็นไร ข้ามได้ */ }
+}
+
+// แปลงข้อมูลแบบย่อจาก server → object เต็ม (สร้าง _search ฝั่งนี้เอง)
+// server ส่งมาแบบย่อ (p/e/t/g/u/s/l/m/i) เพื่อประหยัดเน็ตให้ช่างที่ใช้มือถือ
+function _expandPart(o){
+  if(o.partNo) return o;   // รูปแบบเต็มอยู่แล้ว (cache เก่า/parts_data.js)
+  var pn = o.p||'';
+  var en = o.e||'', th = o.t||'';
+  return {
+    partNo: pn, nameEN: en, nameTH: th,
+    group: o.g||'', unit: o.u||'ชิ้น',
+    inStock: Number(o.s)||0,
+    location: o.l||'', minStock: Number(o.m)||0,
+    imageUrl: o.i||'',
+    Status: o.st||'Active',
+    _search: (pn+' '+en+' '+th).toLowerCase(),
+  };
+}
+
+// เขียนทับ PARTS_DB "ในตัวเดิม" (ไม่สร้าง array ใหม่)
+// เพื่อให้โค้ดเดิมทุกจุดที่อ้าง PARTS_DB ใช้ข้อมูลใหม่ได้ทันทีโดยไม่ต้องแก้
+function _applyPartsDB(list){
+  if(typeof PARTS_DB === 'undefined'){ window.PARTS_DB = []; }
+  PARTS_DB.length = 0;
+  list.forEach(function(raw){
+    var p = _expandPart(raw);
+    if(p.partNo) PARTS_DB.push(p);
+  });
+}
+
+// โหลดอะไหล่จากชีท — ไม่บล็อกหน้าจอ
+// ⚡ ลำดับความเร็ว (ช่างใช้มือถือ/สัญญาณอ่อน ต้องใช้งานได้ทันที):
+//    1. parts_data.js โหลดมาแล้วตั้งแต่เปิดหน้า → ใช้งานได้ทันที ไม่ต้องรอ
+//    2. ถ้ามี cache → เขียนทับด้วยข้อมูลล่าสุดที่เคยโหลด (ทันที)
+//    3. ดึงจากชีทเบื้องหลัง → อัปเดตให้ตรงกับตัวจริง (ผู้ใช้ไม่รู้สึก)
+function loadPartsMaster(cb){
+  if(_partsLoading){ if(cb) cb(); return; }
+  _partsLoading = true;
+
+  // [2] cache — แสดงทันที ไม่ต้องรอเน็ต
+  var cached = _readPartsCache();
+  if(cached){
+    _applyPartsDB(cached.data);
+    if(typeof _refreshInventoryFromParts === 'function') _refreshInventoryFromParts();
+  }
+  // ปล่อยให้แอปทำงานต่อได้เลย ไม่ต้องรอชีท
+  if(cb) { cb(); cb = null; }
+
+  // [3] ดึงจากชีทเบื้องหลัง — ชีทคือตัวจริงเสมอ
+  callAPI('getPartsMaster', {}).then(function(res){
+    _partsLoading = false;
+    if(res && res.success && res.data && res.data.length){
+      _applyPartsDB(res.data);
+      _writePartsCache(res.data);        // เก็บแบบย่อ (เล็ก ประหยัดพื้นที่)
+      syncStockBalance();                // คำนวณยอดคงเหลือจากข้อมูลล่าสุด
+      if(typeof _refreshInventoryFromParts === 'function') _refreshInventoryFromParts();
+    } else {
+      syncStockBalance();                // ชีทไม่มีข้อมูล → ใช้ parts_data.js ต่อ
+    }
+  }).catch(function(){
+    _partsLoading = false;
+    syncStockBalance();   // โหลดชีทไม่ได้ (เน็ตหลุด) → ยังใช้ cache/parts_data.js ได้
+  });
+}
+
+// ล้าง cache แล้วโหลดใหม่ (เรียกหลังเพิ่ม/แก้/ลบอะไหล่ในเมนูจัดการ)
+function refreshPartsMaster(cb){
+  try { localStorage.removeItem(_PARTS_CACHE_KEY); } catch(e){}
+  _partsLoading = false;
+  loadPartsMaster(cb);
+}
+
+// อัปเดต _inventoryData ให้ตรงกับ PARTS_DB ล่าสุด
+function _refreshInventoryFromParts(){
+  if(typeof PARTS_DB === 'undefined' || !PARTS_DB.length) return;
+  _inventoryData = PARTS_DB.map(function(p){
+    return {PartNo:p.partNo, NameEN:p.nameEN||p.nameTH||'-',
+            TotalIn:p.inStock||0, TotalOut:0, Balance:p.inStock||0,
+            Location:p.location||'', Group:p.group||''};
+  });
 }
 
 // ดึง movement สุทธิจาก StockCard มาปรับ inStock ใน PARTS_DB ให้เป็นยอดจริง
@@ -2374,7 +2537,7 @@ function roleLabel(r){
 }
 
 // ── NAVIGATE ─────────────────────────────────────────────────
-var pgTitles={dashboard:'Dashboard',create:'เปิดใบเบิกอะไหล่',list:'รายการใบเบิกอะไหล่',approval:'รายการรออนุมัติ',stock:'จัดอะไหล่ / รับคืน',pickup:'รับอะไหล่',close:'เคลียร์ใบเบิก',print:'พิมพ์ใบเบิก',profile:'ลายเซ็นของฉัน',jobs:'จัดการ Job No.',stockcard:'Stock Card',stockcount:'นับสต็อก',changereq:'คำขออนุมัติแก้ไข',vehiclehistory:'ประวัติรถ',sales:'เปิดรายการขาย',inventory:'ยอดคงเหลือ',specialreq:'สั่งซื้ออะไหล่พิเศษ'};
+var pgTitles={dashboard:'Dashboard',create:'เปิดใบเบิกอะไหล่',list:'รายการใบเบิกอะไหล่',approval:'รายการรออนุมัติ',stock:'จัดอะไหล่ / รับคืน',pickup:'รับอะไหล่',close:'เคลียร์ใบเบิก',print:'พิมพ์ใบเบิก',profile:'ลายเซ็นของฉัน',jobs:'จัดการ Job No.',stockcard:'Stock Card',stockcount:'นับสต็อก',changereq:'คำขออนุมัติแก้ไข',vehiclehistory:'ประวัติรถ',sales:'เปิดรายการขาย',inventory:'ยอดคงเหลือ',specialreq:'สั่งซื้ออะไหล่พิเศษ',master:'จัดการอะไหล่ / รถ'};
 
 function go(page){
   curPage = page;
@@ -2404,6 +2567,7 @@ function go(page){
   if(page==='stockcard'){loadStockCard();}
   if(page==='sales'){initSales();}
   if(page==='specialreq'){loadSpecialReqPage();}
+  if(page==='master'){loadMasterPage();}
   if(page==='inventory'){loadInventory();}
   if(page==='pickup') loadPickupPage();
   if(page==='close') loadCloseSel();
@@ -2752,6 +2916,337 @@ function migratePartsToSheet(){
     });
   }
   sendNext();
+}
+
+// ══════════════════════════════════════════════════════════════
+// MASTER DATA — จัดการอะไหล่ / รถ (เพิ่ม/แก้/ปิดใช้งาน)
+// ══════════════════════════════════════════════════════════════
+var _mTab = 'parts';
+var _mParts = [];
+var _mVehicles = [];
+
+function loadMasterPage(){
+  if(!CU || ['STOCK','MANAGER','ADMIN'].indexOf(CU.role) < 0){
+    return toast('ไม่มีสิทธิ์เข้าเมนูนี้ค่ะ','error');
+  }
+  switchMasterTab(_mTab);
+}
+
+function switchMasterTab(tab){
+  _mTab = tab;
+  document.querySelectorAll('[data-mtab]').forEach(function(b){
+    b.className = (b.getAttribute('data-mtab')===tab) ? 'btn bgd bsm' : 'btn bo bsm';
+  });
+  var tp = document.getElementById('mTabParts');
+  var tv = document.getElementById('mTabVehicles');
+  if(tp) tp.classList.toggle('hidden', tab!=='parts');
+  if(tv) tv.classList.toggle('hidden', tab!=='vehicles');
+  if(tab==='parts')    loadMasterParts();
+  if(tab==='vehicles') loadMasterVehicles();
+}
+
+// ── อะไหล่ ──────────────────────────────────────────────────
+function loadMasterParts(){
+  var el = document.getElementById('mPartList');
+  if(el) el.innerHTML = '<div class="tc tm" style="padding:24px">⏳ กำลังโหลด...</div>';
+  var showInactive = (document.getElementById('mShowInactive')||{}).checked;
+  callAPI('getPartsMaster', {includeInactive: !!showInactive}).then(function(res){
+    var raw = (res && res.success) ? (res.data||[]) : [];
+    _mParts = raw.map(_expandPart);   // server ส่งแบบย่อ → ขยายเป็น object เต็ม
+    renderMasterParts();
+  });
+}
+
+function renderMasterParts(){
+  var el = document.getElementById('mPartList');
+  var cnt = document.getElementById('mPartCount');
+  if(!el) return;
+  var q = ((document.getElementById('mPartSearch')||{}).value||'').trim().toLowerCase();
+  var rows = _mParts;
+  if(q){
+    rows = rows.filter(function(p){
+      return (p._search||'').indexOf(q)>=0
+        || String(p.partNo||'').toLowerCase().indexOf(q)>=0
+        || String(p.nameEN||'').toLowerCase().indexOf(q)>=0
+        || String(p.nameTH||'').toLowerCase().indexOf(q)>=0;
+    });
+  }
+  if(cnt) cnt.textContent = '📦 ทั้งหมด '+_mParts.length+' รายการ'+(q?' — ตรงกับที่ค้นหา '+rows.length:'');
+
+  if(!rows.length){
+    el.innerHTML = '<div class="tc tm" style="padding:24px">ไม่พบอะไหล่ค่ะ</div>';
+    return;
+  }
+  var shown = rows.slice(0, 200);  // จำกัดการแสดงผล กันหน้าช้า
+  el.innerHTML = '<div class="tw"><table class="it" style="font-size:13px"><thead><tr>'
+    +'<th>รูป</th><th>Part No.</th><th>ชื่ออะไหล่</th><th style="text-align:center">คงเหลือ</th>'
+    +'<th>ที่เก็บ</th><th>สถานะ</th><th></th></tr></thead><tbody>'
+    + shown.map(function(p){
+      var inactive = String(p.Status||'Active').toLowerCase()==='inactive';
+      var pnEsc = encodeURIComponent(p.partNo);
+      return '<tr'+(inactive?' style="opacity:0.5;background:#fafafa"':'')+'>'
+        +'<td>'+partImgHtml(p.partNo,'sm',p.nameEN)+'</td>'
+        +'<td style="font-size:12px;font-weight:600;color:var(--gd)">'+p.partNo+'</td>'
+        +'<td style="font-size:12px">'+(p.nameEN||p.nameTH||'-')+'</td>'
+        +'<td style="text-align:center;font-weight:700">'+(p.inStock||0)+'</td>'
+        +'<td style="font-size:12px;color:var(--g400)">'+(p.location||'—')+'</td>'
+        +'<td>'+(inactive
+            ? '<span style="color:#b71c1c;font-size:12px;font-weight:700">🚫 ปิดใช้งาน</span>'
+            : '<span style="color:#2d6a4f;font-size:12px;font-weight:700">✓ ใช้งาน</span>')+'</td>'
+        +'<td style="white-space:nowrap">'
+          +'<button class="btn bo bsm m-part-edit" data-pn="'+pnEsc+'">✏️</button> '
+          +(inactive
+            ? '<button class="btn bp bsm m-part-on" data-pn="'+pnEsc+'">♻️ เปิด</button>'
+            : '<button class="btn bd bsm m-part-off" data-pn="'+pnEsc+'">🚫 ปิด</button>')
+        +'</td></tr>';
+    }).join('')
+    +'</tbody></table></div>'
+    + (rows.length>200 ? '<div class="tc tm" style="padding:10px;font-size:12px">แสดง 200 จาก '+rows.length+' รายการ — พิมพ์ค้นหาเพื่อกรองให้แคบลงค่ะ</div>' : '');
+
+  // ผูก event (ไม่ใช้ onclick inline กัน Part No. มีอักขระพิเศษ)
+  el.querySelectorAll('.m-part-edit').forEach(function(b){
+    b.onclick = function(){ openPartEditModal(decodeURIComponent(this.dataset.pn)); };
+  });
+  el.querySelectorAll('.m-part-off').forEach(function(b){
+    b.onclick = function(){ togglePartStatus(decodeURIComponent(this.dataset.pn), 'Inactive'); };
+  });
+  el.querySelectorAll('.m-part-on').forEach(function(b){
+    b.onclick = function(){ togglePartStatus(decodeURIComponent(this.dataset.pn), 'Active'); };
+  });
+}
+
+function togglePartStatus(partNo, status){
+  var msg = status==='Inactive'
+    ? 'ปิดการใช้งานอะไหล่ '+partNo+' ?\n\n• จะไม่ขึ้นในช่องค้นหาตอนเปิดใบเบิกใหม่\n• ข้อมูลเดิม/ใบเบิกเก่ายังอยู่ครบ\n• เปิดกลับมาใช้ใหม่ได้ทุกเมื่อ'
+    : 'เปิดใช้งานอะไหล่ '+partNo+' อีกครั้ง?';
+  if(!confirm(msg)) return;
+  toast('กำลังบันทึก...','info');
+  callAPI('setPartStatus', {partNo:partNo, status:status}).then(function(res){
+    toast(res.message, res.success?'success':'error');
+    if(res.success){
+      loadMasterParts();
+      refreshPartsMaster();  // ล้าง cache ให้ช่องค้นหาเห็นข้อมูลใหม่
+    }
+  });
+}
+
+function openPartEditModal(partNo){
+  var isEdit = !!partNo;
+  var p = isEdit ? (_mParts.find(function(x){ return x.partNo===partNo; }) || {}) : {};
+  var esc = function(v){ return String(v==null?'':v).replace(/"/g,'&quot;'); };
+
+  var old = document.getElementById('partEditModal');
+  if(old) old.remove();
+  var m = document.createElement('div');
+  m.id = 'partEditModal';
+  m.className = 'mo';
+  m.style.zIndex = '3400';
+  m.innerHTML =
+    '<div class="mow" style="max-width:480px">'
+      +'<div class="moh"><div class="mot">'+(isEdit?'✏️ แก้ไขอะไหล่':'➕ เพิ่มอะไหล่ใหม่')+'</div>'
+        +'<button class="mcl" onclick="document.getElementById(\'partEditModal\').remove()">✕</button></div>'
+      +'<div class="mob">'
+        +'<div class="fg"><label class="fl">Part No. <span style="color:var(--red)">*</span></label>'
+          +'<input class="fc" id="pePartNo" value="'+esc(p.partNo)+'" '+(isEdit?'readonly style="background:#f5f5f5"':'')+' placeholder="เช่น 03PGL0000102569312"></div>'
+        +'<div class="fg"><label class="fl">ชื่ออะไหล่ (EN) <span style="color:var(--red)">*</span></label>'
+          +'<input class="fc" id="peNameEN" value="'+esc(p.nameEN)+'" placeholder="เช่น TIRE DEESTONE 20x10-10"></div>'
+        +'<div class="fg"><label class="fl">ชื่อไทย (ถ้ามี)</label>'
+          +'<input class="fc" id="peNameTH" value="'+esc(p.nameTH)+'"></div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+          +'<div class="fg"><label class="fl">กลุ่ม</label><input class="fc" id="peGroup" value="'+esc(p.group)+'"></div>'
+          +'<div class="fg"><label class="fl">หน่วย</label><input class="fc" id="peUnit" value="'+esc(p.unit||'ชิ้น')+'"></div>'
+        +'</div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+          +'<div class="fg"><label class="fl">ที่เก็บ</label><input class="fc" id="peLoc" value="'+esc(p.location)+'" placeholder="เช่น G302"></div>'
+          +'<div class="fg"><label class="fl">ขั้นต่ำ (แจ้งเตือน)</label><input class="fc" id="peMin" type="number" min="0" value="'+(p.minStock||0)+'"></div>'
+        +'</div>'
+        +(isEdit
+          ? '<div style="background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:8px 10px;font-size:11px;color:#795548">'
+            +'⚠️ <b>ยอดตั้งต้น: '+(p.inStock||0)+'</b> — ยอดคงเหลือจริงคำนวณจาก ยอดตั้งต้น + การเคลื่อนไหวใน Stock Card '
+            +'การแก้ยอดตรงนี้จะกระทบยอดคงเหลือทั้งหมด แนะนำให้ใช้เมนู "นับสต็อก" แทนค่ะ<br>'
+            +'<label style="display:flex;align-items:center;gap:5px;margin-top:6px">'
+            +'<input type="checkbox" id="peEditStock" onchange="document.getElementById(\'peStock\').disabled=!this.checked">'
+            +'ต้องการแก้ยอดตั้งต้น</label>'
+            +'<input class="fc" id="peStock" type="number" value="'+(p.inStock||0)+'" disabled style="margin-top:5px;background:#f5f5f5"></div>'
+          : '<div class="fg"><label class="fl">ยอดตั้งต้น</label><input class="fc" id="peStock" type="number" min="0" value="0"></div>')
+      +'</div>'
+      +'<div class="mof">'
+        +'<button class="btn bo" onclick="document.getElementById(\'partEditModal\').remove()">ยกเลิก</button>'
+        +'<button class="btn bp" onclick="savePartMaster('+(isEdit?'true':'false')+')">💾 บันทึก</button>'
+      +'</div>'
+    +'</div>';
+  document.body.appendChild(m);
+  m.style.display = 'flex';
+}
+
+function savePartMaster(isEdit){
+  var v = function(id){ return ((document.getElementById(id)||{}).value||'').trim(); };
+  var data = {
+    partNo: v('pePartNo'), nameEN: v('peNameEN'), nameTH: v('peNameTH'),
+    group: v('peGroup'), unit: v('peUnit')||'ชิ้น',
+    location: v('peLoc'), minStock: parseFloat(v('peMin'))||0,
+  };
+  if(!data.partNo) return toast('กรุณาระบุ Part No. ค่ะ','error');
+  if(!data.nameEN) return toast('กรุณาระบุชื่ออะไหล่ค่ะ','error');
+
+  // ยอดตั้งต้น: ตอนสร้างใหม่ส่งเสมอ / ตอนแก้ส่งเฉพาะเมื่อติ๊กยืนยัน
+  if(!isEdit){
+    data.inStock = parseFloat(v('peStock'))||0;
+  } else if((document.getElementById('peEditStock')||{}).checked){
+    data.inStock = parseFloat(v('peStock'))||0;
+  }
+
+  toast('กำลังบันทึก...','info');
+  callAPI('upsertPart', data).then(function(res){
+    toast(res.message, res.success?'success':'error');
+    if(res.success){
+      var m = document.getElementById('partEditModal'); if(m) m.remove();
+      loadMasterParts();
+      refreshPartsMaster();  // ให้ช่องค้นหาเห็นอะไหล่ใหม่ทันที
+    }
+  });
+}
+
+// ── รถ / ลูกค้า ─────────────────────────────────────────────
+function loadMasterVehicles(){
+  var el = document.getElementById('mVehList');
+  if(el) el.innerHTML = '<div class="tc tm" style="padding:24px">⏳ กำลังโหลด...</div>';
+  callAPI('getVehicles', {}).then(function(res){
+    _mVehicles = (res && res.success) ? (res.data||[]) : [];
+    window._vehiclesDB = _mVehicles;   // ให้ที่อื่นใช้ต่อได้
+    renderMasterVehicles();
+  });
+}
+
+function renderMasterVehicles(){
+  var el = document.getElementById('mVehList');
+  var cnt = document.getElementById('mVehCount');
+  if(!el) return;
+  var q = ((document.getElementById('mVehSearch')||{}).value||'').trim().toLowerCase();
+  var rows = _mVehicles;
+  if(q){
+    rows = rows.filter(function(v){
+      return String(v.SerialNo||'').toLowerCase().indexOf(q)>=0
+        || String(v.CarNo||'').toLowerCase().indexOf(q)>=0
+        || String(v.Customer||'').toLowerCase().indexOf(q)>=0
+        || String(v.Location||'').toLowerCase().indexOf(q)>=0
+        || String(v.Model||'').toLowerCase().indexOf(q)>=0;
+    });
+  }
+  if(cnt) cnt.textContent = '🚙 ทั้งหมด '+_mVehicles.length+' คัน'+(q?' — ตรงกับที่ค้นหา '+rows.length:'');
+
+  if(!rows.length){
+    el.innerHTML = '<div class="tc tm" style="padding:24px">ไม่พบรถค่ะ</div>';
+    return;
+  }
+  var shown = rows.slice(0, 200);
+  el.innerHTML = '<div class="tw"><table class="it" style="font-size:13px"><thead><tr>'
+    +'<th>Serial No.</th><th>เลขรถ</th><th>รุ่น</th><th>ลูกค้า</th>'
+    +'<th>สถานที่</th><th>สถานะ</th><th></th></tr></thead><tbody>'
+    + shown.map(function(v){
+      var inactive = String(v.Status||'Active').toLowerCase()==='inactive';
+      var snEsc = encodeURIComponent(v.SerialNo);
+      return '<tr'+(inactive?' style="opacity:0.5;background:#fafafa"':'')+'>'
+        +'<td style="font-size:12px;font-weight:600;color:var(--gd)">'+(v.SerialNo||'-')+'</td>'
+        +'<td style="font-size:12px">'+(v.CarNo||'-')+'</td>'
+        +'<td style="font-size:12px">'+(v.Model||'-')+'</td>'
+        +'<td style="font-size:12px">'+(v.Customer||'-')+'</td>'
+        +'<td style="font-size:12px;color:var(--g400)">'+(v.Location||'-')+'</td>'
+        +'<td>'+(inactive
+            ? '<span style="color:#b71c1c;font-size:12px;font-weight:700">🚫 ปิดใช้งาน</span>'
+            : '<span style="color:#2d6a4f;font-size:12px;font-weight:700">✓ ใช้งาน</span>')+'</td>'
+        +'<td style="white-space:nowrap">'
+          +'<button class="btn bo bsm m-veh-edit" data-sn="'+snEsc+'">✏️</button> '
+          +(inactive
+            ? '<button class="btn bp bsm m-veh-on" data-sn="'+snEsc+'">♻️ เปิด</button>'
+            : '<button class="btn bd bsm m-veh-off" data-sn="'+snEsc+'">🚫 ปิด</button>')
+        +'</td></tr>';
+    }).join('')
+    +'</tbody></table></div>'
+    + (rows.length>200 ? '<div class="tc tm" style="padding:10px;font-size:12px">แสดง 200 จาก '+rows.length+' คัน — พิมพ์ค้นหาเพื่อกรองให้แคบลงค่ะ</div>' : '');
+
+  el.querySelectorAll('.m-veh-edit').forEach(function(b){
+    b.onclick = function(){ openVehicleEditModal(decodeURIComponent(this.dataset.sn)); };
+  });
+  el.querySelectorAll('.m-veh-off').forEach(function(b){
+    b.onclick = function(){ toggleVehicleStatus(decodeURIComponent(this.dataset.sn), 'Inactive'); };
+  });
+  el.querySelectorAll('.m-veh-on').forEach(function(b){
+    b.onclick = function(){ toggleVehicleStatus(decodeURIComponent(this.dataset.sn), 'Active'); };
+  });
+}
+
+function toggleVehicleStatus(serialNo, status){
+  var msg = status==='Inactive'
+    ? 'ปิดการใช้งานรถ '+serialNo+' ?\n\n• จะไม่ขึ้นในช่องค้นหาตอนเปิดใบเบิกใหม่\n• ประวัติรถ/ใบเบิกเก่ายังอยู่ครบ\n• เปิดกลับมาใช้ใหม่ได้ทุกเมื่อ'
+    : 'เปิดใช้งานรถ '+serialNo+' อีกครั้ง?';
+  if(!confirm(msg)) return;
+  toast('กำลังบันทึก...','info');
+  callAPI('setVehicleStatus', {serialNo:serialNo, status:status}).then(function(res){
+    toast(res.message, res.success?'success':'error');
+    if(res.success) loadMasterVehicles();
+  });
+}
+
+function openVehicleEditModal(serialNo){
+  var v = _mVehicles.find(function(x){ return x.SerialNo===serialNo; }) || {};
+  var esc = function(x){ return String(x==null?'':x).replace(/"/g,'&quot;'); };
+
+  var old = document.getElementById('vehEditModal');
+  if(old) old.remove();
+  var m = document.createElement('div');
+  m.id = 'vehEditModal';
+  m.className = 'mo';
+  m.style.zIndex = '3400';
+  m.innerHTML =
+    '<div class="mow" style="max-width:480px">'
+      +'<div class="moh"><div class="mot">✏️ แก้ไขข้อมูลรถ</div>'
+        +'<button class="mcl" onclick="document.getElementById(\'vehEditModal\').remove()">✕</button></div>'
+      +'<div class="mob">'
+        +'<div class="fg"><label class="fl">Serial No.</label>'
+          +'<input class="fc" id="veSerial" value="'+esc(v.SerialNo)+'" readonly style="background:#f5f5f5"></div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+          +'<div class="fg"><label class="fl">เลขรถ (CarNo)</label><input class="fc" id="veCarNo" value="'+esc(v.CarNo)+'"></div>'
+          +'<div class="fg"><label class="fl">รุ่น</label><input class="fc" id="veModel" value="'+esc(v.Model)+'"></div>'
+        +'</div>'
+        +'<div class="fg"><label class="fl">👤 ลูกค้า <span style="font-size:10px;color:var(--g400)">(แก้เพื่อเปลี่ยนชื่อลูกค้า)</span></label>'
+          +'<input class="fc" id="veCustomer" value="'+esc(v.Customer)+'"></div>'
+        +'<div class="fg"><label class="fl">📍 สถานที่ <span style="font-size:10px;color:var(--g400)">(แก้เพื่อโอนย้ายรถ)</span></label>'
+          +'<input class="fc" id="veLocation" value="'+esc(v.Location)+'"></div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+          +'<div class="fg"><label class="fl">ประเภท</label><input class="fc" id="veType" value="'+esc(v.VehicleType)+'"></div>'
+          +'<div class="fg"><label class="fl">สถานะสัญญา</label><input class="fc" id="veStatusType" value="'+esc(v.StatusType)+'"></div>'
+        +'</div>'
+        +'<div class="fg"><label class="fl">ระยะเวลา</label><input class="fc" id="vePeriod" value="'+esc(v.Period)+'"></div>'
+        +'<div class="fg"><label class="fl">หมายเหตุ</label><input class="fc" id="veNote" value="'+esc(v.Note)+'"></div>'
+      +'</div>'
+      +'<div class="mof">'
+        +'<button class="btn bo" onclick="document.getElementById(\'vehEditModal\').remove()">ยกเลิก</button>'
+        +'<button class="btn bp" onclick="saveVehicleMaster()">💾 บันทึก</button>'
+      +'</div>'
+    +'</div>';
+  document.body.appendChild(m);
+  m.style.display = 'flex';
+}
+
+function saveVehicleMaster(){
+  var v = function(id){ return ((document.getElementById(id)||{}).value||'').trim(); };
+  var data = {
+    serialNo: v('veSerial'),
+    carNo: v('veCarNo'), model: v('veModel'),
+    customer: v('veCustomer'), location: v('veLocation'),
+    vehicleType: v('veType'), statusType: v('veStatusType'),
+    period: v('vePeriod'), note: v('veNote'),
+  };
+  if(!data.serialNo) return toast('ไม่พบ Serial No. ค่ะ','error');
+  toast('กำลังบันทึก...','info');
+  callAPI('updateVehicle', data).then(function(res){
+    toast(res.message, res.success?'success':'error');
+    if(res.success){
+      var m = document.getElementById('vehEditModal'); if(m) m.remove();
+      loadMasterVehicles();
+    }
+  });
 }
 
 function loadDashboard(){
@@ -11651,7 +12146,7 @@ function deleteCurrentReq(){
     if(!u || !u.email || !u.role) return;
     CU = u;
     var _validPg = ['dashboard','create','list','approval','stock','pickup','close','print',
-      'profile','jobs','stockcard','stockcount','changereq','vehiclehistory','sales','inventory','specialreq'];
+      'profile','jobs','stockcard','stockcount','changereq','vehiclehistory','sales','inventory','specialreq','master'];
     var restorePage = function(){
       if(typeof initApp !== 'function') return;
       initApp();
