@@ -1747,9 +1747,9 @@ function uploadPartImg(partNo, nameEN){
     inp.type = 'file'; inp.accept = 'image/*';
     inp.onchange = function(){
       var file = inp.files[0]; if(!file) return;
-      var reader = new FileReader();
-      reader.onload = function(e){
-        var b64 = e.target.result;
+      toast('กำลังย่อขนาดรูป...','info');
+      compressImage(file, function(b64){
+        if(!b64) return toast('อ่านไฟล์รูปไม่ได้ค่ะ','error');
         var fn = 'part_'+partNo.replace(/[^a-zA-Z0-9]/g,'_')+'_'+Date.now()+'.jpg';
         toast('กำลังอัปโหลดรูป...','info');
         callAPI('uploadPhoto',{fileName:fn, base64:b64, folder:'parts'}).then(function(res){
@@ -1761,8 +1761,7 @@ function uploadPartImg(partNo, nameEN){
             });
           } else { toast('อัปโหลดไม่สำเร็จ: '+(res&&res.message||'error'),'error'); }
         });
-      };
-      reader.readAsDataURL(file);
+      });
     };
     inp.click();
   };
@@ -2708,6 +2707,53 @@ function confirmSprAction(requestId, newStatus){
   });
 }
 
+// ══════════════════════════════════════════════════════════════
+// ONE-TIME: ย้ายอะไหล่จาก parts_data.js เข้าชีท Parts (รวมฐานเป็นที่เดียว)
+// วิธีใช้: เปิด Console (F12) แล้วพิมพ์  migratePartsToSheet()
+// ปลอดภัย: ไม่ทับข้อมูลเดิมในชีท (เติมเฉพาะช่องที่ว่าง) และรันซ้ำได้
+// ══════════════════════════════════════════════════════════════
+function migratePartsToSheet(){
+  if(typeof PARTS_DB === 'undefined' || !PARTS_DB.length){
+    console.error('❌ ไม่พบ PARTS_DB — ตรวจสอบว่า parts_data.js โหลดแล้วหรือยัง');
+    return;
+  }
+  var all = PARTS_DB.slice();
+  var BATCH = 100;                    // ส่งทีละ 100 ตัว กัน timeout
+  var total = all.length;
+  var done = 0, totalAdded = 0, totalUpdated = 0;
+
+  console.log('🚀 เริ่มย้ายอะไหล่ '+total+' รายการเข้าชีท Parts...');
+  console.log('⏳ กรุณาอย่าปิดหน้าเว็บจนกว่าจะเสร็จ');
+  toast('กำลังย้ายอะไหล่เข้าชีท... 0/'+total,'info');
+
+  function sendNext(){
+    if(!all.length){
+      console.log('✅ เสร็จสิ้น! เพิ่มใหม่ '+totalAdded+' / อัปเดต '+totalUpdated+' รายการ');
+      toast('✅ ย้ายอะไหล่เสร็จแล้ว! เพิ่มใหม่ '+totalAdded+' รายการ','success');
+      return;
+    }
+    var chunk = all.splice(0, BATCH);
+    callAPI('importPartsBatch', {parts: chunk}).then(function(res){
+      if(!res.success){
+        console.error('❌ ผิดพลาด:', res.message);
+        toast('❌ '+res.message,'error');
+        return;
+      }
+      done += chunk.length;
+      totalAdded   += (res.added||0);
+      totalUpdated += (res.updated||0);
+      var pct = Math.round(done/total*100);
+      console.log('  ✓ '+done+'/'+total+' ('+pct+'%) — เพิ่ม '+res.added+' อัปเดต '+res.updated);
+      toast('กำลังย้าย... '+done+'/'+total+' ('+pct+'%)','info');
+      sendNext();   // ส่งชุดถัดไป
+    }).catch(function(e){
+      console.error('❌ เกิดข้อผิดพลาด:', e);
+      toast('❌ เกิดข้อผิดพลาด ลองใหม่อีกครั้ง','error');
+    });
+  }
+  sendNext();
+}
+
 function loadDashboard(){
   callAPI('getDashboard',{}).then(function(res){
     if(!res.success) return;
@@ -2844,14 +2890,13 @@ function getItems(){
 
 function onPhoto(e){
   var file=e.target.files[0]; if(!file) return;
-  var reader=new FileReader();
-  reader.onload=function(ev){
-    photoB64=ev.target.result;
+  compressImage(file, function(b64){
+    if(!b64) return toast('อ่านไฟล์รูปไม่ได้ค่ะ','error');
+    photoB64 = b64;
     var img=document.getElementById('photoPreview'), pd=document.getElementById('photoDrop');
     if(img){img.src=photoB64;img.classList.remove('hidden');}
     if(pd) pd.classList.add('hp');
-  };
-  reader.readAsDataURL(file);
+  });
 }
 
 // ── กันกดปุ่มซ้ำตอนระบบหน่วง — ล็อกปุ่มทันทีที่กด โชว์สถานะ "กำลังบันทึก" ชัดเจน ──
@@ -3941,19 +3986,22 @@ function _clPartPhoto(event, pi){
   if(!files.length) return;
   if(!_clItemState[pi].photos) _clItemState[pi].photos = [];
   var loaded = 0;
+  toast('กำลังย่อขนาดรูป...','info');
   files.forEach(function(f){
-    var r=new FileReader();
-    r.onload=function(e){
-      _clItemState[pi].photos.push(e.target.result);
+    compressImage(f, function(b64){
+      if(b64) _clItemState[pi].photos.push(b64);
       loaded++;
       if(loaded===files.length) renderCloseItems(false);
-    };
-    r.readAsDataURL(f);
+    });
   });
 }
 function _clVehiclePhoto(event, pi, vi){
   var f=event.target.files[0]; if(!f) return;
-  var r=new FileReader(); r.onload=function(e){ _clItemState[pi].vehicles[vi].photo=e.target.result; renderCloseItems(false); }; r.readAsDataURL(f);
+  compressImage(f, function(b64){
+    if(!b64) return toast('อ่านไฟล์รูปไม่ได้ค่ะ','error');
+    _clItemState[pi].vehicles[vi].photo = b64;
+    renderCloseItems(false);
+  });
 }
 function _clShowSerialDrop(inp, pi, vi){
   var q=(inp.value||'').toLowerCase(); var ddId='clvd_'+pi+'_'+vi; var dd=document.getElementById(ddId);
@@ -4244,17 +4292,17 @@ function loadProfile(){
 
 function onSigSelect(e){
   var file=e.target.files[0]; if(!file) return;
-  if(file.size>2*1024*1024) return toast('ไฟล์ใหญ่เกินไป ไม่เกิน 2MB','error');
-  var reader=new FileReader();
-  reader.onload=function(ev){
-    newSigB64=ev.target.result;
+  // ไม่ต้องจำกัดขนาดไฟล์แล้ว — ระบบย่อให้อัตโนมัติ (ลายเซ็นย่อเหลือ ~60KB)
+  toast('กำลังย่อขนาดรูป...','info');
+  compressSignature(file, function(b64){
+    if(!b64) return toast('อ่านไฟล์รูปไม่ได้ค่ะ','error');
+    newSigB64 = b64;
     var sp=document.getElementById('sigPreview'),sd=document.getElementById('sigDrop');
     if(sp){sp.src=newSigB64;sp.classList.remove('hidden');}
     if(sd) sd.classList.add('hp');
     var ssb=document.getElementById('saveSigBtn');
     if(ssb) ssb.disabled=false;
-  };
-  reader.readAsDataURL(file);
+  });
 }
 
 function clearSig(){
@@ -4538,8 +4586,47 @@ function doPrint(){
       +'th{background:#e0e0e0!important;color:#000!important;font-weight:700!important;}</style></head>'
       +'<body>'+body+'</body></html>';
     var win=window.open('','_blank');
-    if(win){win.document.write(html);win.document.close();setTimeout(function(){win.focus();win.print();},600);}
+    if(win){
+      win.document.write(html);
+      win.document.close();
+      // ── รอรูป (ลายเซ็น) โหลดเสร็จจริงก่อนพิมพ์ ──
+      // เดิมรอแค่ 600ms ตายตัว — พอเปลี่ยนลายเซ็นจาก base64 เป็น Drive URL
+      // ถ้าเน็ตช้ากว่า 600ms รูปจะยังไม่โหลด → ลายเซ็นหายจากใบพิมพ์
+      _printWhenImagesReady(win);
+    }
   });
+}
+
+// รอให้รูปทุกใบในหน้าต่างพิมพ์โหลดเสร็จ (หรือ error) แล้วค่อยสั่งพิมพ์
+// มี timeout กันค้าง: ถ้าเกิน 5 วินาที พิมพ์เลย ไม่รอต่อ
+function _printWhenImagesReady(win, maxWaitMs){
+  var MAX = maxWaitMs || 5000;
+  var started = Date.now();
+  var printed = false;
+
+  function fire(){
+    if(printed) return;
+    printed = true;
+    try { win.focus(); win.print(); } catch(e){}
+  }
+
+  function check(){
+    if(printed) return;
+    var imgs;
+    try { imgs = win.document.images; } catch(e){ return fire(); }
+    var pending = 0;
+    for(var i=0; i<imgs.length; i++){
+      // complete = โหลดเสร็จแล้ว (สำเร็จหรือ error ก็นับว่าจบ)
+      if(!imgs[i].complete) pending++;
+    }
+    if(pending === 0){
+      // รูปพร้อมหมดแล้ว — หน่วงนิดนึงให้ font/layout นิ่งก่อน
+      return setTimeout(fire, 250);
+    }
+    if(Date.now() - started > MAX) return fire(); // กันค้าง
+    setTimeout(check, 100);
+  }
+  setTimeout(check, 100);
 }
 
 function buildPrintData(reqId){
@@ -5064,15 +5151,14 @@ function saveNewPart(){
 
   var imgFile=document.getElementById('np_imgFile');
   if(imgFile && imgFile.files && imgFile.files[0]){
-    var reader=new FileReader();
-    reader.onload=function(e){
+    compressImage(imgFile.files[0], function(b64){
+      if(!b64){ doSave(''); return; }
       var fn='part_'+pn.replace(/[^a-zA-Z0-9]/g,'_')+'_'+Date.now()+'.jpg';
       toast('กำลังอัปโหลดรูป...','info');
-      callAPI('uploadPhoto',{fileName:fn, base64:e.target.result, folder:'parts'}).then(function(r){
+      callAPI('uploadPhoto',{fileName:fn, base64:b64, folder:'parts'}).then(function(r){
         doSave(r&&r.success?r.directUrl:'');
       });
-    };
-    reader.readAsDataURL(imgFile.files[0]);
+    });
   } else {
     doSave('');
   }
@@ -5199,23 +5285,60 @@ function loadPickupDetail(){
 }
 
 // ── ลดขนาดรูปก่อนอัป (กว้างไม่เกิน 1200px, JPEG 75%) ──
-function compressImage(file, cb){
+// ══════════════════════════════════════════════════════════════
+// ย่อรูปอัตโนมัติ — ไม่ว่าผู้ใช้จะอัปรูปใหญ่แค่ไหน ระบบย่อให้พอดีเสมอ
+// ══════════════════════════════════════════════════════════════
+// ปัญหาเดิม: หลายจุดส่งรูปดิบจากมือถือ (5-10MB) เข้าระบบตรงๆ
+//            → base64 บวมถึง 1,000,000+ ตัวอักษร เกินลิมิตเซลล์ Sheets (50,000)
+//            → ชีทบวม โหลดช้า เสี่ยงข้อมูลถูกตัด
+// แก้: ทุกจุดที่รับรูป ต้องผ่าน compressImage เสมอ
+//
+// opts: {maxW, maxH, quality, maxBytes}
+function compressImage(file, cb, opts){
+  opts = opts || {};
+  var maxW    = opts.maxW    || 1000;   // กว้างสุด (พอสำหรับดูรายละเอียดอะไหล่)
+  var maxH    = opts.maxH    || 1000;   // สูงสุด (กันรูปแนวตั้งยาวมาก)
+  var quality = opts.quality || 0.72;
+  var maxBytes= opts.maxBytes|| 300*1024; // เป้าหมาย ~300KB ต่อรูป
+
   var reader = new FileReader();
   reader.onload = function(ev){
     var img = new Image();
     img.onload = function(){
-      var maxW = 1200;
-      var scale = img.width > maxW ? maxW/img.width : 1;
-      var w = Math.round(img.width*scale), h = Math.round(img.height*scale);
+      // คำนวณขนาดใหม่ — ย่อตามด้านที่เกินมากที่สุด คงสัดส่วนเดิม
+      var scale = Math.min(maxW/img.width, maxH/img.height, 1);
+      var w = Math.max(1, Math.round(img.width*scale));
+      var h = Math.max(1, Math.round(img.height*scale));
+
       var canvas = document.createElement('canvas');
       canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      cb(canvas.toDataURL('image/jpeg', 0.75));
+      var ctx = canvas.getContext('2d');
+      // พื้นหลังขาว — กัน PNG โปร่งใสกลายเป็นดำตอนแปลงเป็น JPEG
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+
+      // ลดคุณภาพทีละขั้นจนกว่าจะได้ขนาดตามเป้า (กันรูปที่ยังใหญ่เกิน)
+      var q = quality;
+      var out = canvas.toDataURL('image/jpeg', q);
+      var guard = 0;
+      while(out.length > maxBytes*1.37 && q > 0.35 && guard < 6){ // *1.37 = base64 overhead
+        q -= 0.1;
+        out = canvas.toDataURL('image/jpeg', q);
+        guard++;
+      }
+      cb(out);
     };
     img.onerror = function(){ cb(ev.target.result); }; // fallback ใช้รูปเดิม
     img.src = ev.target.result;
   };
+  reader.onerror = function(){ cb(''); };
   reader.readAsDataURL(file);
+}
+
+// ลายเซ็น — เล็กกว่ารูปทั่วไปมาก ไม่ต้องละเอียด
+function compressSignature(file, cb){
+  compressImage(file, cb, {maxW:600, maxH:300, quality:0.8, maxBytes:60*1024});
 }
 
 function onPickupPhoto(e){
@@ -8137,11 +8260,9 @@ function renderVehicleAssign(items){
   box.innerHTML = html;
 }
 
-// ── อ่านรูปเป็น base64 ────────────────────────────────────────
+// ── อ่านรูปเป็น base64 (ย่อขนาดอัตโนมัติ) ────────────────────
 function _readImgB64(file, cb){
-  var r = new FileReader();
-  r.onload = function(e){ cb(e.target.result); };
-  r.readAsDataURL(file);
+  compressImage(file, cb);
 }
 
 // ── รูปต่อ Part No. ──────────────────────────────────────────
@@ -11741,15 +11862,14 @@ function renderInsPhotoGrid(){
 function onInsPhoto(input, id){
   var file = input.files[0];
   if(!file) return;
-  var reader = new FileReader();
-  reader.onload = function(e){
+  compressImage(file, function(b64){
+    if(!b64) return toast('อ่านไฟล์รูปไม่ได้ค่ะ','error');
     var img = document.getElementById(id+'_img');
     var ph  = document.getElementById(id+'_ph');
-    if(img){ img.src = e.target.result; img.style.display='block'; }
+    if(img){ img.src = b64; img.style.display='block'; }
     if(ph)  ph.style.display='none';
-    input.dataset.b64 = e.target.result;
-  };
-  reader.readAsDataURL(file);
+    input.dataset.b64 = b64;
+  });
 }
 
 function runMigration(){
