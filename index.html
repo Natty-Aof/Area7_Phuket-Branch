@@ -3471,16 +3471,18 @@ function loadStock(){
     var soApproved = (results[1].data||[]);
     var sl=document.getElementById('stList');
     if(!sl) return;
-    // รอจัด = อนุมัติแล้ว + StatusStock เป็น PENDING เท่านั้น
+    // รอจัด = StatusStock PENDING (ยังไม่จัดของ)
+    // ⚠️ เปิดให้จัดของก่อนอนุมัติได้ (กรณีเร่งด่วน — ขออนุมัติตามหลัง)
+    //    แต่ใบที่ยังไม่อนุมัติจะติดป้ายเตือน และ "ปิดงานไม่ได้" จนกว่าจะอนุมัติครบ
     var pending = all.filter(function(r){
-      return r.StatusApproval==='APPROVED'
+      return r.StatusApproval!=='REJECTED'
         && (r.StatusStock==='PENDING'||!r.StatusStock);
     });
     // จัดแล้ว = ACKNOWLEDGED ขึ้นไป (Stock จัดแล้ว รอช่างรับ / ปิดงาน)
     // เพิ่ม Sales Orders ที่อนุมัติแล้ว รอจัด
     var soList = _stockTab==='pending' ? soApproved : [];
     var done = all.filter(function(r){
-      return r.StatusApproval==='APPROVED'
+      return r.StatusApproval!=='REJECTED'
         && (r.StatusStock==='ACKNOWLEDGED'||r.StatusStock==='PICKED_UP'
           ||r.StatusStock==='PENDING_CLEARANCE'||r.StatusStock==='CLEARED');
     });
@@ -3565,9 +3567,9 @@ function loadStock(){
             +'</tr></thead><tbody>'+itRows+'</tbody></table></div>';
         }
         var pendingNote = r.StatusApproval==='PENDING_SUPERVISOR'
-          ?'<div style="background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:6px 10px;font-size:12px;color:#795548;margin-bottom:8px">⏳ ยังรอหัวหน้าช่างอนุมัติ — เตรียมของไว้ล่วงหน้าได้เลยค่ะ</div>'
+          ?'<div style="background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:6px 10px;font-size:12px;color:#795548;margin-bottom:8px">⚠️ <b>ยังไม่อนุมัติ</b> — รอหัวหน้าช่างอนุมัติ ⚡ จ่ายของก่อนได้ (เร่งด่วน) แต่ <b>ปิดงานไม่ได้จนกว่าจะอนุมัติครบ</b> อย่าลืมตามอนุมัติย้อนหลังค่ะ</div>'
           : r.StatusApproval==='PENDING_MANAGER'
-          ?'<div style="background:#e3f2fd;border:1px solid #90caf9;border-radius:6px;padding:6px 10px;font-size:12px;color:#1565c0;margin-bottom:8px">⏳ รอผู้จัดการอนุมัติ — เตรียมของไว้ล่วงหน้าได้เลยค่ะ</div>'
+          ?'<div style="background:#e3f2fd;border:1px solid #90caf9;border-radius:6px;padding:6px 10px;font-size:12px;color:#1565c0;margin-bottom:8px">⚠️ <b>ยังไม่อนุมัติ</b> — รอผู้จัดการอนุมัติ ⚡ จ่ายของก่อนได้ (เร่งด่วน) แต่ <b>ปิดงานไม่ได้จนกว่าจะอนุมัติครบ</b> อย่าลืมตามอนุมัติย้อนหลังค่ะ</div>'
           : '';
         var canAck = _stockTab==='pending'&&(r.StatusStock==='PENDING'||r.StatusStock==='STOCK_NOTIFIED');
         var stkBtn = canAck
@@ -9830,34 +9832,58 @@ function _renderFullReport(){
     else techMap[n].inProgress++;
   });
   // ── เพิ่ม: ผู้รับผิดชอบฝั่ง Stock (ตัด SAP / ปิดงาน) — ดึงจากชีท Users อัตโนมัติ ──
-  // จับกลุ่มตามชื่อคน: คนที่ใช้หลายอีเมลแต่เป็นคนเดียวกัน รวบเป็นแถวเดียว (รวมทุกอีเมล)
-  // แสดงเฉพาะ Stock ที่ทำหน้าที่ตัด SAP จริง (หทัยชนก, อนุวิทย์)
-  var STOCK_NAME_KEYS = ['หทัยชนก','อนุวิทย์','anuwit','hathaichanok'];
+  // KPI รวมเป็นแถวเดียว (ทีม Stock) เพื่อไม่ให้ไปแข่งกับช่าง แต่ระบุว่าใครช่วยปิดงานบ้าง
   var stockByPerson = {};
   (window._stockUsers||[]).forEach(function(u){
     var nm = String(u.name||'').toLowerCase();
-    // หา key ที่ตรง เพื่อจับคนเดียวกันที่ใช้หลายชื่อ/อีเมล
     var matchKey = null;
-    if(nm.indexOf('หทัยชนก')>=0 || nm.indexOf('hathaichanok')>=0) matchKey = 'หทัยชนก จันทร์ดี';
+    if(nm.indexOf('หทัยชนก')>=0 || nm.indexOf('hathaichanok')>=0) matchKey = 'หทัยชนก';
     else if(nm.indexOf('อนุวิทย์')>=0 || nm.indexOf('anuwit')>=0) matchKey = 'อนุวิทย์ คำคง';
-    if(!matchKey) return; // ไม่ใช่ 2 คนนี้ ข้าม
-    if(!stockByPerson[matchKey]) stockByPerson[matchKey] = {name:matchKey+' (Stock)', emails:[]};
+    if(!matchKey) return;
+    if(!stockByPerson[matchKey]) stockByPerson[matchKey] = {name:matchKey, emails:[]};
     if(u.email) stockByPerson[matchKey].emails.push(String(u.email).toLowerCase());
   });
-  var STOCK_CLOSERS = Object.keys(stockByPerson).map(function(k){ return stockByPerson[k]; });
-  STOCK_CLOSERS.forEach(function(sc){
-    var entry = {name:sc.name, total:0, inProgress:0, waitClear:0, submittedClearance:0, closed:0, days:[]};
-    reqs.forEach(function(r){
-      if(r.StatusStock==='PENDING_CLEARANCE'){
-        // งานที่ยังรอตัด SAP — ถือเป็นคิวของ Stock ทุกคนที่รับผิดชอบเรื่องนี้
-        entry.total++; entry.waitClear++;
-      } else if(r.StatusStock==='CLEARED' && r.StockHandlerEmail && sc.emails.indexOf(String(r.StockHandlerEmail).toLowerCase())>=0){
-        entry.total++; entry.closed++; entry.days.push(ageDays(r.OpenDate));
-      }
+
+  if(Object.keys(stockByPerson).length){
+    // นับแยกรายคนก่อน (เพื่อรู้ว่าใครช่วยปิดงานเท่าไร)
+    var perPerson = {};
+    Object.keys(stockByPerson).forEach(function(k){
+      perPerson[k] = {waitClear:0, closed:0, days:[]};
     });
-    // แสดงทุกคนเสมอ แม้ total=0 (ไม่ซ่อนชื่อ Stock ที่ยังไม่มีผลงาน)
-    techMap[sc.name]=entry;
-  });
+    reqs.forEach(function(r){
+      var handler = String(r.StockHandlerEmail||'').toLowerCase();
+      if(!handler) return;
+      Object.keys(stockByPerson).forEach(function(k){
+        if(stockByPerson[k].emails.indexOf(handler) < 0) return;
+        if(r.StatusStock==='PENDING_CLEARANCE'){ perPerson[k].waitClear++; }
+        else if(r.StatusStock==='CLEARED'){ perPerson[k].closed++; perPerson[k].days.push(ageDays(r.OpenDate)); }
+      });
+    });
+
+    // รวมเป็นแถวเดียว: ยอดรวมทั้งทีม Stock
+    var stockEntry = {name:'อนุวิทย์ คำคง (Stock)', total:0, inProgress:0, waitClear:0, submittedClearance:0, closed:0, days:[]};
+    Object.keys(perPerson).forEach(function(k){
+      stockEntry.waitClear += perPerson[k].waitClear;
+      stockEntry.closed    += perPerson[k].closed;
+      stockEntry.days      = stockEntry.days.concat(perPerson[k].days);
+    });
+    stockEntry.total = stockEntry.waitClear + stockEntry.closed;
+
+    // ต่อท้ายชื่อ: ระบุคนที่ช่วยปิดงาน (นอกจากอนุวิทย์) เช่น "By หทัยชนก ช่วยปิดงาน 2 ใบ"
+    var helpers = Object.keys(perPerson).filter(function(k){
+      return k!=='อนุวิทย์ คำคง' && (perPerson[k].closed>0 || perPerson[k].waitClear>0);
+    });
+    if(helpers.length){
+      stockEntry.name += ' — By ' + helpers.map(function(k){
+        var p = perPerson[k];
+        var bits = [];
+        if(p.closed>0)    bits.push('ปิด '+p.closed);
+        if(p.waitClear>0) bits.push('ค้าง '+p.waitClear);
+        return k+' ('+bits.join(', ')+')';
+      }).join(', ');
+    }
+    techMap[stockEntry.name] = stockEntry;
+  }
   var techList=Object.values(techMap).sort(function(a,b){return (b.inProgress+b.waitClear)-(a.inProgress+a.waitClear);});
   var techChartCanvas = document.getElementById('rptTechChart');
   if(techChartCanvas && techList.length) drawTechRaceChart(techChartCanvas, techList);
