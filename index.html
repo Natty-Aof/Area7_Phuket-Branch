@@ -226,7 +226,7 @@ textarea.fc{min-height:70px;resize:vertical;}
   .content{padding:10px;}
   .fr,.fr3{grid-template-columns:1fr;} .dg{grid-template-columns:1fr;} .sg{grid-template-columns:1fr 1fr;gap:8px;}
   .btn{padding:10px 16px;font-size:15px;} .bsm{padding:8px 14px;font-size:14px;} .fc{padding:10px 12px;font-size:15px;}
-  .tw{overflow-x:auto;-webkit-overflow-scrolling:touch;-webkit-mask-image:linear-gradient(to right,#000 94%,transparent);mask-image:linear-gradient(to right,#000 94%,transparent);} table{min-width:600px;}
+  .tw{overflow-x:auto;-webkit-overflow-scrolling:touch;} table{min-width:600px;}
   .md{width:100%;max-width:100%;max-height:95vh;border-radius:16px 16px 0 0;margin-top:auto;} .mo{align-items:flex-end;}
   .card{padding:12px;margin-bottom:10px;} .sc{padding:10px 12px;} .sc .vl{font-size:22px;}
   .fb{flex-direction:column;} .fb .fg{min-width:unset;width:100%;}
@@ -247,8 +247,16 @@ textarea.fc{min-height:70px;resize:vertical;}
   #rptFrom2,#rptTo2{width:100%!important;flex:1 1 130px;}
   /* ── ป้องกันชื่อยาว/ข้อความยาวดันตารางกว้างเกินจอ ── */
   .it td, .it th{white-space:nowrap;}
-  .it td:nth-child(1){position:sticky;left:0;background:inherit;z-index:1;}
-  .it th:nth-child(1){position:sticky;left:0;background:var(--gd);color:#fff;z-index:2;}
+  /* คอลัมน์แรกตรึงซ้าย — ใช้พื้นหลังทึบ (ไม่ใช่ inherit) กันตัวอักษรทะลุทับกันตอนเลื่อน */
+  .it td:nth-child(1){position:sticky;left:0;background:#fff;z-index:3;box-shadow:2px 0 4px rgba(0,0,0,.06);}
+  .it tr:nth-child(even) td:nth-child(1){background:var(--g50);}
+  .it th:nth-child(1){position:sticky;left:0;background:var(--gd);color:#fff;z-index:4;}
+  /* หัวตารางตรึงบน — เวลาเลื่อนดูรายการยาว หัวข้อคอลัมน์ยังเห็น ไม่หลุด */
+  .it thead th{position:sticky;top:0;background:var(--gd);z-index:2;}
+  .it thead th:nth-child(1){z-index:5;}
+  /* ทุกเซลล์ในตารางมีพื้นหลังทึบ กันการซ้อนทับ */
+  .it td{background:#fff;}
+  .it tr:nth-child(even) td{background:var(--g50);}
 }
 @media print {
   body * { visibility: hidden; }
@@ -10201,8 +10209,10 @@ function clearReportDateFilter(){
 
 // ── ตัวกรองหมวดสำหรับตาราง "งานที่ต้องติดตาม" — กดการ์ด/pipeline เพื่อกรอง ──
 var _rptTrackFilter = null; // {key, label} หรือ null = ดูทั้งหมด
+var _rptTrackShowAll = false; // ตารางงานค้าง: false=แสดง 10 ใบแรก, true=ทั้งหมด
 function setRptTrackFilter(key, label){
   _rptTrackFilter = (_rptTrackFilter && _rptTrackFilter.key===key) ? null : {key:key, label:label};
+  _rptTrackShowAll = false; // เปลี่ยนตัวกรอง → กลับไปแสดง 10 ใบแรก
   _renderFullReport();
   var tbl = document.getElementById('rptOverdueTable');
   if(tbl) tbl.scrollIntoView({behavior:'smooth', block:'center'});
@@ -10363,11 +10373,30 @@ function _renderFullReport(){
     var chartsEl = document.getElementById('rptAlertCharts');
     if(chartsEl && tracked.length){
       var catCount = {}; tracked.forEach(function(r){ var c=_rptCatFor(r); catCount[c]=(catCount[c]||0)+1; });
-      // ── นับตามผู้รับผิดชอบ "ปัจจุบัน" — ปิดแล้ว=ไม่มีใครค้าง, รอตัด SAP=ลูกบอลอยู่ที่ Stock ──
+      // ── นับตามผู้รับผิดชอบ "ปัจจุบัน" — สอดคล้องกับรายงานตามช่าง/แอดมิน ──
+      // • ปิดแล้ว = ไม่มีใครค้าง (แสดงรวม "ปิดงานแล้ว")
+      // • รอตัด SAP (PENDING_CLEARANCE) = ลูกบอลอยู่ที่ Stock คนที่จัดของใบนั้น (ตาม StockHandlerEmail)
+      // • อื่นๆ = อยู่ที่ช่างผู้เบิก
+      // สร้าง map อีเมล Stock → ชื่อจริง (Stock ทุกคนอัตโนมัติ ไม่ hard-code)
+      var _stockEmailName = {};
+      (window._stockUsers||[]).forEach(function(u){
+        var em = String(u.email||'').toLowerCase(); if(!em) return;
+        var nm = String(u.name||em).trim(), low = nm.toLowerCase();
+        if(low.indexOf('หทัยชนก')>=0||low.indexOf('hathaichanok')>=0) nm='หทัยชนก จันทร์ดี';
+        else if(low.indexOf('อนุวิทย์')>=0||low.indexOf('anuwit')>=0) nm='อนุวิทย์ คำคง';
+        _stockEmailName[em] = nm;
+      });
       var techCount = {}; tracked.forEach(function(r){
-        var who = r.StatusStock==='CLEARED' ? 'ปิดงานแล้ว ✅'
-                : r.StatusStock==='PENDING_CLEARANCE' ? 'อนุวิทย์ คำคง (Stock)'
-                : (r.RequesterName||r.RequesterEmail||'ไม่ระบุ');
+        var who;
+        if(r.StatusStock==='CLEARED'){
+          who = 'ปิดงานแล้ว ✅';
+        } else if(r.StatusStock==='PENDING_CLEARANCE'){
+          // ใครจัดของใบนี้ = คนที่ต้องตัด SAP ต่อ
+          var handler = String(r.StockHandlerEmail||'').toLowerCase();
+          who = (_stockEmailName[handler] || 'Stock') + ' (Stock)';
+        } else {
+          who = (r.RequesterName||r.RequesterEmail||'ไม่ระบุ');
+        }
         techCount[who]=(techCount[who]||0)+1;
       });
       chartsEl.innerHTML =
@@ -10413,11 +10442,14 @@ function _renderFullReport(){
     } else {
       var stMap={'PENDING_SUPERVISOR':'⏳ รอหัวหน้าช่าง','PENDING_MANAGER':'⏳ รอผู้จัดการ',
         'PENDING':'📦 รอจ่ายอะไหล่','ACKNOWLEDGED':'🔧 จัดของแล้ว','PICKED_UP':'✋ รอเคลียร์','PENDING_CLEARANCE':'📝 รอ Stock ตัด SAP','CLEARED':'✅ ปิดงานแล้ว','PARTIAL':'⚠️ รายการขาดจ่าย'};
+      var PAGE = 10;
+      var showAll = !!_rptTrackShowAll;
+      var visible = showAll ? tracked : tracked.slice(0, PAGE);
       var h='<div class="tw"><table class="it" style="font-size:12px"><thead><tr>'
         +'<th>เลขใบเบิก</th><th>วันที่เบิก</th><th>Job No.</th><th>ลูกค้า</th>'
         +'<th>ผู้เบิก</th><th style="text-align:center">อายุใบเบิก</th><th>สถานะ</th><th></th>'
         +'</tr></thead><tbody>';
-      tracked.forEach(function(r){
+      visible.forEach(function(r){
         var ac=ageStyle(r._days);
         var st=stMap[r.StatusApproval!=='APPROVED'?r.StatusApproval:r.StatusStock]||r.StatusApproval;
         h+='<tr style="'+(ac.bg?'background:'+ac.bg+';color:'+ac.tx+';':'')+'">'
@@ -10430,7 +10462,16 @@ function _renderFullReport(){
           +'</tr>';
       });
       h+='</tbody></table></div>';
+      // ปุ่มดูเพิ่ม/พับ — ถ้ามีมากกว่า 10 ใบ
+      if(tracked.length > PAGE){
+        h += '<div class="tc" style="padding:12px">'
+          + '<button class="btn bo bsm" id="rptTrackToggle">'
+          + (showAll ? '▲ พับรายการ (แสดง '+PAGE+' ใบแรก)' : '▼ ดูทั้งหมด '+tracked.length+' ใบ (แสดงอยู่ '+PAGE+')')
+          + '</button></div>';
+      }
       overdueEl.innerHTML=h;
+      var tgl = document.getElementById('rptTrackToggle');
+      if(tgl) tgl.onclick = function(){ _rptTrackShowAll = !_rptTrackShowAll; _renderFullReport(); };
     }
   }
 
@@ -10447,31 +10488,40 @@ function _renderFullReport(){
     else if(r.StatusStock==='PENDING_CLEARANCE'){techMap[n].submittedClearance++;techMap[n].days.push(ageDays(r.OpenDate));}
     else techMap[n].inProgress++;
   });
-  // ── เพิ่ม: ผู้รับผิดชอบฝั่ง Stock (ตัด SAP / ปิดงาน) — ดึงจากชีท Users อัตโนมัติ ──
-  // แยกเป็นแถวของแต่ละคน: ใครจ่าย/ปิดงานใบไหน = งานของคนนั้น (ตาม StockHandlerEmail)
+  // ── เพิ่ม: ผู้รับผิดชอบฝั่ง Stock — แยกตาม "คนตัด SAP" (ไม่ใช่คนจัดของ) ──
+  // ClosedByEmail = คนตัด SAP/ปิดงานจริง | StockHandlerEmail = คนจัดของ
+  // • ใบปิดแล้ว (CLEARED): นับให้คนตัด SAP (ClosedByEmail)
+  // • ใบยังไม่ปิด (PENDING_CLEARANCE): นับให้คนจัดของ (StockHandlerEmail) = คิวที่รอคนนั้นตาม
   var stockByPerson = {};
   (window._stockUsers||[]).forEach(function(u){
-    var nm = String(u.name||'').toLowerCase();
-    var matchKey = null;
-    if(nm.indexOf('หทัยชนก')>=0 || nm.indexOf('hathaichanok')>=0) matchKey = 'หทัยชนก จันทร์ดี';
-    else if(nm.indexOf('อนุวิทย์')>=0 || nm.indexOf('anuwit')>=0) matchKey = 'อนุวิทย์ คำคง';
-    if(!matchKey) return;
-    if(!stockByPerson[matchKey]) stockByPerson[matchKey] = {name:matchKey, emails:[]};
-    if(u.email) stockByPerson[matchKey].emails.push(String(u.email).toLowerCase());
+    var em = String(u.email||'').toLowerCase();
+    if(!em) return;
+    // ใช้ชื่อจริงจาก Users เป็น key — Stock ทุกคนขึ้นได้อัตโนมัติ (ไม่ hard-code)
+    var key = String(u.name||em).trim();
+    // จับคนเดียวกันที่ใช้หลายอีเมล: normalize ชื่อให้เป็นชื่อเต็ม
+    var nm = key.toLowerCase();
+    if(nm.indexOf('หทัยชนก')>=0 || nm.indexOf('hathaichanok')>=0) key = 'หทัยชนก จันทร์ดี';
+    else if(nm.indexOf('อนุวิทย์')>=0 || nm.indexOf('anuwit')>=0) key = 'อนุวิทย์ คำคง';
+    if(!stockByPerson[key]) stockByPerson[key] = {name:key, emails:[]};
+    stockByPerson[key].emails.push(em);
   });
 
-  // สร้างแถวแยกต่อคน — เฉพาะคนที่มีงานจริง (ปิด หรือค้าง)
+  // สร้างแถวแยกต่อคน
   Object.keys(stockByPerson).forEach(function(personKey){
     var emails = stockByPerson[personKey].emails;
     var entry = {name: personKey+' (Stock)', total:0, inProgress:0, waitClear:0, submittedClearance:0, closed:0, days:[]};
     reqs.forEach(function(r){
-      var handler = String(r.StockHandlerEmail||'').toLowerCase();
-      if(!handler || emails.indexOf(handler) < 0) return; // นับเฉพาะใบที่คนนี้จ่าย/ปิดเอง
-      if(r.StatusStock==='PENDING_CLEARANCE'){ entry.waitClear++; }
-      else if(r.StatusStock==='CLEARED'){ entry.closed++; entry.days.push(ageDays(r.OpenDate)); }
+      if(r.StatusStock==='CLEARED'){
+        // ปิดแล้ว → นับให้คนตัด SAP (ClosedByEmail); ถ้าไม่มีค่อย fallback คนจัดของ
+        var closer = String(r.ClosedByEmail||r.StockHandlerEmail||'').toLowerCase();
+        if(closer && emails.indexOf(closer)>=0){ entry.closed++; entry.days.push(ageDays(r.OpenDate)); }
+      } else if(r.StatusStock==='PENDING_CLEARANCE'){
+        // ยังไม่ปิด → นับเป็นคิวของคนจัดของ (รอตัด SAP)
+        var handler = String(r.StockHandlerEmail||'').toLowerCase();
+        if(handler && emails.indexOf(handler)>=0){ entry.waitClear++; }
+      }
     });
     entry.total = entry.waitClear + entry.closed;
-    // แสดงเฉพาะคนที่มีงานจริง (กันแถวว่างเปล่า)
     if(entry.total > 0) techMap[entry.name] = entry;
   });
   var techList=Object.values(techMap).sort(function(a,b){return (b.inProgress+b.waitClear)-(a.inProgress+a.waitClear);});
