@@ -10448,58 +10448,32 @@ function _renderFullReport(){
     else techMap[n].inProgress++;
   });
   // ── เพิ่ม: ผู้รับผิดชอบฝั่ง Stock (ตัด SAP / ปิดงาน) — ดึงจากชีท Users อัตโนมัติ ──
-  // KPI รวมเป็นแถวเดียว (ทีม Stock) เพื่อไม่ให้ไปแข่งกับช่าง แต่ระบุว่าใครช่วยปิดงานบ้าง
+  // แยกเป็นแถวของแต่ละคน: ใครจ่าย/ปิดงานใบไหน = งานของคนนั้น (ตาม StockHandlerEmail)
   var stockByPerson = {};
   (window._stockUsers||[]).forEach(function(u){
     var nm = String(u.name||'').toLowerCase();
     var matchKey = null;
-    if(nm.indexOf('หทัยชนก')>=0 || nm.indexOf('hathaichanok')>=0) matchKey = 'หทัยชนก';
+    if(nm.indexOf('หทัยชนก')>=0 || nm.indexOf('hathaichanok')>=0) matchKey = 'หทัยชนก จันทร์ดี';
     else if(nm.indexOf('อนุวิทย์')>=0 || nm.indexOf('anuwit')>=0) matchKey = 'อนุวิทย์ คำคง';
     if(!matchKey) return;
     if(!stockByPerson[matchKey]) stockByPerson[matchKey] = {name:matchKey, emails:[]};
     if(u.email) stockByPerson[matchKey].emails.push(String(u.email).toLowerCase());
   });
 
-  if(Object.keys(stockByPerson).length){
-    // นับแยกรายคนก่อน (เพื่อรู้ว่าใครช่วยปิดงานเท่าไร)
-    var perPerson = {};
-    Object.keys(stockByPerson).forEach(function(k){
-      perPerson[k] = {waitClear:0, closed:0, days:[]};
-    });
+  // สร้างแถวแยกต่อคน — เฉพาะคนที่มีงานจริง (ปิด หรือค้าง)
+  Object.keys(stockByPerson).forEach(function(personKey){
+    var emails = stockByPerson[personKey].emails;
+    var entry = {name: personKey+' (Stock)', total:0, inProgress:0, waitClear:0, submittedClearance:0, closed:0, days:[]};
     reqs.forEach(function(r){
       var handler = String(r.StockHandlerEmail||'').toLowerCase();
-      if(!handler) return;
-      Object.keys(stockByPerson).forEach(function(k){
-        if(stockByPerson[k].emails.indexOf(handler) < 0) return;
-        if(r.StatusStock==='PENDING_CLEARANCE'){ perPerson[k].waitClear++; }
-        else if(r.StatusStock==='CLEARED'){ perPerson[k].closed++; perPerson[k].days.push(ageDays(r.OpenDate)); }
-      });
+      if(!handler || emails.indexOf(handler) < 0) return; // นับเฉพาะใบที่คนนี้จ่าย/ปิดเอง
+      if(r.StatusStock==='PENDING_CLEARANCE'){ entry.waitClear++; }
+      else if(r.StatusStock==='CLEARED'){ entry.closed++; entry.days.push(ageDays(r.OpenDate)); }
     });
-
-    // รวมเป็นแถวเดียว: ยอดรวมทั้งทีม Stock
-    var stockEntry = {name:'อนุวิทย์ คำคง (Stock)', total:0, inProgress:0, waitClear:0, submittedClearance:0, closed:0, days:[]};
-    Object.keys(perPerson).forEach(function(k){
-      stockEntry.waitClear += perPerson[k].waitClear;
-      stockEntry.closed    += perPerson[k].closed;
-      stockEntry.days      = stockEntry.days.concat(perPerson[k].days);
-    });
-    stockEntry.total = stockEntry.waitClear + stockEntry.closed;
-
-    // ต่อท้ายชื่อ: ระบุคนที่ช่วยปิดงาน (นอกจากอนุวิทย์) เช่น "By หทัยชนก ช่วยปิดงาน 2 ใบ"
-    var helpers = Object.keys(perPerson).filter(function(k){
-      return k!=='อนุวิทย์ คำคง' && (perPerson[k].closed>0 || perPerson[k].waitClear>0);
-    });
-    if(helpers.length){
-      stockEntry.name += ' — By ' + helpers.map(function(k){
-        var p = perPerson[k];
-        var bits = [];
-        if(p.closed>0)    bits.push('ปิด '+p.closed);
-        if(p.waitClear>0) bits.push('ค้าง '+p.waitClear);
-        return k+' ('+bits.join(', ')+')';
-      }).join(', ');
-    }
-    techMap[stockEntry.name] = stockEntry;
-  }
+    entry.total = entry.waitClear + entry.closed;
+    // แสดงเฉพาะคนที่มีงานจริง (กันแถวว่างเปล่า)
+    if(entry.total > 0) techMap[entry.name] = entry;
+  });
   var techList=Object.values(techMap).sort(function(a,b){return (b.inProgress+b.waitClear)-(a.inProgress+a.waitClear);});
   var techChartCanvas = document.getElementById('rptTechChart');
   if(techChartCanvas && techList.length) drawTechRaceChart(techChartCanvas, techList);
