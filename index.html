@@ -1233,11 +1233,23 @@ textarea.fc{min-height:70px;resize:vertical;}
         </div>
 
         <!-- Tab: ค้นหารถ / ค้นหาตามโครงการ -->
-        <div style="display:flex;gap:0;margin-bottom:10px;border-radius:10px;overflow:hidden;border:1.5px solid #1a237e">
+        <div style="display:flex;gap:0;margin-bottom:10px;border-radius:10px;overflow:hidden;border:1.5px solid #1a237e;flex-wrap:wrap">
           <button id="vhTab1" onclick="switchVHTab(1)" style="flex:1;padding:9px;font-size:13px;font-weight:700;background:#1a237e;color:#fff;border:none;cursor:pointer">🔍 ค้นหาตาม S/N รถ</button>
           <button id="vhTab2" onclick="switchVHTab(2)" style="flex:1;padding:9px;font-size:13px;font-weight:700;background:#fff;color:#1a237e;border:none;cursor:pointer">🏗️ ค้นหาตามโครงการ</button>
           <button id="vhTab3" onclick="switchVHTab(3)" style="flex:1;padding:9px;font-size:13px;font-weight:700;background:#fff;color:#1a237e;border:none;cursor:pointer">🚗 ค้นหาตามรุ่นรถ</button>
+          <button id="vhTab4" onclick="switchVHTab(4)" class="hidden" style="flex:1;padding:9px;font-size:13px;font-weight:700;background:#fff;color:#1a237e;border:none;cursor:pointer;min-width:130px">📊 วิเคราะห์รถ</button>
         </div>
+
+        <!-- Tab 4: วิเคราะห์การเบิกอะไหล่ตามรถ -->
+        <div id="vhTabPanel4" class="hidden">
+          <div class="card" style="padding:12px 14px;margin-bottom:10px">
+            <div style="font-size:12px;color:var(--g400)">
+              📌 วิเคราะห์จากใบที่<b>ปิดงานแล้ว</b> (ช่างระบุ Serial No. + อะไหล่ที่ใช้จริง) — ช่วยจับรถที่เบิกอะไหล่ตัวเดิมซ้ำบ่อยผิดปกติ
+            </div>
+          </div>
+          <div id="vhAnalyticsBody"><div class="tc tm" style="padding:24px">⏳ กำลังโหลด...</div></div>
+        </div>
+
 
         <!-- Tab 1: ค้นหา S/N -->
         <div id="vhTabPanel1">
@@ -2586,6 +2598,9 @@ function go(page){
   if(page==='vehiclehistory'){
     // preload vehicles ทันที เพื่อให้ค้นหาได้เร็ว
     loadVehiclesDB();
+    // แสดงแท็บวิเคราะห์ เฉพาะ Manager/Admin/Stock (ช่างไม่เห็น)
+    var _vt4 = document.getElementById('vhTab4');
+    if(_vt4 && CU && ['MANAGER','ADMIN','STOCK'].indexOf(CU.role)>=0) _vt4.classList.remove('hidden');
   }
   if(page==='stockcount'){
     var lbl = document.getElementById('scntDateLabel');
@@ -3255,6 +3270,88 @@ function saveVehicleMaster(){
       loadMasterVehicles();
     }
   });
+}
+
+// ── วิเคราะห์การเบิกอะไหล่ตามรถ (แท็บ 4) ──────────────────
+function loadVehicleAnalytics(){
+  var t4 = document.getElementById('vhTab4');
+  if(t4 && CU && ['MANAGER','ADMIN','STOCK'].indexOf(CU.role)<0){ t4.classList.add('hidden'); return; }
+  var el = document.getElementById('vhAnalyticsBody');
+  if(el) el.innerHTML = '<div class="tc tm" style="padding:24px">⏳ กำลังวิเคราะห์...</div>';
+  callAPI('getVehiclePartAnalytics', {}).then(function(res){
+    if(!res || !res.success){ if(el) el.innerHTML='<div class="tc tm" style="padding:24px">โหลดข้อมูลไม่ได้ค่ะ</div>'; return; }
+    renderVehicleAnalytics(res);
+  });
+}
+
+function renderVehicleAnalytics(res){
+  var el = document.getElementById('vhAnalyticsBody');
+  if(!el) return;
+  if(!res.totalRecords){
+    el.innerHTML = '<div class="card" style="padding:24px;text-align:center;color:var(--g400)">'
+      +'ยังไม่มีข้อมูลค่ะ — ข้อมูลจะสะสมเมื่อช่างปิดงานและระบุ Serial No. + อะไหล่ที่ใช้จริง</div>';
+    return;
+  }
+
+  var summary = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">'
+    +'<div class="card" style="text-align:center;padding:14px"><div style="font-size:22px;font-weight:700;color:#1a237e">'+res.totalVehicles+'</div><div style="font-size:11px;color:var(--g400)">รถที่มีประวัติ</div></div>'
+    +'<div class="card" style="text-align:center;padding:14px"><div style="font-size:22px;font-weight:700;color:#2d6a4f">'+res.totalRecords+'</div><div style="font-size:11px;color:var(--g400)">ครั้งที่เบิก</div></div>'
+    +'<div class="card" style="text-align:center;padding:14px"><div style="font-size:22px;font-weight:700;color:#e65100">'+res.repeats.length+'</div><div style="font-size:11px;color:var(--g400)">รายการซ้ำ (จับตา)</div></div>'
+    +'</div>';
+
+  var repeatHtml = '<div class="card" style="padding:14px 16px;margin-bottom:14px">'
+    +'<div style="font-size:14px;font-weight:700;color:#e65100;margin-bottom:4px">⚠️ รถที่เบิกอะไหล่ตัวเดิมซ้ำ</div>'
+    +'<div style="font-size:11px;color:var(--g400);margin-bottom:10px">อาจมีปัญหาที่ต้นเหตุ เช่น เปลี่ยนยางเส้นเดิมบ่อย — ควรตรวจสอบ</div>';
+  if(!res.repeats.length){
+    repeatHtml += '<div class="tc tm" style="padding:12px">✅ ไม่พบรถที่เบิกอะไหล่ตัวเดิมซ้ำค่ะ</div>';
+  } else {
+    repeatHtml += '<div class="tw"><table class="it" style="font-size:12px"><thead><tr>'
+      +'<th>Serial No. รถ</th><th>ลูกค้า</th><th>อะไหล่</th><th style="text-align:center">จำนวนครั้ง</th><th style="text-align:center">รวม</th><th>วันที่เบิก</th>'
+      +'</tr></thead><tbody>'
+      + res.repeats.map(function(r){
+        var badge = r.count>=3 ? '<span style="background:#c62828;color:#fff;border-radius:10px;padding:1px 8px;font-weight:700">'+r.count+' ครั้ง</span>'
+                              : '<span style="background:#ef6c00;color:#fff;border-radius:10px;padding:1px 8px;font-weight:700">'+r.count+' ครั้ง</span>';
+        return '<tr>'
+          +'<td style="font-weight:700;color:#1a237e"><a href="#" onclick="_vhJumpToSerial(\''+encodeURIComponent(r.serial)+'\');return false;" style="color:#1a237e;text-decoration:underline">'+r.serial+'</a></td>'
+          +'<td>'+(r.customer||'-')+'</td>'
+          +'<td>'+(r.partName||'-')+'</td>'
+          +'<td style="text-align:center">'+badge+'</td>'
+          +'<td style="text-align:center;font-weight:700">'+r.qty+'</td>'
+          +'<td style="font-size:11px;color:var(--g400)">'+(r.dates||[]).join(', ')+'</td>'
+          +'</tr>';
+      }).join('')
+      +'</tbody></table></div>';
+  }
+  repeatHtml += '</div>';
+
+  var topHtml = '<div class="card" style="padding:14px 16px">'
+    +'<div style="font-size:14px;font-weight:700;color:var(--gd);margin-bottom:10px">🏆 รถที่เบิกอะไหล่มากที่สุด (Top 30)</div>'
+    +'<div class="tw"><table class="it" style="font-size:12px"><thead><tr>'
+    +'<th>อันดับ</th><th>Serial No. รถ</th><th>รุ่น</th><th>ลูกค้า</th><th style="text-align:center">จำนวนครั้ง</th><th style="text-align:center">อะไหล่รวม</th><th>อะไหล่ที่เบิกบ่อยสุด</th>'
+    +'</tr></thead><tbody>'
+    + res.topVehicles.map(function(v, i){
+      var rank = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
+      return '<tr>'
+        +'<td style="text-align:center;font-weight:700">'+rank+'</td>'
+        +'<td style="font-weight:700;color:#1a237e"><a href="#" onclick="_vhJumpToSerial(\''+encodeURIComponent(v.serial)+'\');return false;" style="color:#1a237e;text-decoration:underline">'+v.serial+'</a></td>'
+        +'<td style="font-size:11px">'+(v.type||'-')+'</td>'
+        +'<td style="font-size:11px">'+(v.customer||'-')+'</td>'
+        +'<td style="text-align:center">'+v.times+'</td>'
+        +'<td style="text-align:center;font-weight:700">'+v.totalQty+'</td>'
+        +'<td style="font-size:11px">'+(v.topPart||'-')+(v.distinctParts>1?' <span style="color:var(--g400)">(+'+(v.distinctParts-1)+' ชนิด)</span>':'')+'</td>'
+        +'</tr>';
+    }).join('')
+    +'</tbody></table></div></div>';
+
+  el.innerHTML = summary + repeatHtml + topHtml;
+}
+
+function _vhJumpToSerial(encSerial){
+  var serial = decodeURIComponent(encSerial);
+  switchVHTab(1);
+  var inp = document.getElementById('vhSearch');
+  if(inp){ inp.value = serial; }
+  if(typeof loadVehicleHistory === 'function') loadVehicleHistory();
 }
 
 function loadDashboard(){
@@ -8378,10 +8475,13 @@ function selectVH(serialNo){
 
 // ── Tab switch ────────────────────────────────────────────────
 function switchVHTab(n){
-  [1,2,3].forEach(function(i){
+  [1,2,3,4].forEach(function(i){
     var panel = document.getElementById('vhTabPanel'+i);
     var btn   = document.getElementById('vhTab'+i);
-    if(panel) panel.style.display = n===i?'':'none';
+    if(panel){
+      if(n===i){ panel.classList.remove('hidden'); panel.style.display=''; }
+      else { panel.style.display='none'; }
+    }
     if(btn){
       btn.style.background = n===i?'#1a237e':'#fff';
       btn.style.color      = n===i?'#fff':'#1a237e';
@@ -8389,6 +8489,7 @@ function switchVHTab(n){
   });
   if(n===2) loadVHProjList();
   if(n===3) loadVHModelList();
+  if(n===4) loadVehicleAnalytics();
 }
 
 var _vhModelTimer = null;
