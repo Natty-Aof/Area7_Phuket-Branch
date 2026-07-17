@@ -4782,7 +4782,12 @@ function submitClearByTech(){
       it.vehicles.forEach(function(v){
         if(!v.serialNo){ errors.push(it.partNo+': มีแถวรถที่ยังไม่ได้ระบุ S/N'); return; }
         if(!(Number(v.qty)>0)){ errors.push(it.partNo+': รถ '+(v.serialNo)+' ยังไม่ได้ใส่จำนวน'); return; }
-        var car = (window._vehiclesDB||[]).find(function(c){ return c.SerialNo===v.serialNo; })||{};
+        var car = (window._vehiclesDB||[]).find(function(c){ return String(c.SerialNo).trim()===String(v.serialNo).trim(); });
+        // ⛔ บังคับ: Serial ต้องเป็นรถที่มีในระบบจริง (รถเช่า/สัมปทาน/Stock) ห้ามพิมพ์มั่ว
+        if(!car){
+          errors.push(it.partNo+': Serial "'+v.serialNo+'" ไม่มีในระบบ — ต้องเลือกรถที่มีอยู่จริงเท่านั้น');
+          return;
+        }
         vhEntries.push({
           serialNo:v.serialNo, partNo:it.partNo, partName:it.nameEN,
           qty:Number(v.qty), unit:it.unit, note:v.note||'',
