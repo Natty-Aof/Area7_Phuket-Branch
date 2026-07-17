@@ -3355,6 +3355,7 @@ function renderVehicleAnalytics(res){
 function _vhJumpToSerial(encSerial){
   var serial = decodeURIComponent(encSerial);
   switchVHTab(1);
+  _vhCurrentSerial = serial;  // ตั้งให้ตรงกับรถที่คลิก (กันค้นหาผิดคัน)
   var inp = document.getElementById('vhSearch');
   if(inp){ inp.value = serial; }
   if(typeof loadVehicleHistory === 'function') loadVehicleHistory();
@@ -8766,7 +8767,8 @@ function _fmtVHDate(v){
 }
 
 function loadVehicleHistory(){
-  var serial = _vhCurrentSerial || (document.getElementById('vhSearch').value||'').trim();
+  var typed = (document.getElementById('vhSearch').value||'').trim();
+  var serial = typed || _vhCurrentSerial;
   if(!serial){ toast('กรุณาระบุ Serial No. รถค่ะ','error'); return; }
   _vhCurrentSerial = serial;
   var box = document.getElementById('vhResultBox');
