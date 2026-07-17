@@ -228,6 +228,10 @@ textarea.fc{min-height:70px;resize:vertical;}
   .btn{padding:10px 16px;font-size:15px;} .bsm{padding:8px 14px;font-size:14px;} .fc{padding:10px 12px;font-size:15px;}
   .tw{overflow-x:auto;-webkit-overflow-scrolling:touch;} table{min-width:600px;}
   .md{width:100%;max-width:100%;max-height:95vh;border-radius:16px 16px 0 0;margin-top:auto;} .mo{align-items:flex-end;}
+  /* Modal ใบเบิก (.mow) บนมือถือ: ชิดล่าง ปุ่ม footer เห็นเสมอ ไม่ตกจอ */
+  .mow{width:100%;max-width:100%;max-height:92dvh;border-radius:16px 16px 0 0;}
+  .mof{position:sticky;bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom));flex-wrap:wrap;}
+  .mof .btn{flex:1 1 auto;min-height:44px;justify-content:center;}
   .card{padding:12px;margin-bottom:10px;} .sc{padding:10px 12px;} .sc .vl{font-size:22px;}
   .fb{flex-direction:column;} .fb .fg{min-width:unset;width:100%;}
   /* ── Dashboard/รายงาน: การ์ด KPI 7 ช่องบีบเกินไปบนมือถือ ให้เลื่อนแนวนอนแทน ── */
