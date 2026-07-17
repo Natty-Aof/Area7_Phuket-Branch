@@ -3317,7 +3317,7 @@ function renderVehicleAnalytics(res){
           +'<td>'+(r.partName||'-')+'</td>'
           +'<td style="text-align:center">'+badge+'</td>'
           +'<td style="text-align:center;font-weight:700">'+r.qty+'</td>'
-          +'<td style="font-size:11px;color:var(--g400)">'+(r.dates||[]).join(', ')+'</td>'
+          +'<td style="font-size:11px;color:var(--g400)">'+(r.dates||[]).map(_fmtVHDate).join(', ')+'</td>'
           +'</tr>';
       }).join('')
       +'</tbody></table></div>';
@@ -8734,6 +8734,25 @@ function renderVHProjResult(vehicles, title){
   +'</div>';
 }
 
+// แปลงวันที่ให้แสดงผลได้ทุกรูปแบบ (ISO, d/M/yyyy พ.ศ. หรือ ค.ศ.)
+function _fmtVHDate(v){
+  if(!v) return '—';
+  var s = String(v).trim();
+  // d/M/yyyy — คงรูปเดิมไว้ (อ่านง่ายอยู่แล้ว) แค่แปลง พ.ศ.→พ.ศ. ให้สม่ำเสมอ
+  var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(m){
+    var yr = parseInt(m[3],10);
+    if(yr < 2300) yr += 543; // ค.ศ. → พ.ศ. เพื่อแสดงผล
+    return m[1]+'/'+m[2]+'/'+yr;
+  }
+  // ISO (2026-06-19T...) → แปลงเป็น d/M/พ.ศ.
+  var d = new Date(s);
+  if(!isNaN(d.getTime())){
+    return d.getDate()+'/'+(d.getMonth()+1)+'/'+(d.getFullYear()+543);
+  }
+  return s; // อ่านไม่ออกก็แสดงดิบ (ดีกว่า Invalid Date)
+}
+
 function loadVehicleHistory(){
   var serial = _vhCurrentSerial || (document.getElementById('vhSearch').value||'').trim();
   if(!serial){ toast('กรุณาระบุ Serial No. รถค่ะ','error'); return; }
@@ -8752,14 +8771,15 @@ function loadVehicleHistory(){
     var html='<div class="card" style="padding:10px 14px;margin-bottom:8px;background:#e8eaf6;font-size:13px">'
       +'🔧 ประวัติทั้งหมด <strong>'+rows.length+' รายการ</strong> | Serial: <strong>'+serial+'</strong></div>'
       +'<div class="card" style="padding:0;overflow:hidden"><div class="tw"><table class="it" style="font-size:13px"><thead><tr>'
-      +'<th>วันที่</th><th>ใบเบิก</th><th>Part No.</th><th>ชื่ออะไหล่</th>'
+      +'<th>วันที่</th><th>ใบเบิก</th><th>Job No.</th><th>Part No.</th><th>ชื่ออะไหล่</th>'
       +'<th style="text-align:center">จำนวน</th><th>ช่าง</th><th>หมายเหตุ</th>'
       +'</tr></thead><tbody>'
       +rows.map(function(r){
-        var dt = r.Date ? new Date(r.Date).toLocaleDateString('th-TH',{year:'numeric',month:'short',day:'numeric'}) : '—';
+        var dt = _fmtVHDate(r.Date);
         return '<tr>'
           +'<td style="white-space:nowrap">'+dt+'</td>'
           +'<td style="font-size:12px;color:var(--gd)">'+( r.ReqID||'—')+'</td>'
+          +'<td style="font-size:12px">'+( r.JobNo||'—')+'</td>'
           +'<td style="font-size:11px;font-weight:600">'+r.PartNo+'</td>'
           +'<td style="font-size:12px">'+( r.PartName||'—')+'</td>'
           +'<td style="text-align:center;font-weight:700;color:var(--gd)">'+r.Qty+' '+(r.Unit||'')+'</td>'
