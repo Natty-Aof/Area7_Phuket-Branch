@@ -871,6 +871,9 @@ textarea.fc{min-height:70px;resize:vertical;}
           </div>
         </div>
 
+        <!-- ── รายละเอียดเพิ่มเติม + แผนผัง IPL ──────────────── -->
+        <div id="scPartDetailBox" style="display:none"></div>
+
         <!-- ── ตาราง Stock Card ───────────────────────────── -->
         <div id="scContent"></div>
 
@@ -4388,6 +4391,17 @@ function openStockAckModal(reqId){
     // (ป้องกันจำนวน/รายการอะไหล่ของใบเบิกหนึ่งไปติดกับอีกใบหนึ่งโดยไม่ตั้งใจ)
     if(_stockAckReqId !== reqId) return;
     _stockAckItems = res.data ? (res.data.Items||res.data.items||[]) : [];
+    var partNos = _stockAckItems.map(function(it){ return it.PartNo; }).filter(Boolean);
+    // ดึงว่าอะไหล่ตัวไหน "บังคับ Serial Number" จริง (ตั้งค่าไว้ในหน้า Stock Card) แทนการเดาจากชื่อ
+    callAPI('getPartsRequireSerial',{partNos:partNos}).then(function(rsRes){
+      if(_stockAckReqId !== reqId) return;
+      var reqSerialMap = (rsRes && rsRes.success && rsRes.data) || {};
+      renderStockAckItems(reqId, reqSerialMap);
+    });
+  });
+}
+
+function renderStockAckItems(reqId, reqSerialMap){
     var el = document.getElementById('stockAckBody');
     if(!el) return;
     el.innerHTML = '';
@@ -4397,12 +4411,7 @@ function openStockAckModal(reqId){
     el.appendChild(title);
     _stockAckItems.forEach(function(it,i){
       var req = parseFloat(it.Qty)||0;
-      var needSN = !!(it.SerialNo||(it.NameEN&&(
-        it.NameEN.toUpperCase().indexOf('BATTERY')>=0||
-        it.NameEN.toUpperCase().indexOf('CONTROLLER')>=0||
-        it.NameEN.toUpperCase().indexOf('MOTOR')>=0||
-        it.NameEN.toUpperCase().indexOf('CHARGER')>=0
-      )));
+      var needSN = !!(it.SerialNo || reqSerialMap[it.PartNo]);
       var card = document.createElement('div');
       card.style.cssText = 'background:#f8faf9;border:1px solid #d4ddd7;border-radius:8px;padding:10px;margin-bottom:8px';
       var nameDiv = document.createElement('div');
@@ -4446,7 +4455,6 @@ function openStockAckModal(reqId){
     warn.style.cssText='margin-top:12px;padding:10px;background:#fff8e1;border-radius:6px;font-size:13px;color:#795548';
     warn.textContent='⚠️ ถ้าจ่ายไม่ครบ ระบบจะบันทึกของขาดไว้เพื่อดึงรายงานค่ะ';
     el.appendChild(warn);
-  });
 }
 
 
@@ -4511,11 +4519,15 @@ function updateShortage(idx, reqQty){
 function confirmStockAck(){
   if(!_stockAckReqId) return;
   // รวบรวมจำนวนจ่ายจริง
+  var missingSN = [];
   var dispatchedItems = _stockAckItems.map(function(it, i){
     var actualEl = document.getElementById('sack_actual_'+i);
     var actual   = actualEl ? parseFloat(actualEl.value)||0 : parseFloat(it.Qty)||0;
     var req      = parseFloat(it.Qty) || 0;
     var serialEl = document.getElementById('sack_serial_'+i);
+    var serialVal = serialEl ? serialEl.value.trim() : '';
+    var needSN = serialEl && serialEl.placeholder==='บังคับระบุ';
+    if(needSN && actual>0 && !serialVal) missingSN.push(it.PartNo);
     return {
       partNo:      it.PartNo,
       nameEN:      it.NameEN || it.NameTH || '',
@@ -4523,9 +4535,10 @@ function confirmStockAck(){
       actualQty:    actual,
       shortQty:     Math.max(0, req - actual),
       unit:         it.Unit || 'ชิ้น',
-      serialNo:     serialEl ? serialEl.value.trim() : '',
+      serialNo:     serialVal,
     };
   });
+  if(missingSN.length) return toast('⛔ กรุณาระบุ Serial Number: '+missingSN.join(', '),'error');
   var hasShortage = dispatchedItems.some(function(it){ return it.shortQty > 0; });
   document.getElementById('stockAckModal').classList.add('hidden');
   toast('กำลังบันทึก...','info');
@@ -4582,45 +4595,58 @@ function _doRenderCloseItems(readonly){
     var vOk = usedInVehicles === expectedUsed && expectedUsed >= 0;
     var vWarn = !vOk && expectedUsed > 0;
 
-    // ── ส่วนกรอกจำนวน ──
-    var noReturnEntered = (it.retGood||0)===0 && (it.retBad||0)===0;
+    // ── ส่วนกรอกจำนวน (v2): กรอก "ใช้จริง" เป็นหลัก — ส่วนที่เหลือระบบเดาเป็น "คืนดี" อัตโนมัติ เว้นแต่ระบุว่าเสียกี่ชิ้น ──
+    var usedEntered = it.usedQty !== null && it.usedQty !== undefined && it.usedQty !== '';
+    var usedVal = usedEntered ? Number(it.usedQty) : null;
+    var remaining = usedEntered ? Math.max(0, it.issued - usedVal) : null;
     var qtySection = readonly
       ? '<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;margin-bottom:10px">'
           +'<span>📦 จ่ายจริง: <strong>'+it.issued+'</strong> '+it.unit+'</span>'
+          +'<span style="color:#1565c0">🔧 ใช้จริง: <strong>'+(it.issued-(it.retGood||0)-(it.retBad||0))+'</strong></span>'
           +'<span style="color:var(--gm)">↩️ คืนดี: <strong>'+it.retGood+'</strong></span>'
           +'<span style="color:var(--red)">🗑️ คืนเสีย: <strong>'+it.retBad+'</strong></span>'
         +'</div>'
-      : '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:2px">'
+      : '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:8px">'
           +'<div><div style="font-size:11px;color:var(--g400);margin-bottom:3px">📦 Stock จ่ายจริง (รับไป)</div>'
             +'<div style="background:#f0f4f8;border:1px solid var(--g200);border-radius:8px;padding:8px;text-align:center;font-size:15px;font-weight:700;color:var(--gd)">'+it.issued+' '+it.unit+'</div></div>'
-          +'<div><div style="font-size:11px;color:var(--gm);margin-bottom:3px">↩️ คืนของดี (เข้า Stock)</div>'
-            +'<input class="fc" type="number" min="0" max="'+it.issued+'" value="'+it.retGood+'" style="text-align:center;border-color:var(--gm)" '
-            +'oninput="_clSetReturn('+pi+',\'retGood\',Number(this.value))"></div>'
-          +'<div><div style="font-size:11px;color:var(--red);margin-bottom:3px">🗑️ คืนของเสีย (SCR)</div>'
-            +'<input class="fc" type="number" min="0" max="'+it.issued+'" value="'+it.retBad+'" style="text-align:center;border-color:var(--red);color:var(--red)" '
-            +'oninput="_clSetReturn('+pi+',\'retBad\',Number(this.value))"></div>'
+          +'<div><div style="font-size:11px;color:#1565c0;margin-bottom:3px">🔧 ใช้จริง (ติดตั้งลงรถแล้ว)</div>'
+            +'<input class="fc" type="number" min="0" max="'+it.issued+'" value="'+(usedEntered?usedVal:'')+'" placeholder="กรอกจำนวน" style="text-align:center;border-color:#1565c0;font-weight:700" '
+            +'oninput="_clSetUsed('+pi+',this.value)"></div>'
         +'</div>'
-        +'<div style="font-size:11px;color:var(--g400);margin-bottom:8px;line-height:1.5">'
-          +'💡 คืนดี/คืนเสีย = อะไหล่ที่<b>ไม่ได้ติดตั้ง</b> ส่งกลับ Stock เท่านั้น — '
-          +'ถ้าติดตั้งลงรถแล้ว <b>ไม่ต้องนับเป็นคืน</b> ให้ใส่จำนวนในช่อง "ใช้จริง" ผ่านการระบุ S/N รถด้านล่างแทน'
-          +'</div>'
-        +(noReturnEntered
-          ? '<label style="display:flex;align-items:center;gap:6px;font-size:12px;padding:6px 10px;margin-bottom:10px;border-radius:8px;background:'+(it.confirmedNoReturn?'#f0fff4':'#fff3e0')+';border:1px solid '+(it.confirmedNoReturn?'var(--gm)':'#e65100')+';cursor:pointer">'
-            +'<input type="checkbox" '+(it.confirmedNoReturn?'checked':'')+' onchange="_clItemState['+pi+'].confirmedNoReturn=this.checked;renderCloseItems(false)">'
-            +'<span style="color:'+(it.confirmedNoReturn?'var(--gm)':'#e65100')+';font-weight:600">☑️ ยืนยัน — อะไหล่ชิ้นนี้ใช้หมด ไม่มีของคืนดี/คืนเสีย</span>'
-          +'</label>'
-          : '');
+        +(!usedEntered
+          ? '<div style="font-size:12px;color:#e65100;background:#fff3e0;border-radius:6px;padding:6px 10px;margin-bottom:10px">⚠️ กรุณากรอกจำนวนที่ใช้จริงก่อน (ถ้าไม่ได้ใช้เลย ให้ใส่ 0)</div>'
+          : '<div style="font-size:12px;color:var(--g400);background:#f5f5f5;border-radius:6px;padding:8px 10px;margin-bottom:10px">'
+              +'เหลือคืน Stock <strong>'+remaining+' '+it.unit+'</strong>'
+              +(remaining>0
+                ? ' — ระบบถือว่าเป็น<strong style="color:var(--gm)">ของดีทั้งหมด</strong>ให้อัตโนมัติ ถ้ามีของเสียปนอยู่ ระบุจำนวนได้ที่นี่: '
+                  +'<input class="fc" type="number" min="0" max="'+remaining+'" value="'+(it.retBad||0)+'" style="width:60px;display:inline-block;text-align:center;margin:0 4px;border-color:var(--red);color:var(--red)" '
+                  +'oninput="_clSetBadFromRemaining('+pi+',this.value)"> <span style="color:var(--red)">ชิ้นเสีย (SCR)</span>'
+                  +' → คืนดี <strong style="color:var(--gm)">'+it.retGood+'</strong> ชิ้น'
+                : ' (ใช้ครบตามที่จ่ายจริงพอดี ไม่มีของคืน)'
+              )
+            +'</div>'
+        );
 
     // ── แถว S/N รถ ──
     var singleMode = !readonly && window._clVehMode==='single';
     var vehicleRows = it.vehicles.map(function(v, vi){
       var needPhoto = !readonly && Number(v.qty)>0 && !v.photo;
+      var needSerial = !readonly && Number(v.qty)>0 && window._clRequireSerialMap && window._clRequireSerialMap[it.partNo];
       var photoHtml = v.photo
         ? '<div style="position:relative;display:inline-block">'
             +'<img src="'+v.photo+'" style="width:56px;height:56px;object-fit:cover;border-radius:6px;border:2px solid var(--gm);cursor:pointer" onclick="openImgLightbox(this.src)" title="รูปของเก่า/เสียที่ถอดออก">'
             +(readonly?'':'<button onclick="_clItemState['+pi+'].vehicles['+vi+'].photo=null;renderCloseItems(false)" style="position:absolute;top:-5px;right:-5px;background:var(--red);color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer">✕</button>')
           +'</div>'
         : (readonly ? '' : '<label style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;background:'+(needPhoto?'#fff3e0':'#f5f5f5')+';border:1.5px dashed '+(needPhoto?'#e65100':'var(--g300)')+';border-radius:6px;cursor:pointer;font-size:11px;color:'+(needPhoto?'#e65100':'var(--g400)')+'">📷 รูปของเก่า/เสีย'+(needPhoto?' (บังคับ)':'')+'<input type="file" accept="image/*" style="display:none" onchange="_clVehiclePhoto(event,'+pi+','+vi+')"></label>');
+      var serialRowHtml = (readonly && v.oldPartSerial)
+        ? '<div style="font-size:11px;color:#6a1b9a;margin-top:4px">🔒 Serial เดิม: <strong>'+v.oldPartSerial+'</strong></div>'
+        : (!readonly && (needSerial || v.oldPartSerial)
+          ? '<div style="margin-top:6px">'
+            +'<label style="font-size:11px;color:'+(needSerial&&!v.oldPartSerial?'#6a1b9a':'var(--g400)')+';font-weight:600">🔒 Serial เดิม (ของที่ถอดออก)'+(needSerial?' *บังคับ':'')+'</label>'
+            +'<input class="fc" value="'+(v.oldPartSerial||'')+'" placeholder="กรอก Serial ของเก่า" style="font-size:12px;border-color:'+(needSerial&&!v.oldPartSerial?'#6a1b9a':'var(--g200)')+'" '
+              +'oninput="_clItemState['+pi+'].vehicles['+vi+'].oldPartSerial=this.value">'
+            +'</div>'
+          : '');
 
       // โหมดคันเดียวทั้งใบ: S/N ถูกควบคุมจากช่องบนสุด — โชว์เป็นข้อความอย่างเดียว ไม่ต้องพิมพ์ซ้ำต่ออะไหล่
       if(singleMode){
@@ -4630,6 +4656,7 @@ function _doRenderCloseItems(readonly){
             +'<span style="font-size:13px;font-weight:600;min-width:50px">'+(v.qty||0)+' '+it.unit+'</span>'
             +photoHtml
           +'</div>'
+          +serialRowHtml
         +'</div>';
       }
 
@@ -4666,6 +4693,7 @@ function _doRenderCloseItems(readonly){
             : ''
           )
         +'</div>'
+        +serialRowHtml
       +'</div>';
     }).join('');
 
@@ -4712,7 +4740,7 @@ function _doRenderCloseItems(readonly){
       +(expectedUsed > 0 || !readonly
         ? '<div style="font-size:12px;font-weight:600;color:var(--gd);margin-bottom:6px">🚗 ระบุรถที่ใส่อะไหล่ <span style="font-weight:400;color:var(--g400)">(ต้องรวมกันได้ = จ่ายจริง − คืนดี − คืนเสีย = '+expectedUsed+' '+it.unit+')</span></div>'
           +vehicleRows
-          +(!readonly && !singleMode ? '<button onclick="_clItemState['+pi+'].vehicles.push({serialNo:\'\',qty:0,note:\'\',photo:null});renderCloseItems(false)" style="font-size:12px;color:var(--gd);background:none;border:1.5px dashed var(--gd);border-radius:8px;padding:4px 12px;cursor:pointer;margin-top:2px">+ เพิ่มรถอีกคัน</button>' : '')
+          +(!readonly && !singleMode ? '<button onclick="_clItemState['+pi+'].vehicles.push({serialNo:\'\',qty:0,note:\'\',photo:null,oldPartSerial:\'\'});renderCloseItems(false)" style="font-size:12px;color:var(--gd);background:none;border:1.5px dashed var(--gd);border-radius:8px;padding:4px 12px;cursor:pointer;margin-top:2px">+ เพิ่มรถอีกคัน</button>' : '')
         : '<div style="font-size:12px;color:var(--g400)">คืนทั้งหมด — ไม่มีที่ใส่รถ</div>'
       )
     +'</div>';
@@ -4721,13 +4749,28 @@ function _doRenderCloseItems(readonly){
 
 // helpers
 // ⛔ ป้องกัน คืนดี+คืนเสีย เกินจำนวนจ่ายจริง (กันบั๊ก "ใช้จริง" ติดลบ ซึ่งทำให้ระบบข้ามการบังคับระบุรถ+รูปของเก่า)
-function _clSetReturn(pi, field, val){
+// ── กรอก "ใช้จริง" เป็นหลัก — ส่วนที่เหลือ (issued-used) เดาเป็น "คืนดี" อัตโนมัติ เว้นแต่ระบุว่าเสียกี่ชิ้น ──
+function _clSetUsed(pi, val){
   var it = _clItemState[pi];
-  val = Math.max(0, Math.min(Number(val)||0, it.issued));
-  var other = field==='retGood' ? it.retBad : it.retGood;
-  if(val + other > it.issued) val = Math.max(0, it.issued - other);
-  it[field] = val;
-  it.confirmedNoReturn = false;
+  var v = (val==='' || val===null) ? null : Math.max(0, Math.min(Number(val)||0, it.issued));
+  it.usedQty = v;
+  if(v === null){
+    it.retGood = 0; it.retBad = 0;
+  } else {
+    var remaining = it.issued - v;
+    it.retBad = Math.min(it.retBad||0, remaining); // คงจำนวนของเสียเดิมไว้ถ้ายังไม่เกิน remaining ใหม่
+    it.retGood = remaining - it.retBad;
+  }
+  if(window._clVehMode==='single' && window._clSingleSerial){ _clApplySingleSerialToAll(); return; }
+  renderCloseItems(false);
+}
+function _clSetBadFromRemaining(pi, val){
+  var it = _clItemState[pi];
+  if(it.usedQty === null || it.usedQty === undefined) return;
+  var remaining = Math.max(0, it.issued - Number(it.usedQty));
+  var bad = Math.max(0, Math.min(Number(val)||0, remaining));
+  it.retBad = bad;
+  it.retGood = remaining - bad;
   if(window._clVehMode==='single' && window._clSingleSerial){ _clApplySingleSerialToAll(); return; }
   renderCloseItems(false);
 }
@@ -4806,9 +4849,10 @@ function _clApplySingleSerialToAll(){
     var expectedUsed = (it.issued||0) - (it.retGood||0) - (it.retBad||0);
     if(expectedUsed > 0){
       var prevPhoto = (it.vehicles && it.vehicles[0] && it.vehicles[0].photo) || null;
-      it.vehicles = [{ serialNo: window._clSingleSerial, qty: expectedUsed, note:'', photo: prevPhoto }];
+      var prevOldSerial = (it.vehicles && it.vehicles[0] && it.vehicles[0].oldPartSerial) || '';
+      it.vehicles = [{ serialNo: window._clSingleSerial, qty: expectedUsed, note:'', photo: prevPhoto, oldPartSerial: prevOldSerial }];
     } else {
-      it.vehicles = [{serialNo:'', qty:0, note:'', photo:null}];
+      it.vehicles = [{serialNo:'', qty:0, note:'', photo:null, oldPartSerial:''}];
     }
   });
   renderCloseItems(false);
@@ -4926,24 +4970,36 @@ function loadCloseDetail(){
         var qty = Number(it.Qty)||0;
         var issued = (it.IssuedQty!=null && it.IssuedQty!=='' && Number(it.IssuedQty)>0)
           ? Number(it.IssuedQty) : qty;
+        var savedGood = isPendingClearance ? (retMap[pn]||0) : 0;
+        var savedBad  = isPendingClearance ? (defMap[pn]||0) : 0;
+        var hasSaved = isPendingClearance && (savedGood>0 || savedBad>0 || (retMap[pn]===0 && defMap.hasOwnProperty(pn)));
         return {
           partNo: pn,
           nameEN: it.NameEN||it.NameTH||'',
           nameTH: it.NameTH||'',
-          qty: Number(it.Qty)||0,
-          issued: isPendingClearance ? (retMap[pn]||issued) : issued,
-          retGood: isPendingClearance ? (retMap[pn]||0) : 0,
-          retBad:  isPendingClearance ? (defMap[pn]||0) : 0,
-          confirmedNoReturn: false,
+          qty: qty,
+          issued: issued,
+          usedQty: hasSaved ? Math.max(0, issued - savedGood - savedBad) : null,
+          retGood: savedGood,
+          retBad:  savedBad,
           note: '',
           unit: it.Unit||'ชิ้น',
           photos: [],
-          vehicles: [{serialNo:'', qty:0, note:'', photo:null}],
+          vehicles: [{serialNo:'', qty:0, note:'', photo:null, oldPartSerial:''}],
         };
       });
     }
 
     renderCloseItems(readonly);
+
+    // ดึงว่าอะไหล่ตัวไหนบังคับ Serial Number บ้าง (ใช้กับช่อง Serial ของเก่าที่ถอดออก)
+    if(!readonly){
+      var clPartNos = items.map(function(it){ return it.PartNo; }).filter(Boolean);
+      callAPI('getPartsRequireSerial',{partNos:clPartNos}).then(function(rsRes){
+        window._clRequireSerialMap = (rsRes && rsRes.success && rsRes.data) || {};
+        renderCloseItems(false);
+      });
+    }
 
     // โหลด vehiclesDB สำหรับ autocomplete
     if(!window._vehiclesDB || !window._vehiclesDB.length) loadVehiclesDB();
@@ -4992,7 +5048,8 @@ function loadCloseDetail(){
                     var photoImg = v.OldPartPhotoUrl
                       ? '<img src="'+v.OldPartPhotoUrl+'" style="width:34px;height:34px;object-fit:cover;border-radius:4px;border:1px solid var(--gm);cursor:pointer;vertical-align:middle;margin-left:4px" onclick="openImgLightbox(\''+v.OldPartPhotoUrl+'\')">'
                       : '<span style="color:#c62828;font-size:11px;margin-left:4px">⚠️ ไม่มีรูป</span>';
-                    return '<div style="display:flex;align-items:center;margin-bottom:3px">'+v.SerialNo+' ('+(v.Qty||0)+')'+photoImg+'</div>';
+                    var serialTxt = v.OldPartSerial ? ' <span style="color:#6a1b9a;font-size:10px">🔒'+v.OldPartSerial+'</span>' : '';
+                    return '<div style="display:flex;align-items:center;margin-bottom:3px">'+v.SerialNo+' ('+(v.Qty||0)+')'+serialTxt+photoImg+'</div>';
                   }).join('')
                 : (used>0 ? '<span style="color:#c62828">— ยังไม่ระบุ —</span>' : '<span style="color:var(--g400)">—</span>');
               return '<tr style="border-bottom:0.5px solid #eee">'
@@ -5066,8 +5123,8 @@ function submitClearByTech(){
 
   st.forEach(function(it){
     if(!it.photos || !it.photos.length) errors.push('⚠️ '+it.partNo+': กรุณาถ่ายรูปอะไหล่นี้อย่างน้อย 1 รูป');
-    if((it.retGood||0)===0 && (it.retBad||0)===0 && !it.confirmedNoReturn){
-      errors.push('⚠️ '+it.partNo+': กรุณากรอกจำนวนคืนดี/คืนเสีย หรือติ๊กยืนยันว่าใช้หมดไม่มีของคืน');
+    if(it.usedQty === null || it.usedQty === undefined){
+      errors.push('⚠️ '+it.partNo+': กรุณากรอกจำนวน "ใช้จริง" ก่อนส่งเคลียร์ (ถ้าไม่ได้ใช้เลย ให้ใส่ 0)');
     }
     var expectedUsed = (it.issued||0) - (it.retGood||0) - (it.retBad||0);
     if(expectedUsed < 0){ errors.push(it.partNo+': คืนมากกว่าที่จ่ายออกไป'); return; }
@@ -5091,11 +5148,17 @@ function submitClearByTech(){
           errors.push(it.partNo+': รถ '+v.serialNo+' — กรุณาถ่ายรูปของเก่า/เสียที่ถอดออกก่อนส่งเคลียร์');
           return;
         }
+        // ⛔ บังคับ: อะไหล่ที่ตั้งค่า "บังคับ Serial Number" ต้องกรอก Serial ของเก่าที่ถอดออกด้วย
+        if(window._clRequireSerialMap && window._clRequireSerialMap[it.partNo] && !v.oldPartSerial){
+          errors.push(it.partNo+': รถ '+v.serialNo+' — อะไหล่นี้บังคับระบุ Serial ของเก่าที่ถอดออก');
+          return;
+        }
         vhEntries.push({
           serialNo:v.serialNo, partNo:it.partNo, partName:it.nameEN,
           qty:Number(v.qty), unit:it.unit, note:v.note||'',
           vehicleType:car.VehicleType||'', customerAtTime:car.Customer||'', location:car.Location||'',
           photoSerial:v.photo||'', photoPartNo:(it.photos&&it.photos[0])||'',
+          oldPartSerial:v.oldPartSerial||'',
         });
       });
     }
@@ -5424,6 +5487,7 @@ function openDetail(reqId){
                 +imgHtml
                 +'<div style="font-size:11px;font-weight:600;color:var(--gd);margin-top:3px">🚗 '+v.SerialNo+'</div>'
                 +'<div style="font-size:10px;color:var(--g400)">'+v.PartNo+' ('+v.Qty+')</div>'
+                +(v.OldPartSerial?'<div style="font-size:10px;color:#6a1b9a;font-weight:600">🔒 '+v.OldPartSerial+'</div>':'')
                 +'</div>';
             }).join('')
           +'</div>';
@@ -10119,6 +10183,8 @@ function scClearSearch(){
   if(info)  info.style.display = 'none';
   if(hint)  hint.style.display = '';
   if(cont)  cont.innerHTML = '';
+  var pdBox = document.getElementById('scPartDetailBox');
+  if(pdBox){ pdBox.style.display='none'; pdBox.innerHTML=''; }
   _scCurrentPart = null;
   inp && inp.focus();
 }
@@ -10425,8 +10491,101 @@ function loadSCForPart(p){
   var minVal = _minStockData[p.partNo] || 0;
   document.getElementById('scInfoMin').textContent = minVal > 0 ? minVal + ' ' + (p.unit||'ชิ้น') : '—';
 
+  loadPartDetailBox(p.partNo);
+
   // ตั้ง tab active
   switchSCPartTab('all');
+}
+
+// ── รายละเอียดเพิ่มเติม + แผนผัง IPL + บังคับ Serial ──────────────
+function loadPartDetailBox(partNo){
+  var box = document.getElementById('scPartDetailBox');
+  if(!box) return;
+  box.style.display = '';
+  box.innerHTML = '<div class="card tc tm" style="padding:20px">⏳ กำลังโหลด...</div>';
+  var canEdit = CU && (CU.role==='STOCK'||CU.role==='MANAGER'||CU.role==='ADMIN');
+  callAPI('getPartDetails',{partNo:partNo}).then(function(res){
+    if(!res.success){ box.innerHTML=''; box.style.display='none'; return; }
+    var d = res.data;
+    window._pdCurrent = d;
+    renderPartDetailBox(d, canEdit);
+  });
+}
+function renderPartDetailBox(d, canEdit){
+  var box = document.getElementById('scPartDetailBox');
+  if(!box) return;
+  var imgsHtml = (d.iplImages||[]).map(function(url){
+    return '<div style="position:relative;display:inline-block">'
+      +'<img src="'+url+'" style="width:90px;height:90px;object-fit:cover;border-radius:8px;border:1px solid var(--g200);cursor:pointer" onclick="openImgLightbox(\''+url+'\')">'
+      +(canEdit?'<button onclick="removePartIPL(\''+url.replace(/'/g,"\\'")+'\')" style="position:absolute;top:-5px;right:-5px;background:var(--red);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer">✕</button>':'')
+      +'</div>';
+  }).join('');
+
+  box.innerHTML = '<div class="card">'
+    +'<div class="ct">📋 รายละเอียดเพิ่มเติม / แผนผัง IPL</div>'
+    +'<div style="margin-bottom:14px">'
+      +'<label class="fl">คำอธิบายเพิ่มเติม (ตำแหน่งติดตั้ง, ข้อควรระวัง ฯลฯ)</label>'
+      +(canEdit
+        ? '<textarea class="fc" id="pdExtraDesc" rows="3" placeholder="เช่น ติดตั้งใต้เบาะนั่งฝั่งคนขับ ต้องถอดแผงกันฝุ่นก่อน...">'+(d.extraDescription||'')+'</textarea>'
+        : '<div style="background:#f8f9fa;border-radius:8px;padding:10px 12px;font-size:13px;color:'+(d.extraDescription?'#333':'var(--g400)')+'">'+(d.extraDescription||'ยังไม่มีคำอธิบายเพิ่มเติม')+'</div>'
+      )
+    +'</div>'
+    +(canEdit
+      ? '<label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:14px;cursor:pointer">'
+        +'<input type="checkbox" id="pdRequireSerial" '+(d.requireSerial?'checked':'')+'>'
+        +'<span>🔒 <b>บังคับระบุ Serial Number</b> — อะไหล่ราคาสูง/ต้องตามรอย (เช่น มอเตอร์) ติ๊กไว้แล้วระบบจะขอเลข Serial ทุกครั้งที่รับเข้า/จ่ายออก/คืนของเก่า</span>'
+        +'</label>'
+      : (d.requireSerial ? '<div style="font-size:12px;color:#e65100;background:#fff3e0;border-radius:6px;padding:6px 10px;margin-bottom:14px">🔒 อะไหล่นี้บังคับระบุ Serial Number ทุกครั้ง</div>' : '')
+    )
+    +(canEdit ? '<button class="btn bp bsm" onclick="savePartDetail()" style="margin-bottom:16px">💾 บันทึกคำอธิบาย/การตั้งค่า</button>' : '')
+    +'<div style="border-top:1px solid var(--g200);padding-top:12px">'
+      +'<label class="fl">🖼️ แผนผัง IPL (ตำแหน่งอะไหล่ตัวนี้ในภาพประกอบ)</label>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">'
+        +imgsHtml
+        +(canEdit
+          ? '<label style="width:90px;height:90px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f5f5f5;border:1.5px dashed var(--g300);border-radius:8px;cursor:pointer;font-size:11px;color:var(--g400)">'
+            +'📷 เพิ่มรูป<input type="file" accept="image/*" style="display:none" onchange="onAddPartIPL(event)"></label>'
+          : ''
+        )
+      +'</div>'
+      +(!imgsHtml && !canEdit ? '<div style="font-size:12px;color:var(--g400);margin-top:6px">ยังไม่มีรูปแผนผัง IPL</div>' : '')
+    +'</div>'
+  +'</div>';
+}
+function savePartDetail(){
+  if(!window._pdCurrent) return;
+  var desc = (document.getElementById('pdExtraDesc')||{}).value||'';
+  var reqSerial = (document.getElementById('pdRequireSerial')||{}).checked||false;
+  toast('กำลังบันทึก...','info');
+  callAPI('savePartDetails',{partNo:window._pdCurrent.partNo, extraDescription:desc, requireSerial:reqSerial}).then(function(res){
+    toast(res.message, res.success?'success':'error');
+    if(res.success){ window._pdCurrent.extraDescription=desc; window._pdCurrent.requireSerial=reqSerial; }
+  });
+}
+function onAddPartIPL(event){
+  var f = event.target.files[0];
+  if(!f || !window._pdCurrent) return;
+  toast('กำลังย่อและอัปโหลดรูป...','info');
+  compressImage(f, function(b64){
+    if(!b64) return toast('อ่านไฟล์รูปไม่ได้ค่ะ','error');
+    callAPI('addPartIPLImage',{partNo:window._pdCurrent.partNo, base64:b64}).then(function(res){
+      if(res.success){
+        window._pdCurrent.iplImages = res.iplImages;
+        renderPartDetailBox(window._pdCurrent, true);
+        toast('เพิ่มรูป IPL แล้วค่ะ ✅','success');
+      } else { toast(res.message,'error'); }
+    });
+  });
+}
+function removePartIPL(url){
+  if(!window._pdCurrent) return;
+  if(!confirm('ลบรูปนี้?')) return;
+  callAPI('removePartIPLImage',{partNo:window._pdCurrent.partNo, url:url}).then(function(res){
+    if(res.success){
+      window._pdCurrent.iplImages = res.iplImages;
+      renderPartDetailBox(window._pdCurrent, true);
+    } else { toast(res.message,'error'); }
+  });
 }
 
 // ── เปลี่ยน tab (all/in/out) ────────────────────────────────
@@ -10578,7 +10737,7 @@ function _buildSCTable(p, realEntries, el){
     tableHtml += '<tr style="border-bottom:0.5px solid var(--g200);'+rowBg+'" onmouseover="this.style.background=\'var(--g50,#f8f9fa)\'" onmouseout="this.style.background=\''+rowBg+'\'">'
       +'<td style="padding:8px 10px;white-space:nowrap;color:var(--g400);font-size:11px">'+e.Date+'</td>'
       +'<td style="padding:8px 10px">'+chip+'</td>'
-      +'<td style="padding:8px 10px;font-weight:600;color:var(--gd);font-size:11px;white-space:nowrap">'+e.DocNo+'</td>'
+      +'<td style="padding:8px 10px;font-weight:600;color:var(--gd);font-size:11px;white-space:nowrap">'+e.DocNo+(e.JobNo?'<br><span style="font-weight:400;color:var(--g400);font-size:10px">Job: '+e.JobNo+'</span>':'')+'</td>'
       +'<td style="padding:8px 10px;font-size:12px">'+e.Requester+'</td>'
       +'<td style="padding:8px 10px;font-size:12px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+e.Customer+'</td>'
       +'<td style="padding:8px 10px;text-align:center;font-weight:500;color:#1b5e20">'+(e.QtyIn>0?'+'+e.QtyIn+' '+e.Unit:'—')+'</td>'
