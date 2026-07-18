@@ -4693,7 +4693,13 @@ function loadCloseDetail(){
       if(isStock && isPendingClearance){
         var adminItems = document.getElementById('adminClItemsBody');
         if(adminItems && window._clItemState){
-          adminItems.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+          adminItems.innerHTML = '<div style="background:#eef2f7;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;display:grid;grid-template-columns:1fr 1fr;gap:6px">'
+            +'<div>👷 <b>ช่างผู้เบิก:</b> '+(d.RequesterName||d.RequesterEmail||'—')+'</div>'
+            +'<div>📋 <b>Job No.:</b> '+(d.JobNo||'—')+'</div>'
+            +'<div>🏢 <b>ลูกค้า:</b> '+(d.CustomerName||'—')+'</div>'
+            +'<div>📅 <b>วันที่เบิก:</b> '+(d.OpenDate||'—')+'</div>'
+            +'</div>'
+            +'<table style="width:100%;border-collapse:collapse;font-size:13px">'
             +'<thead><tr style="background:#f5f5f5">'
             +'<th style="padding:8px;text-align:left;border:0.5px solid #ddd;color:#222;font-weight:700">Part No.</th>'
             +'<th style="padding:8px;text-align:left;border:0.5px solid #ddd;color:#222;font-weight:700">ชื่อ</th>'
@@ -4701,9 +4707,12 @@ function loadCloseDetail(){
             +'<th style="padding:8px;text-align:center;border:0.5px solid #ddd;color:var(--gm);font-weight:700">คืนดี</th>'
             +'<th style="padding:8px;text-align:center;border:0.5px solid #ddd;color:var(--red);font-weight:700">คืนเสีย</th>'
             +'<th style="padding:8px;text-align:center;border:0.5px solid #ddd;color:#222;font-weight:700">ใช้จริง</th>'
+            +'<th style="padding:8px;text-align:left;border:0.5px solid #ddd;color:#1a237e;font-weight:700">🚗 ใส่รถ (S/N)</th>'
             +'</tr></thead><tbody>'
             + window._clItemState.map(function(it){
               var used = (it.issued||0) - (it.retGood||0) - (it.retBad||0);
+              var vh = (it.vehicles||[]).filter(function(v){ return v.serialNo; })
+                .map(function(v){ return v.serialNo+' ('+(v.qty||0)+')'; }).join('<br>') || '<span style="color:#c62828">— ยังไม่ระบุ —</span>';
               return '<tr style="border-bottom:0.5px solid #eee">'
                 +'<td style="padding:8px;border:0.5px solid #ddd;font-size:11px">'+it.partNo+'</td>'
                 +'<td style="padding:8px;border:0.5px solid #ddd">'+it.nameEN+'</td>'
@@ -4711,6 +4720,7 @@ function loadCloseDetail(){
                 +'<td style="padding:8px;text-align:center;border:0.5px solid #ddd;color:var(--gm)">'+it.retGood+'</td>'
                 +'<td style="padding:8px;text-align:center;border:0.5px solid #ddd;color:var(--red)">'+it.retBad+'</td>'
                 +'<td style="padding:8px;text-align:center;border:0.5px solid #ddd;font-weight:700;color:#1565c0">'+used+'</td>'
+                +'<td style="padding:8px;border:0.5px solid #ddd;font-size:11px">'+vh+'</td>'
               +'</tr>';
             }).join('')
             +'</tbody></table>';
@@ -6027,7 +6037,11 @@ function onRetPhoto(e){
 function rejectClear(){
   var reqId = document.getElementById('clSel').value;
   if(!reqId) return;
-  callAPI('rejectClearance',{id:reqId,note:'Stock ส่งกลับให้แก้ไข'}).then(function(res){
+  var reason = prompt('เหตุผลที่ส่งกลับให้ช่างแก้ไข:\n(เช่น จำนวนคืนไม่ตรง / ยังไม่ระบุ Serial รถ / รูปไม่ชัด)');
+  if(reason===null) return;            // กดยกเลิก
+  reason = (reason||'').trim();
+  if(!reason) return toast('กรุณาระบุเหตุผลค่ะ','error');
+  callAPI('rejectClearance',{id:reqId,note:'Stock ส่งกลับ: '+reason}).then(function(res){
     toast('ส่งกลับช่างแล้วค่ะ', 'info');
     setTimeout(function(){go('list');},600);
   });
