@@ -4538,10 +4538,10 @@ function _doRenderCloseItems(readonly){
             +'<div style="background:#f0f4f8;border:1px solid var(--g200);border-radius:8px;padding:8px;text-align:center;font-size:15px;font-weight:700;color:var(--gd)">'+it.issued+' '+it.unit+'</div></div>'
           +'<div><div style="font-size:11px;color:var(--gm);margin-bottom:3px">↩️ คืนของดี (เข้า Stock)</div>'
             +'<input class="fc" type="number" min="0" max="'+it.issued+'" value="'+it.retGood+'" style="text-align:center;border-color:var(--gm)" '
-            +'oninput="_clItemState['+pi+'].retGood=Math.min(Number(this.value),_clItemState['+pi+'].issued);_clItemState['+pi+'].confirmedNoReturn=false;renderCloseItems(false)"></div>'
+            +'oninput="_clSetReturn('+pi+',\'retGood\',Number(this.value))"></div>'
           +'<div><div style="font-size:11px;color:var(--red);margin-bottom:3px">🗑️ คืนของเสีย (SCR)</div>'
             +'<input class="fc" type="number" min="0" max="'+it.issued+'" value="'+it.retBad+'" style="text-align:center;border-color:var(--red);color:var(--red)" '
-            +'oninput="_clItemState['+pi+'].retBad=Math.min(Number(this.value),_clItemState['+pi+'].issued);_clItemState['+pi+'].confirmedNoReturn=false;renderCloseItems(false)"></div>'
+            +'oninput="_clSetReturn('+pi+',\'retBad\',Number(this.value))"></div>'
         +'</div>'
         +(noReturnEntered
           ? '<label style="display:flex;align-items:center;gap:6px;font-size:12px;padding:6px 10px;margin-bottom:10px;border-radius:8px;background:'+(it.confirmedNoReturn?'#f0fff4':'#fff3e0')+';border:1px solid '+(it.confirmedNoReturn?'var(--gm)':'#e65100')+';cursor:pointer">'
@@ -4647,6 +4647,16 @@ function _doRenderCloseItems(readonly){
 }
 
 // helpers
+// ⛔ ป้องกัน คืนดี+คืนเสีย เกินจำนวนจ่ายจริง (กันบั๊ก "ใช้จริง" ติดลบ ซึ่งทำให้ระบบข้ามการบังคับระบุรถ+รูปของเก่า)
+function _clSetReturn(pi, field, val){
+  var it = _clItemState[pi];
+  val = Math.max(0, Math.min(Number(val)||0, it.issued));
+  var other = field==='retGood' ? it.retBad : it.retGood;
+  if(val + other > it.issued) val = Math.max(0, it.issued - other);
+  it[field] = val;
+  it.confirmedNoReturn = false;
+  renderCloseItems(false);
+}
 function _clPartPhoto(event, pi){
   var files = Array.from(event.target.files||[]);
   if(!files.length) return;
@@ -5170,7 +5180,58 @@ function openDetail(reqId){
         tl(d.SupervisorCloseApprovedAt?'✓':'…',d.SupervisorCloseApprovedAt?'done':'act','หัวหน้าช่างอนุมัติปิดงาน',d.SupervisorCloseApprovedAt?'โดย '+(d.SupervisorEmail||''):'รอดำเนินการ')
         +tl(d.ManagerCloseApprovedAt?'✓':'…',d.ManagerCloseApprovedAt?'done':'act','ผจก.อนุมัติปิดงาน',d.ManagerCloseApprovedAt?'โดย '+(d.ManagerEmail||''):'รอดำเนินการ')
       ) : '')
-      +tl(d.FinalClosedAt?'✓':'…',d.FinalClosedAt?'done':'wait','ปิดงานสมบูรณ์',d.FinalClosedAt?'เรียบร้อย':'รอดำเนินการ');
+      +tl(d.FinalClosedAt?'✓':'…',d.FinalClosedAt?'done':'wait','ปิดงานสมบูรณ์',d.FinalClosedAt?'เรียบร้อย':'รอดำเนินการ')
+      +'<hr class="sep">'
+      +'<div style="font-weight:600;font-size:14px;margin-bottom:8px;color:var(--gd)">📷 รูปภาพทั้งหมด (ตรวจสอบย้อนหลังได้ทุกสถานะ)</div>'
+      +'<div id="moPhotoGallery" class="tc tm" style="padding:12px">⏳ กำลังโหลดรูปภาพ...</div>';
+
+    // ── โหลดรูปภาพทั้งหมด: รูปรับ/คืนโดยรวม (Photos sheet) + รูปของเก่า/เสียต่อคัน (VehicleHistory) ──
+    Promise.all([
+      callAPI('getPhotos',{id:d.ReqID}),
+      callAPI('getVehicleHistory',{reqId:d.ReqID})
+    ]).then(function(res2){
+      var gal = document.getElementById('moPhotoGallery');
+      if(!gal) return;
+      var photos = (res2[0]&&res2[0].data)||[];
+      var vhRows = (res2[1]&&res2[1].data)||[];
+      var html = '';
+      if(photos.length){
+        photos.sort(function(a,b){ return (a.UploadedAt||'') > (b.UploadedAt||'') ? 1 : -1; });
+        var hasType = photos.some(function(p){ return p.PhotoType==='pickup'||p.PhotoType==='clearance'; });
+        html += '<div style="font-size:12px;font-weight:600;color:var(--g400);margin-bottom:6px">📥 รูปตอนรับ/คืนอะไหล่โดยรวม</div>'
+          +'<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">'
+          + photos.map(function(p,idx){
+              var ptype = p.PhotoType || (hasType ? '' : (idx===0 ? 'pickup' : 'clearance'));
+              var typeLabel = ptype==='pickup' ? '📥 ตอนรับอะไหล่' : ptype==='clearance' ? '↩️ ตอนคืน/เคลียร์' : '📷 รูปอะไหล่';
+              var typeColor = ptype==='pickup' ? 'var(--gm)' : (ptype==='clearance' ? '#e65100' : 'var(--g400)');
+              return '<div style="text-align:center">'
+                +'<img src="'+p.PhotoUrl+'" onclick="openImgLightbox(\''+encodeURIComponent(p.PhotoUrl)+'\')" style="width:120px;height:120px;object-fit:cover;border-radius:8px;border:2px solid '+typeColor+';cursor:pointer">'
+                +'<div style="font-size:11px;font-weight:600;color:'+typeColor+';margin-top:3px">'+typeLabel+'</div>'
+                +'</div>';
+            }).join('')
+          +'</div>';
+      }
+      if(vhRows.length){
+        html += '<div style="font-size:12px;font-weight:600;color:var(--g400);margin-bottom:6px">🚗 รูปของเก่า/เสียที่ถอดจากรถ (ต่อคัน)</div>'
+          +'<div style="display:flex;gap:12px;flex-wrap:wrap">'
+          + vhRows.map(function(v){
+              var imgHtml = v.OldPartPhotoUrl
+                ? '<img src="'+v.OldPartPhotoUrl+'" onclick="openImgLightbox(\''+encodeURIComponent(v.OldPartPhotoUrl)+'\')" style="width:120px;height:120px;object-fit:cover;border-radius:8px;border:2px solid #00695c;cursor:pointer">'
+                : '<div style="width:120px;height:120px;border-radius:8px;border:2px dashed #c62828;display:flex;align-items:center;justify-content:center;font-size:11px;color:#c62828;text-align:center;padding:4px">⚠️ ไม่มีรูป</div>';
+              return '<div style="text-align:center;max-width:120px">'
+                +imgHtml
+                +'<div style="font-size:11px;font-weight:600;color:var(--gd);margin-top:3px">🚗 '+v.SerialNo+'</div>'
+                +'<div style="font-size:10px;color:var(--g400)">'+v.PartNo+' ('+v.Qty+')</div>'
+                +'</div>';
+            }).join('')
+          +'</div>';
+      }
+      if(!html) html = '<div class="tc tm" style="padding:12px">ไม่มีรูปภาพสำหรับใบเบิกนี้</div>';
+      gal.outerHTML = '<div id="moPhotoGallery">'+html+'</div>';
+    }).catch(function(){
+      var gal = document.getElementById('moPhotoGallery');
+      if(gal) gal.innerHTML = '<div class="tc tm" style="padding:12px;color:#c62828">โหลดรูปภาพไม่สำเร็จ</div>';
+    });
     var mf=document.getElementById('moFoot'), foot='';
     var isSup=CU.role==='SUPERVISOR'&&d.StatusApproval==='PENDING_SUPERVISOR';
     var isMgr=(CU.role==='MANAGER'||CU.role==='ADMIN')&&d.StatusApproval==='PENDING_MANAGER';
