@@ -598,6 +598,7 @@ textarea.fc{min-height:70px;resize:vertical;}
             <option value="ACKNOWLEDGED">📦 Stock จัดแล้ว</option>
             <option value="PICKED_UP">🔧 ช่างรับแล้ว</option>
             <option value="PENDING_CLEARANCE">🔄 รอเคลียร์</option>
+            <option value="PENDING_FINAL_APPROVAL">🔸 รออนุมัติปิดงาน</option>
             <option value="CLOSED">🏁 ปิดงาน</option>
             <option value="REJECTED">❌ ปฏิเสธ</option>
           </select>
@@ -2679,6 +2680,27 @@ function _doRefreshBadges(){
       });
     }
   }
+  // Badge ใบเบิกรออนุมัติปิดงาน (หัวหน้าช่าง/ผจก.) — cache 2 นาที เหมือน badge ใบตรวจสภาพ
+  if(CU&&(CU.role==='SUPERVISOR'||CU.role==='MANAGER'||CU.role==='ADMIN')){
+    var now3 = Date.now();
+    if(!window._closeApprBadgeCache || (now3 - (window._closeApprBadgeCacheTime||0)) > 2*60*1000){
+      callAPI('getRequisitions',{}).then(function(res){
+        window._closeApprBadgeCache = res.data||[];
+        window._closeApprBadgeCacheTime = Date.now();
+        var meEmailB = (CU.email||'').toLowerCase();
+        var cnt = window._closeApprBadgeCache.filter(function(r){
+          if(r.StatusStock!=='PENDING_FINAL_APPROVAL') return false;
+          var needSup = CU.role==='SUPERVISOR' && r.SupervisorEmail && meEmailB===String(r.SupervisorEmail).toLowerCase() && !r.SupervisorCloseApprovedAt;
+          var needMgr = (CU.role==='MANAGER'||CU.role==='ADMIN') && r.ManagerEmail && meEmailB===String(r.ManagerEmail).toLowerCase() && !r.ManagerCloseApprovedAt;
+          return needSup || needMgr;
+        }).length;
+        if(cnt>0){
+          var ab4=document.getElementById('apBadge');
+          if(ab4){ ab4.textContent=(parseInt(ab4.textContent)||0)+cnt; ab4.style.display='inline'; }
+        }
+      });
+    }
+  }
   if(CU&&(CU.role==='MANAGER'||CU.role==='ADMIN')){
     var crMenu=document.getElementById('nChangeReq');
     if(crMenu) crMenu.classList.remove('hidden');
@@ -3916,11 +3938,21 @@ function loadApproval(){
     ? callAPI('getSalesOrders',{status:'pending'})
     : Promise.resolve({data:[]});
 
-  Promise.all([reqFetch, soFetch]).then(function(results){
+  // ใบเบิกที่ตัด SAP แล้ว รออนุมัติปิดงานจากหัวหน้าช่าง/ผจก. (เฉพาะที่เป็นคนของใบเบิกนั้นเอง)
+  var closeApprFetch = callAPI('getRequisitions',{});
+
+  Promise.all([reqFetch, soFetch, closeApprFetch]).then(function(results){
     var reqList = (results[0].data||[]).filter(function(r){
       return r.StatusApproval==='PENDING_SUPERVISOR' || r.StatusApproval==='PENDING_MANAGER';
     });
     var soList  = results[1].data||[];
+    var meEmailAp = (CU.email||'').toLowerCase();
+    var closeApprList = (results[2].data||[]).filter(function(r){
+      if(r.StatusStock!=='PENDING_FINAL_APPROVAL') return false;
+      var needSup = isSup && r.SupervisorEmail && meEmailAp===String(r.SupervisorEmail).toLowerCase() && !r.SupervisorCloseApprovedAt;
+      var needMgr = isMgr && r.ManagerEmail && meEmailAp===String(r.ManagerEmail).toLowerCase() && !r.ManagerCloseApprovedAt;
+      return needSup || needMgr;
+    });
     window._REQS_MAP = {};
     reqList.forEach(function(r){ window._REQS_MAP[r.ReqID]=r; });
 
@@ -3936,6 +3968,25 @@ function loadApproval(){
     var insCompleted = isMgr ? insListAll.filter(function(x){ return x.Status==='COMPLETED' && !x.ReviewedAt; }) : [];
 
     var html = '';
+
+    // ── ใบเบิกตัด SAP แล้ว รออนุมัติปิดงาน (หัวหน้าช่าง/ผจก.) ──
+    if(closeApprList.length){
+      html += '<div class="card" style="margin-bottom:10px;border-left:4px solid #00695c">';
+      html += '<div style="font-size:13px;font-weight:700;color:#00695c;padding:10px 14px;border-bottom:0.5px solid var(--g200)">🔸 ใบเบิกตัด SAP แล้ว รออนุมัติปิดงาน ('+closeApprList.length+')</div>';
+      html += closeApprList.map(function(r){
+        return '<div style="padding:12px 14px;border-bottom:0.5px solid var(--g200);display:flex;align-items:center;gap:12px">'
+          +'<div style="flex:1">'
+            +'<div style="font-weight:700;color:#00695c;font-size:13px">'+r.ReqID+' <span style="font-size:11px;background:#e0f2f1;padding:2px 8px;border-radius:8px">SAP: '+(r.IMNumber||'-')+'</span></div>'
+            +'<div style="font-size:12px;color:var(--g400);margin-top:3px">👷 '+(r.RequesterName||r.RequesterEmail||'-')+' | 🏢 '+(r.CustomerName||'-')+' | Job '+(r.JobNo||'-')+'</div>'
+          +'</div>'
+          +'<div style="display:flex;gap:6px;flex-shrink:0">'
+            +'<button class="btn bd bsm" style="white-space:nowrap" onclick="rejectCloseFinalUI(\''+r.ReqID+'\')">✕ ตีกลับ</button>'
+            +'<button class="btn bp bsm" style="background:#00695c;border-color:#00695c;white-space:nowrap" onclick="approveCloseFinalUI(\''+r.ReqID+'\')">✓ อนุมัติปิดงาน</button>'
+          +'</div>'
+        +'</div>';
+      }).join('');
+      html += '</div>';
+    }
 
     // ── ใบตรวจสภาพเสร็จแล้ว รอตรวจสอบ (Manager/Admin) ──
     if(isMgr && insCompleted.length){
@@ -4136,7 +4187,7 @@ function loadStock(){
     var done = all.filter(function(r){
       return r.StatusApproval!=='REJECTED'
         && (r.StatusStock==='ACKNOWLEDGED'||r.StatusStock==='PICKED_UP'
-          ||r.StatusStock==='PENDING_CLEARANCE'||r.StatusStock==='CLEARED');
+          ||r.StatusStock==='PENDING_CLEARANCE'||r.StatusStock==='PENDING_FINAL_APPROVAL'||r.StatusStock==='CLEARED');
     });
 
     var bp = document.getElementById('stBadgePend');
@@ -5079,11 +5130,26 @@ function openDetail(reqId){
       +tl(d.SupervisorApprovedAt?'✓':'…',d.SupervisorApprovedAt?'done':d.StatusApproval==='REJECTED'?'act':'wait','หัวหน้าช่างอนุมัติ',d.SupervisorApprovedAt?'โดย '+(d.SupervisorEmail||''):'รอดำเนินการ')
       +tl(d.ManagerApprovedAt?'✓':'…',d.ManagerApprovedAt?'done':d.StatusApproval==='APPROVED'||d.StatusApproval==='REJECTED'?'act':'wait','ผจก.อนุมัติ',d.ManagerApprovedAt?'โดย '+(d.ManagerEmail||''):'รอดำเนินการ')
       +tl(d.StockAcknowledgedAt?'✓':'…',d.StockAcknowledgedAt?'done':'wait','Stock รับจัดของ',d.StockAcknowledgedAt?'โดย '+(d.StockHandlerEmail||''):'รอดำเนินการ')
-      +tl(d.ClosedAt?'✓':'…',d.ClosedAt?'done':'wait','ปิดงาน'+(d.IMNumber?' (RL: '+d.IMNumber+')':''),d.ClosedAt?'เรียบร้อย':'รอดำเนินการ');
+      +tl(d.ClosedAt?'✓':'…',d.ClosedAt?'done':'wait','Stock ตัดเลข SAP'+(d.IMNumber?' (RL: '+d.IMNumber+')':''),d.ClosedAt?'โดย '+(d.ClosedByEmail||''):'รอดำเนินการ')
+      +(d.ClosedAt ? (
+        tl(d.SupervisorCloseApprovedAt?'✓':'…',d.SupervisorCloseApprovedAt?'done':'act','หัวหน้าช่างอนุมัติปิดงาน',d.SupervisorCloseApprovedAt?'โดย '+(d.SupervisorEmail||''):'รอดำเนินการ')
+        +tl(d.ManagerCloseApprovedAt?'✓':'…',d.ManagerCloseApprovedAt?'done':'act','ผจก.อนุมัติปิดงาน',d.ManagerCloseApprovedAt?'โดย '+(d.ManagerEmail||''):'รอดำเนินการ')
+      ) : '')
+      +tl(d.FinalClosedAt?'✓':'…',d.FinalClosedAt?'done':'wait','ปิดงานสมบูรณ์',d.FinalClosedAt?'เรียบร้อย':'รอดำเนินการ');
     var mf=document.getElementById('moFoot'), foot='';
     var isSup=CU.role==='SUPERVISOR'&&d.StatusApproval==='PENDING_SUPERVISOR';
     var isMgr=(CU.role==='MANAGER'||CU.role==='ADMIN')&&d.StatusApproval==='PENDING_MANAGER';
     if(isSup||isMgr) foot='<button class="btn bd" onclick="openNoteMo(\'reject\',\''+d.ReqID+'\');closeMo()">✕ ปฏิเสธ</button><button class="btn bp" onclick="openNoteMo(\'approve\',\''+d.ReqID+'\');closeMo()">✓ อนุมัติ</button>';
+    // ── ปุ่มอนุมัติปิดงานขั้นสุดท้าย (หัวหน้าช่าง/ผจก. ของใบเบิกนี้เท่านั้น) ──
+    if(d.StatusStock==='PENDING_FINAL_APPROVAL'){
+      var meEmail=(CU.email||'').toLowerCase();
+      var canApSup = meEmail && d.SupervisorEmail && meEmail===String(d.SupervisorEmail).toLowerCase() && !d.SupervisorCloseApprovedAt;
+      var canApMgr = meEmail && d.ManagerEmail && meEmail===String(d.ManagerEmail).toLowerCase() && !d.ManagerCloseApprovedAt;
+      if(canApSup || canApMgr){
+        foot += '<button class="btn bd" onclick="rejectCloseFinalUI(\''+d.ReqID+'\')">✕ ตีกลับ</button>'
+          +'<button class="btn bp" style="background:#00695c;border-color:#00695c" onclick="approveCloseFinalUI(\''+d.ReqID+'\')">✓ อนุมัติปิดงาน</button>';
+      }
+    }
     var canAckRole = ['STOCK','MANAGER'].indexOf(CU.role)>=0;
     // (ลบปุ่ม "รับจัดของ" ออกจาก popup — ให้ไปจัดของที่หน้า "จัดอะไหล่" แทน)
     // เพิ่มปุ่มแก้ไข/ลบสำหรับ MANAGER เสมอ (ต่อจาก foot ปกติ)
@@ -5154,6 +5220,42 @@ function confirmNote(action, reqId){
       if(res.success){ _badgeCache=null; _badgeLastFetch=0; setTimeout(function(){ loadApproval(); refreshBadges(true); }, 800); }
     });
   }
+}
+
+// ── อนุมัติปิดงานขั้นสุดท้าย (หัวหน้าช่าง/ผจก.) ──────────────
+function approveCloseFinalUI(reqId){
+  if(!CU) return;
+  if(!confirm('ยืนยันอนุมัติปิดงานใบเบิก '+reqId+' ?')) return;
+  toast('กำลังอนุมัติ...','info');
+  callAPI('approveCloseFinal',{id:reqId}).then(function(res){
+    toast(res.message,res.success?'success':'error');
+    if(res.success){
+      _badgeCache=null; _badgeLastFetch=0;
+      closeMo();
+      setTimeout(function(){
+        if(typeof loadList==='function') loadList();
+        if(typeof loadApproval==='function') loadApproval();
+        refreshBadges(true);
+      }, 600);
+    }
+  }).catch(function(){ toast('เครือข่ายขัดข้อง','error'); });
+}
+function rejectCloseFinalUI(reqId){
+  if(!CU) return;
+  var note = prompt('เหตุผลที่ตีกลับ (ไม่บังคับ):','') || '';
+  toast('กำลังตีกลับ...','info');
+  callAPI('rejectCloseFinal',{id:reqId,note:note}).then(function(res){
+    toast(res.message,res.success?'success':'error');
+    if(res.success){
+      _badgeCache=null; _badgeLastFetch=0;
+      closeMo();
+      setTimeout(function(){
+        if(typeof loadList==='function') loadList();
+        if(typeof loadApproval==='function') loadApproval();
+        refreshBadges(true);
+      }, 600);
+    }
+  }).catch(function(){ toast('เครือข่ายขัดข้อง','error'); });
 }
 
 // ── PRINT ─────────────────────────────────────────────────────
@@ -5446,6 +5548,7 @@ function stChip(s){
     'ACKNOWLEDGED':   ['chip-gld', '📦 Stock จัดของแล้ว'],
     'PICKED_UP':      ['chip-blu', '✋ ช่างรับแล้ว'],
     'PENDING_CLEARANCE': ['chip-gld', '📝 รอ Stock ตัด SAP'],
+    'PENDING_FINAL_APPROVAL': ['chip-blu', '🔸 รออนุมัติปิดงาน'],
     'CLEARED':        ['chip-grn', '✅ ปิดงานแล้ว'],
     'REJECTED':       ['chip-red', '✕ ปฏิเสธ']
   };
@@ -10416,7 +10519,7 @@ function _renderFullReport(){
     if(sa==='PENDING_SUPERVISOR'||sa==='PENDING_MANAGER') waitAppr++;
     if(sa==='APPROVED'&&ss==='PENDING') waitStock++;
     if(ss==='ACKNOWLEDGED'||ss==='PICKED_UP') inUse++;
-    if(ss==='PICKED_UP'||ss==='PENDING_CLEARANCE') waitClear++; // รวม PENDING_CLEARANCE กัน Pipeline ตัวเลขไม่ครบ
+    if(ss==='PICKED_UP'||ss==='PENDING_CLEARANCE'||ss==='PENDING_FINAL_APPROVAL') waitClear++; // รวม PENDING_CLEARANCE/PENDING_FINAL_APPROVAL กัน Pipeline ตัวเลขไม่ครบ
     if(ss==='CLEARED') closed++;
     if(ageDays(r.OpenDate)>=7 && ss!=='CLEARED') overdue7++;
     // รายการขาดจ่าย: เช็คเฉพาะใบที่อนุมัติแล้วและยังไม่ปิดงาน
@@ -10486,6 +10589,7 @@ function _renderFullReport(){
     if(r.StatusApproval==='PENDING_SUPERVISOR'||r.StatusApproval==='PENDING_MANAGER') return 'รออนุมัติ';
     if(r.StatusStock==='PICKED_UP') return 'ยังไม่เคลียร์';
     if(r.StatusStock==='PENDING_CLEARANCE') return 'รอตัด SAP';
+    if(r.StatusStock==='PENDING_FINAL_APPROVAL') return 'รออนุมัติปิดงาน';
     if(r.StatusApproval==='APPROVED'&&r.StatusStock==='PENDING') return 'รอจ่ายของ';
     return 'อื่นๆ';
   }
@@ -10501,7 +10605,7 @@ function _renderFullReport(){
           case 'pendingManager':    return r.StatusApproval==='PENDING_MANAGER';
           case 'waitStock': return r.StatusApproval==='APPROVED'&&r.StatusStock==='PENDING';
           case 'inUse':     return r.StatusStock==='ACKNOWLEDGED'||r.StatusStock==='PICKED_UP';
-          case 'waitClear': return r.StatusStock==='PICKED_UP'||r.StatusStock==='PENDING_CLEARANCE';
+          case 'waitClear': return r.StatusStock==='PICKED_UP'||r.StatusStock==='PENDING_CLEARANCE'||r.StatusStock==='PENDING_FINAL_APPROVAL';
           case 'closed':    return r.StatusStock==='CLEARED';
           case 'overdue7':  return ageDays(r.OpenDate)>=7;
           case 'partIssued':
@@ -10543,6 +10647,11 @@ function _renderFullReport(){
           // ใครจัดของใบนี้ = คนที่ต้องตัด SAP ต่อ
           var handler = String(r.StockHandlerEmail||'').toLowerCase();
           who = (_stockEmailName[handler] || 'Stock') + ' (Stock)';
+        } else if(r.StatusStock==='PENDING_FINAL_APPROVAL'){
+          // รอใครอนุมัติปิดงาน — ถ้าอนุมัติไปแล้วฝั่งใดฝั่งหนึ่ง เหลืออีกฝั่งเดียว
+          var waitSup = !r.SupervisorCloseApprovedAt, waitMgr = !r.ManagerCloseApprovedAt;
+          who = (waitSup && waitMgr) ? 'หัวหน้าช่าง+ผจก. (รออนุมัติปิดงาน)'
+              : waitSup ? 'หัวหน้าช่าง (รออนุมัติปิดงาน)' : 'ผู้จัดการ (รออนุมัติปิดงาน)';
         } else {
           who = (r.RequesterName||r.RequesterEmail||'ไม่ระบุ');
         }
@@ -10590,7 +10699,7 @@ function _renderFullReport(){
       overdueEl.innerHTML='<div class="tc tm" style="padding:24px;color:var(--gm)">✅ ไม่มีงานค้างค่ะ</div>';
     } else {
       var stMap={'PENDING_SUPERVISOR':'⏳ รอหัวหน้าช่าง','PENDING_MANAGER':'⏳ รอผู้จัดการ',
-        'PENDING':'📦 รอจ่ายอะไหล่','ACKNOWLEDGED':'🔧 จัดของแล้ว','PICKED_UP':'✋ รอเคลียร์','PENDING_CLEARANCE':'📝 รอ Stock ตัด SAP','CLEARED':'✅ ปิดงานแล้ว','PARTIAL':'⚠️ รายการขาดจ่าย'};
+        'PENDING':'📦 รอจ่ายอะไหล่','ACKNOWLEDGED':'🔧 จัดของแล้ว','PICKED_UP':'✋ รอเคลียร์','PENDING_CLEARANCE':'📝 รอ Stock ตัด SAP','PENDING_FINAL_APPROVAL':'🔸 รออนุมัติปิดงาน','CLEARED':'✅ ปิดงานแล้ว','PARTIAL':'⚠️ รายการขาดจ่าย'};
       var PAGE = 10;
       var showAll = !!_rptTrackShowAll;
       var visible = showAll ? tracked : tracked.slice(0, PAGE);
@@ -10632,9 +10741,9 @@ function _renderFullReport(){
     techMap[n].total++;
     if(r.StatusStock==='CLEARED'){techMap[n].closed++;techMap[n].days.push(ageDays(r.OpenDate));}
     else if(r.StatusStock==='PICKED_UP') techMap[n].waitClear++;
-    // ── ส่งเคลียร์แล้ว (PENDING_CLEARANCE) = งานฝั่งช่างเสร็จแล้ว รอ Stock ตัด SAP เท่านั้น
+    // ── ส่งเคลียร์แล้ว (PENDING_CLEARANCE/PENDING_FINAL_APPROVAL) = งานฝั่งช่างเสร็จแล้ว รอ Stock/หัวหน้า/ผจก. เท่านั้น
     // ไม่ควรนับเป็น "ยังไม่ปิด" ของช่าง เพราะช่างทำหน้าที่ตัวเองครบแล้ว ──
-    else if(r.StatusStock==='PENDING_CLEARANCE'){techMap[n].submittedClearance++;techMap[n].days.push(ageDays(r.OpenDate));}
+    else if(r.StatusStock==='PENDING_CLEARANCE'||r.StatusStock==='PENDING_FINAL_APPROVAL'){techMap[n].submittedClearance++;techMap[n].days.push(ageDays(r.OpenDate));}
     else techMap[n].inProgress++;
   });
   // ── เพิ่ม: ผู้รับผิดชอบฝั่ง Stock — แยกตาม "คนตัด SAP" (ไม่ใช่คนจัดของ) ──
@@ -10664,6 +10773,10 @@ function _renderFullReport(){
         // ปิดแล้ว → นับให้คนตัด SAP (ClosedByEmail); ถ้าไม่มีค่อย fallback คนจัดของ
         var closer = String(r.ClosedByEmail||r.StockHandlerEmail||'').toLowerCase();
         if(closer && emails.indexOf(closer)>=0){ entry.closed++; entry.days.push(ageDays(r.OpenDate)); }
+      } else if(r.StatusStock==='PENDING_FINAL_APPROVAL'){
+        // ตัด SAP แล้ว รออนุมัติปิดงาน → งานฝั่ง Stock เสร็จแล้ว นับเหมือนปิดแล้ว
+        var closer2 = String(r.ClosedByEmail||r.StockHandlerEmail||'').toLowerCase();
+        if(closer2 && emails.indexOf(closer2)>=0){ entry.closed++; entry.days.push(ageDays(r.OpenDate)); }
       } else if(r.StatusStock==='PENDING_CLEARANCE'){
         // ยังไม่ปิด → นับเป็นคิวของคนจัดของ (รอตัด SAP)
         var handler = String(r.StockHandlerEmail||'').toLowerCase();
@@ -11253,7 +11366,7 @@ function exportReportCSV(){
         case 'pendingManager':    return r.StatusApproval==='PENDING_MANAGER';
         case 'waitStock': return r.StatusApproval==='APPROVED'&&r.StatusStock==='PENDING';
         case 'inUse':     return r.StatusStock==='ACKNOWLEDGED'||r.StatusStock==='PICKED_UP';
-        case 'waitClear': return r.StatusStock==='PICKED_UP'||r.StatusStock==='PENDING_CLEARANCE';
+        case 'waitClear': return r.StatusStock==='PICKED_UP'||r.StatusStock==='PENDING_CLEARANCE'||r.StatusStock==='PENDING_FINAL_APPROVAL';
         case 'closed':    return r.StatusStock==='CLEARED';
         default: return true;
       }
@@ -11737,7 +11850,7 @@ function exportSelectedReport(){
       techMap[n].total++;
       if(r.StatusStock==='CLEARED') techMap[n].closed++;
       else if(r.StatusStock==='PICKED_UP') techMap[n].waitClear++;
-      else if(r.StatusStock==='PENDING_CLEARANCE') techMap[n].submittedClearance++;
+      else if(r.StatusStock==='PENDING_CLEARANCE'||r.StatusStock==='PENDING_FINAL_APPROVAL') techMap[n].submittedClearance++;
       else techMap[n].inProgress++;
     });
     Object.values(techMap).forEach(function(t){
