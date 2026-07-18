@@ -664,6 +664,7 @@ textarea.fc{min-height:70px;resize:vertical;}
 
       <!-- CLOSE -->
       <div id="pg-close" class="hidden">
+        <div id="clRejectedListBox"></div>
         <div class="card">
           <div class="ct">🔄 เลือกใบเบิกที่ต้องการเคลียร์</div>
           <div class="fg"><label class="fl">เลขที่ใบเบิก</label>
@@ -3065,6 +3066,20 @@ function renderMasterParts(){
   el.querySelectorAll('.m-part-on').forEach(function(b){
     b.onclick = function(){ togglePartStatus(decodeURIComponent(this.dataset.pn), 'Active'); };
   });
+
+  // ── โหลดรูปแบบ batch ให้แถวที่กำลังแสดงอยู่ (200 แถว) อัตโนมัติ ──
+  // partImgHtml() ใช้แคช _partImages เป็นหลัก — ถ้ายังไม่เคยโหลดจะโชว์ปุ่ม "ดูรูป" แทนรูปจริง
+  // เดิมต้องกดทีละอันหรือบังเอิญไปเปิดหน้าอื่นที่ดึงรูป partNo นั้นมาก่อนถึงจะขึ้น — แก้ให้ดึงเป็นชุดทันทีที่โหลดหน้านี้
+  var uncached = shown.map(function(p){ return p.partNo; }).filter(function(pn){ return pn && _partImages[pn]===undefined; });
+  if(uncached.length){
+    callAPI('getPartImages',{partNos:uncached}).then(function(res){
+      var data = (res && res.success && res.data) || {};
+      uncached.forEach(function(pn){ _partImages[pn] = data[pn] || 'NONE'; });
+      renderMasterParts(); // เรนเดอร์ใหม่ครั้งเดียวหลังแคชครบ — ครั้งนี้ uncached จะว่างแล้ว ไม่วนซ้ำ
+    }).catch(function(){
+      uncached.forEach(function(pn){ if(_partImages[pn]===undefined) _partImages[pn] = 'NONE'; });
+    });
+  }
 }
 
 function togglePartStatus(partNo, status){
@@ -6252,6 +6267,30 @@ function loadCloseSel(){
       o.textContent = r.ReqID+' — '+r.CustomerName+tag;
       sel.appendChild(o);
     });
+
+    // ── List แยกต่างหาก: ใบเบิกที่ถูกตีกลับ ยังไม่ได้แก้ไข (เห็นชัดด้านบนสุด ไม่ต้องไล่ dropdown) ──
+    var rejBox = document.getElementById('clRejectedListBox');
+    if(rejBox){
+      var rejected = list.filter(function(r){ return r.ClearanceRejectedAt && !r.ClearanceResubmittedAt; });
+      if(rejected.length){
+        rejBox.innerHTML = '<div class="card" style="border-left:4px solid #e65100;background:#fff3e0">'
+          +'<div style="font-weight:700;color:#e65100;font-size:13px;margin-bottom:8px">⚠️ ใบเบิกที่ถูกตีกลับ รอช่างแก้ไข ('+rejected.length+')</div>'
+          + rejected.map(function(r){
+              return '<div style="padding:8px 0;border-top:1px solid #ffe0b2;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">'
+                +'<div>'
+                  +'<div style="font-weight:600;font-size:13px;color:#e65100">'+r.ReqID+' — '+(r.CustomerName||'-')+'</div>'
+                  +'<div style="font-size:11px;color:#666;margin-top:2px">ตีกลับโดย '+(r.ClearanceRejectedBy||'')+' เมื่อ '+(r.ClearanceRejectedAt||'')
+                    +(r.ClearanceRejectNote?'<br>📝 '+r.ClearanceRejectNote:'')+'</div>'
+                +'</div>'
+                +'<button class="btn bo bsm" onclick="document.getElementById(\'clSel\').value=\''+r.ReqID+'\';loadCloseDetail()">เปิดดู</button>'
+              +'</div>';
+            }).join('')
+          +'</div>';
+      } else {
+        rejBox.innerHTML = '';
+      }
+    }
+
     var cd = document.getElementById('clDetail');
     if(cd) cd.classList.add('hidden');
   });
