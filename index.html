@@ -541,6 +541,7 @@ textarea.fc{min-height:70px;resize:vertical;}
             <label class="cbi"><input type="checkbox" value="STOCK"> STOCK</label>
             <label class="cbi"><input type="checkbox" value="รถสาธิต/ทดลอง"> รถสาธิต/ทดลอง</label>
             <label class="cbi"><input type="checkbox" value="รถเช่า"> รถเช่า</label>
+            <label class="cbi"><input type="checkbox" value="สนามสัมปทาน"> สนามสัมปทาน</label>
             <label class="cbi"><input type="checkbox" value="เบิกเพื่อเสนอลูกค้า"> เบิกเพื่อเสนอลูกค้า</label>
             <label class="cbi"><input type="checkbox" value="OPTION ค้างส่ง"> OPTION ค้างส่ง</label>
             <label class="cbi"><input type="checkbox" value="ซ่อมรถลูกค้าชั่วคราว"> ซ่อมรถลูกค้าชั่วคราว</label>
@@ -554,7 +555,7 @@ textarea.fc{min-height:70px;resize:vertical;}
         </div>
         <div class="card">
           <div class="fb2" style="margin-bottom:12px"><div class="ct" style="margin:0">🔩 รายการอะไหล่<span class="rq">*</span></div><button class="btn bo bsm" onclick="addRow()">+ เพิ่มรายการ</button></div>
-          <div style="margin-bottom:8px;display:flex;gap:8px;align-items:center"><input class="fc" id="partSearch" placeholder="🔍 ค้นหาอะไหล่ (Part No. / ชื่อ TH / EN)..." oninput="searchParts()" style="max-width:300px"><button class="btn bo bsm" onclick="openQRScanner('create')" title="สแกน QR Code อะไหล่" style="white-space:nowrap">📷 สแกน QR</button><select class="fc" id="partModelFilter" onchange="searchParts()" style="max-width:180px"><option value="">ทุกรุ่น</option><option value="precedent">Precedent</option><option value="tempo">Tempo</option><option value="villager">Villager</option><option value="transporter">Transporter</option><option value="carryall">Carryall</option><option value="ds">DS</option><option value="minibus">Minibus</option><option value="e-bike">E-Bike</option></select><button class="btn bo bsm" onclick="searchParts(document.getElementById('partSearch').value)">ค้นหา</button></div><div id="searchResults" class="hidden" style="border:1.5px solid var(--gm);border-radius:var(--rs);margin-bottom:8px;max-height:200px;overflow-y:auto;background:#fff"></div><div class="tw"><table class="it"><thead><tr><th style="width:15%">Part No.</th><th style="width:20%">ชื่อ (EN)</th><th style="width:20%">ชื่อภาษาไทย</th><th style="width:7%">จำนวน</th><th style="width:7%">หน่วย</th><th style="width:10%">Serial No.</th><th style="width:8%">หมายเหตุ</th><th style="width:32px"></th></tr></thead>
+          <div style="margin-bottom:8px;display:flex;gap:8px;align-items:center"><input class="fc" id="partSearch" placeholder="🔍 ค้นหาอะไหล่ (Part No. / ชื่อ TH / EN)..." oninput="searchParts()" style="max-width:300px"><button class="btn bo bsm" onclick="openQRScanner('create')" title="สแกน QR Code อะไหล่" style="white-space:nowrap">📷 สแกน QR</button><select class="fc" id="partModelFilter" onchange="searchParts()" style="max-width:180px"><option value="">ทุกรุ่น</option><option value="precedent">Precedent</option><option value="tempo">Tempo</option><option value="villager">Villager</option><option value="transporter">Transporter</option><option value="carryall">Carryall</option><option value="ds">DS</option><option value="minibus">Minibus</option><option value="e-bike">E-Bike</option></select><button class="btn bo bsm" onclick="searchParts(document.getElementById('partSearch').value)">ค้นหา</button></div><div id="searchResults" class="hidden" style="border:1.5px solid var(--gm);border-radius:var(--rs);margin-bottom:8px;max-height:200px;overflow-y:auto;background:#fff"></div><div class="tw"><table class="it"><thead><tr><th style="width:17%">Part No.</th><th style="width:23%">ชื่อ (EN)</th><th style="width:23%">ชื่อภาษาไทย</th><th style="width:9%">จำนวน</th><th style="width:9%">หน่วย</th><th style="width:11%">หมายเหตุ</th><th style="width:32px"></th></tr></thead>
           <tbody id="itemsBody"></tbody></table></div>
           <button class="btn bo bsm mt8" onclick="addRow()">+ เพิ่มรายการอะไหล่</button><div style="margin-top:8px;padding:10px 12px;background:var(--goldl);border-radius:var(--rs);font-size:13px;color:#5a4000">💡 ไม่พบอะไหล่ที่ต้องการ? <button class="btn bo bsm" style="padding:3px 10px;font-size:12px" id="btnAddNewPart" onclick="showAddPart()">+ เพิ่มอะไหล่ใหม่ในฐานข้อมูล</button><span id="btnAddNewPartLock" style="display:none;font-size:11px;color:#b71c1c">🔒 เฉพาะ Stock และ Manager เท่านั้นค่ะ</span></div>
         </div>
@@ -840,6 +841,9 @@ textarea.fc{min-height:70px;resize:vertical;}
                     <div style="font-size:10px;color:var(--g400)">Min Stock</div>
                     <div id="scInfoMin" style="font-size:15px;font-weight:700;color:#e65100">—</div>
                   </div>
+                  <button id="scPartDetailBtn" onclick="openPartDetailModal()" style="background:#f0f4ff;border:1.5px dashed #7c8ff0;border-radius:8px;padding:8px 14px;text-align:center;min-width:150px;cursor:pointer;color:#3949ab;font-size:12px;font-weight:600">
+                    📋 รายละเอียดเพิ่มเติม / IPL<div id="scPartDetailPreview" style="font-size:10px;font-weight:400;color:#7c8ff0;margin-top:2px">แตะเพื่อดู/แก้ไข</div>
+                  </button>
                 </div>
               </div>
 
@@ -871,8 +875,7 @@ textarea.fc{min-height:70px;resize:vertical;}
           </div>
         </div>
 
-        <!-- ── รายละเอียดเพิ่มเติม + แผนผัง IPL ──────────────── -->
-        <div id="scPartDetailBox" style="display:none"></div>
+        <!-- รายละเอียดเพิ่มเติม + IPL อยู่ใน modal (เปิดจากปุ่มในการ์ดข้อมูลอะไหล่ด้านบนแล้ว) -->
 
         <!-- ── ตาราง Stock Card ───────────────────────────── -->
         <div id="scContent"></div>
@@ -1137,7 +1140,7 @@ textarea.fc{min-height:70px;resize:vertical;}
               <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--g400);white-space:nowrap">
                 <input type="checkbox" id="mShowInactive" onchange="loadMasterParts()"> แสดงที่ปิดใช้งาน
               </label>
-              <button class="btn bp bsm" onclick="openPartEditModal()">➕ เพิ่มอะไหล่</button>
+              <button class="btn bp bsm" id="btnAddPartMaster" onclick="openPartEditModal()">➕ เพิ่มอะไหล่</button>
             </div>
             <div id="mPartCount" style="font-size:12px;color:var(--g400);margin-top:8px"></div>
           </div>
@@ -1267,7 +1270,7 @@ textarea.fc{min-height:70px;resize:vertical;}
             <div style="font-size:15px;font-weight:700">🚗 ประวัติการซ่อม/เปลี่ยนอะไหล่ตาม Serial No.</div>
             <div style="font-size:11px;opacity:.8;margin-top:2px">ค้นหา Serial No. หรือสแกน QR Code รถ → ดูประวัติ + พิมพ์ Label</div>
           </div>
-          <button onclick="openAddCustomerModal()" style="background:#fff;color:#1a237e;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">➕ เพิ่มลูกค้า/รถใหม่</button>
+          <button id="btnAddCustomerMaster" onclick="openAddCustomerModal()" style="background:#fff;color:#1a237e;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">➕ เพิ่มลูกค้า/รถใหม่</button>
           <button onclick="openBatchQRPrint()" style="background:#fff;color:#1a237e;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">🖨️ ปริ้น QR ทีเดียว</button>
         </div>
 
@@ -2461,11 +2464,13 @@ function initApp(){
     if(ns) ns.classList.remove('hidden');
     if(bs) bs.classList.remove('hidden');
   }
-  // เมนูจัดการข้อมูลหลัก — เฉพาะ Stock / Manager / Admin
-  if(['STOCK','MANAGER','ADMIN'].indexOf(CU.role)>=0){
-    var nm=document.getElementById('nMaster');
-    if(nm) nm.classList.remove('hidden');
-  }
+  // เมนูจัดการข้อมูลหลัก — ทุก role เข้าดูได้ (ช่างดูรูปอะไหล่ได้) แต่แก้ไขได้เฉพาะ Stock/Manager/Admin
+  var nm=document.getElementById('nMaster');
+  if(nm) nm.classList.remove('hidden');
+  var canEditMaster = ['STOCK','MANAGER','ADMIN'].indexOf(CU.role)>=0;
+  var bAddPart = document.getElementById('btnAddPartMaster'), bAddCust = document.getElementById('btnAddCustomerMaster');
+  if(bAddPart) bAddPart.style.display = canEditMaster ? '' : 'none';
+  if(bAddCust) bAddCust.style.display = canEditMaster ? '' : 'none';
   loadMinStockData();
   // โหลดอะไหล่จากชีท (ฐานเดียว) — มี cache ให้เร็ว, syncStockBalance ถูกเรียกข้างในแล้ว
   loadPartsMaster();
@@ -3081,6 +3086,7 @@ function renderMasterParts(){
     + shown.map(function(p){
       var inactive = String(p.Status||'Active').toLowerCase()==='inactive';
       var pnEsc = encodeURIComponent(p.partNo);
+      var canEditRow = CU && ['STOCK','MANAGER','ADMIN'].indexOf(CU.role)>=0;
       return '<tr'+(inactive?' style="opacity:0.5;background:#fafafa"':'')+'>'
         +'<td>'+partImgHtml(p.partNo,'sm',p.nameEN)+'</td>'
         +'<td style="font-size:12px;font-weight:600;color:var(--gd)">'+p.partNo+'</td>'
@@ -3091,10 +3097,13 @@ function renderMasterParts(){
             ? '<span style="color:#b71c1c;font-size:12px;font-weight:700">🚫 ปิดใช้งาน</span>'
             : '<span style="color:#2d6a4f;font-size:12px;font-weight:700">✓ ใช้งาน</span>')+'</td>'
         +'<td style="white-space:nowrap">'
-          +'<button class="btn bo bsm m-part-edit" data-pn="'+pnEsc+'">✏️</button> '
-          +(inactive
-            ? '<button class="btn bp bsm m-part-on" data-pn="'+pnEsc+'">♻️ เปิด</button>'
-            : '<button class="btn bd bsm m-part-off" data-pn="'+pnEsc+'">🚫 ปิด</button>')
+          +(canEditRow
+            ? '<button class="btn bo bsm m-part-edit" data-pn="'+pnEsc+'">✏️</button> '
+              +(inactive
+                ? '<button class="btn bp bsm m-part-on" data-pn="'+pnEsc+'">♻️ เปิด</button>'
+                : '<button class="btn bd bsm m-part-off" data-pn="'+pnEsc+'">🚫 ปิด</button>')
+            : '<span style="color:var(--g400);font-size:11px">— ดูอย่างเดียว —</span>'
+          )
         +'</td></tr>';
     }).join('')
     +'</tbody></table></div>'
@@ -3562,7 +3571,6 @@ function addRow(p){
     +'<td><input class="fc" placeholder="ชื่อภาษาไทย" data-field="nameTH" value="'+th+'" readonly style="background:#f5f5f5"></td>'
     +'<td><input class="fc" type="number" value="'+(p.qty||1)+'" min="1" data-field="qty" style="text-align:center"></td>'
     +'<td><input class="fc" value="'+(p.unit||'ชิ้น')+'" data-field="unit" readonly style="background:#f5f5f5"></td>'
-    +'<td><input class="fc" placeholder="Serial No." data-field="serialNo" value="'+(p.serialNo||'')+'"></td>'
     +'<td><input class="fc" placeholder="หมายเหตุ" data-field="note" value="'+(p.note||'')+'"></td>'
     +'<td><button type="button" class="btn bd bi bsm" onclick="this.closest(\'tr\').remove()">✕</button></td>';
   tbody.appendChild(tr);
@@ -5785,7 +5793,7 @@ function renderOld(d){
     +CB(ck('ประกอบใหม่'),'ประกอบใหม่')+CB(ck('เบิกเพื่อเสนอลูกค้า'),'เบิกเพื่อเสนอลูกค้า')+CB(ck('OPTION ค้างส่ง'),'OPTION ค้างส่ง')+CB(ck('WARRANTY ในระยะประกัน'),'Warranty อยู่ในระยะประกัน')
     +CB(ck('ประกอบรถ RECON'),'ประกอบรถ Recon')+CB(ck('STOCK'),'STOCK')+CB(ck('ซ่อมรถลูกค้าชั่วคราว'),'ซ่อมรถลูกค้าชั่วคราว')+CB(ck('เคลมได้'),'เคลมได้')
     +CB(ck('รถสาธิต/ทดลอง'),'รถสาธิต/ทดลอง')+CB(ck('เครื่องมือช่าง'),'เครื่องมือช่าง')+CB(ck('รถ ATV'),'รถ ATV')+CB(ck('เคลมไม่ได้'),'เคลมไม่ได้')
-    +CB(ck('รถเช่า'),'รถเช่า')+CB(ck('วัสดุสิ้นเปลือง'),'วัสดุสิ้นเปลือง')+'</div>';
+    +CB(ck('รถเช่า'),'รถเช่า')+CB(ck('วัสดุสิ้นเปลือง'),'วัสดุสิ้นเปลือง')+CB(ck('สนามสัมปทาน'),'สนามสัมปทาน')+'</div>';
   var thead='<thead><tr>'+TH('No.',null,2)+TH('Part no.','28mm',2)+TH('รายละเอียด',null,2)+TH('จำนวน',null,1,2)+TH('ใช้จริง','10mm',2)+TH('คืนสภาพของเก่า',null,1,2)+TH('หมายเหตุ','22mm',2)+'</tr><tr>'+TH('เบิก','9mm')+TH('จ่าย','9mm')+TH('SCR<br>ชำรุด','10mm')+TH('RLR<br>อะไหล่ใหม่','14mm')+'</tr></thead>';
   var rows='';
   for(var i=0;i<15;i++){var it=d.items[i]||{};rows+='<tr style="height:6.2mm">'+TD(i+1,'7mm')+TD(it.partNo||'','28mm','left')+TD(it.desc||'','','left')+TD(it.qty||'','9mm')+TD(it.issued||'','9mm')+TD(it.used||'','10mm')+TD(it.scrDefect||'','10mm')+TD(it.rlrGood||'','10mm')+TD(it.note||'','22mm','left')+'</tr>';}
@@ -6307,6 +6315,18 @@ function _doSearchParts(){
   }).join('');
   sr.innerHTML = '<div style="padding:6px 12px;background:#eef2ef;font-size:12px;font-weight:700;color:#1a4a2e;border-bottom:1px solid #d4ddd7;display:flex;justify-content:space-between"><span>พบ ' + res.length + ' รายการ</span><span onclick="document.getElementById(\'searchResults\').classList.add(\'hidden\')" style="cursor:pointer;color:#8fa898">✕</span></div>' + rows;
   sr.classList.remove('hidden');
+
+  // ── โหลดรูปแบบ batch ให้ผลค้นหาที่แสดงอยู่ทันที (ไม่ต้องกด "ดูรูป" ทีละอัน) ──
+  var uncachedSearch = res.map(function(p){ return p.partNo; }).filter(function(pn){ return pn && _partImages[pn]===undefined; });
+  if(uncachedSearch.length){
+    callAPI('getPartImages',{partNos:uncachedSearch}).then(function(res2){
+      var data = (res2 && res2.success && res2.data) || {};
+      uncachedSearch.forEach(function(pn){ _partImages[pn] = data[pn] || 'NONE'; });
+      // เรนเดอร์ใหม่เฉพาะถ้ายังค้นหาคำเดิม/ผลลัพธ์เดิมอยู่ (กันรูปโผล่ทับผลค้นหาใหม่ที่พิมพ์ต่อ)
+      var curQ = (document.getElementById('partSearch').value||'').trim();
+      if(curQ === q) _doSearchParts();
+    });
+  }
 }
 
 // โหลด model groups สำหรับ filter
@@ -9305,6 +9325,7 @@ function loadVehicleHistory(){
 
     var html='<div class="card" style="padding:10px 14px;margin-bottom:8px;background:#e8eaf6;font-size:13px">'
       +'🔧 ประวัติทั้งหมด <strong>'+rows.length+' รายการ</strong> | Serial: <strong>'+serial+'</strong></div>'
+      +'<div id="vhCurrentPartsBox"></div>'
       +'<div class="card" style="padding:0;overflow:hidden"><div class="tw"><table class="it" style="font-size:13px"><thead><tr>'
       +'<th>วันที่</th><th>ใบเบิก</th><th>Job No.</th><th>Part No.</th><th>ชื่ออะไหล่</th>'
       +'<th style="text-align:center">จำนวน</th><th>ช่าง</th><th>หมายเหตุ</th>'
@@ -9324,6 +9345,26 @@ function loadVehicleHistory(){
       }).join('')
       +'</tbody></table></div></div>';
     box.innerHTML=html;
+
+    // ── Serial อะไหล่สำคัญที่ติดตั้งอยู่ปัจจุบัน (เฉพาะอะไหล่ที่บังคับ Serial Number) ──
+    callAPI('getVehicleCurrentParts',{serialNo:serial}).then(function(cpRes){
+      var cpBox = document.getElementById('vhCurrentPartsBox');
+      if(!cpBox) return;
+      var parts = (cpRes && cpRes.success && cpRes.data) || [];
+      if(!parts.length){ cpBox.innerHTML=''; return; }
+      cpBox.innerHTML = '<div class="card" style="border-left:4px solid #6a1b9a;margin-bottom:8px">'
+        +'<div style="font-weight:700;color:#6a1b9a;font-size:13px;margin-bottom:8px">🔒 อะไหล่ที่บังคับ Serial — ติดตั้งอยู่ปัจจุบัน</div>'
+        + parts.map(function(p){
+            return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-top:1px solid #f0e6f7;font-size:13px">'
+              +'<div><b>'+p.partNo+'</b> — '+(p.partName||'')+'</div>'
+              +'<div style="text-align:right">'
+                +'<div style="font-weight:700;color:#6a1b9a">'+(p.currentSerial||'— ไม่มีข้อมูล Serial —')+'</div>'
+                +'<div style="font-size:10px;color:var(--g400)">เปลี่ยนเมื่อ '+_fmtVHDate(p.installedDate)+' (ใบ '+p.reqId+')</div>'
+              +'</div>'
+            +'</div>';
+          }).join('')
+        +'</div>';
+    });
   });
 }
 
@@ -10183,8 +10224,9 @@ function scClearSearch(){
   if(info)  info.style.display = 'none';
   if(hint)  hint.style.display = '';
   if(cont)  cont.innerHTML = '';
-  var pdBox = document.getElementById('scPartDetailBox');
-  if(pdBox){ pdBox.style.display='none'; pdBox.innerHTML=''; }
+  window._pdCurrent = null;
+  var pdModal = document.getElementById('partDetailModal');
+  if(pdModal) pdModal.remove();
   _scCurrentPart = null;
   inp && inp.focus();
 }
@@ -10491,28 +10533,53 @@ function loadSCForPart(p){
   var minVal = _minStockData[p.partNo] || 0;
   document.getElementById('scInfoMin').textContent = minVal > 0 ? minVal + ' ' + (p.unit||'ชิ้น') : '—';
 
-  loadPartDetailBox(p.partNo);
+  loadPartDetailPreview(p.partNo);
 
   // ตั้ง tab active
   switchSCPartTab('all');
 }
 
 // ── รายละเอียดเพิ่มเติม + แผนผัง IPL + บังคับ Serial ──────────────
-function loadPartDetailBox(partNo){
-  var box = document.getElementById('scPartDetailBox');
-  if(!box) return;
-  box.style.display = '';
-  box.innerHTML = '<div class="card tc tm" style="padding:20px">⏳ กำลังโหลด...</div>';
-  var canEdit = CU && (CU.role==='STOCK'||CU.role==='MANAGER'||CU.role==='ADMIN');
+// ── รายละเอียดเพิ่มเติม + แผนผัง IPL + บังคับ Serial (แบบ modal เปิดจากปุ่ม) ──
+function loadPartDetailPreview(partNo){
+  var prev = document.getElementById('scPartDetailPreview');
+  if(prev) prev.textContent = 'กำลังโหลด...';
   callAPI('getPartDetails',{partNo:partNo}).then(function(res){
-    if(!res.success){ box.innerHTML=''; box.style.display='none'; return; }
-    var d = res.data;
-    window._pdCurrent = d;
-    renderPartDetailBox(d, canEdit);
+    if(!res.success) return;
+    window._pdCurrent = res.data;
+    updatePartDetailPreview();
   });
 }
-function renderPartDetailBox(d, canEdit){
-  var box = document.getElementById('scPartDetailBox');
+function updatePartDetailPreview(){
+  var prev = document.getElementById('scPartDetailPreview');
+  if(!prev || !window._pdCurrent) return;
+  var d = window._pdCurrent;
+  var bits = [];
+  if(d.extraDescription) bits.push('มีคำอธิบาย');
+  if(d.iplImages && d.iplImages.length) bits.push(d.iplImages.length+' รูป IPL');
+  if(d.requireSerial) bits.push('🔒บังคับ Serial');
+  prev.textContent = bits.length ? bits.join(' • ') : 'แตะเพื่อดู/แก้ไข';
+}
+function openPartDetailModal(){
+  if(!window._pdCurrent){ toast('กรุณาเลือกอะไหล่ก่อนค่ะ','error'); return; }
+  var canEdit = CU && (CU.role==='STOCK'||CU.role==='MANAGER'||CU.role==='ADMIN');
+  var old = document.getElementById('partDetailModal');
+  if(old) old.remove();
+  var m = document.createElement('div');
+  m.id = 'partDetailModal';
+  m.className = 'mo';
+  m.style.zIndex = '3400';
+  m.innerHTML = '<div class="mow" style="max-width:520px">'
+    +'<div class="moh"><div class="mot">📋 รายละเอียดเพิ่มเติม / แผนผัง IPL</div>'
+      +'<button class="mcl" onclick="document.getElementById(\'partDetailModal\').remove()">✕</button></div>'
+    +'<div class="mob" id="partDetailModalBody"></div>'
+  +'</div>';
+  document.body.appendChild(m);
+  m.style.display = 'flex';
+  renderPartDetailModalBody(window._pdCurrent, canEdit);
+}
+function renderPartDetailModalBody(d, canEdit){
+  var box = document.getElementById('partDetailModalBody');
   if(!box) return;
   var imgsHtml = (d.iplImages||[]).map(function(url){
     return '<div style="position:relative;display:inline-block">'
@@ -10521,9 +10588,7 @@ function renderPartDetailBox(d, canEdit){
       +'</div>';
   }).join('');
 
-  box.innerHTML = '<div class="card">'
-    +'<div class="ct">📋 รายละเอียดเพิ่มเติม / แผนผัง IPL</div>'
-    +'<div style="margin-bottom:14px">'
+  box.innerHTML = '<div style="margin-bottom:14px">'
       +'<label class="fl">คำอธิบายเพิ่มเติม (ตำแหน่งติดตั้ง, ข้อควรระวัง ฯลฯ)</label>'
       +(canEdit
         ? '<textarea class="fc" id="pdExtraDesc" rows="3" placeholder="เช่น ติดตั้งใต้เบาะนั่งฝั่งคนขับ ต้องถอดแผงกันฝุ่นก่อน...">'+(d.extraDescription||'')+'</textarea>'
@@ -10549,8 +10614,7 @@ function renderPartDetailBox(d, canEdit){
         )
       +'</div>'
       +(!imgsHtml && !canEdit ? '<div style="font-size:12px;color:var(--g400);margin-top:6px">ยังไม่มีรูปแผนผัง IPL</div>' : '')
-    +'</div>'
-  +'</div>';
+    +'</div>';
 }
 function savePartDetail(){
   if(!window._pdCurrent) return;
@@ -10559,7 +10623,10 @@ function savePartDetail(){
   toast('กำลังบันทึก...','info');
   callAPI('savePartDetails',{partNo:window._pdCurrent.partNo, extraDescription:desc, requireSerial:reqSerial}).then(function(res){
     toast(res.message, res.success?'success':'error');
-    if(res.success){ window._pdCurrent.extraDescription=desc; window._pdCurrent.requireSerial=reqSerial; }
+    if(res.success){
+      window._pdCurrent.extraDescription=desc; window._pdCurrent.requireSerial=reqSerial;
+      updatePartDetailPreview();
+    }
   });
 }
 function onAddPartIPL(event){
@@ -10571,7 +10638,8 @@ function onAddPartIPL(event){
     callAPI('addPartIPLImage',{partNo:window._pdCurrent.partNo, base64:b64}).then(function(res){
       if(res.success){
         window._pdCurrent.iplImages = res.iplImages;
-        renderPartDetailBox(window._pdCurrent, true);
+        renderPartDetailModalBody(window._pdCurrent, true);
+        updatePartDetailPreview();
         toast('เพิ่มรูป IPL แล้วค่ะ ✅','success');
       } else { toast(res.message,'error'); }
     });
@@ -10583,7 +10651,8 @@ function removePartIPL(url){
   callAPI('removePartIPLImage',{partNo:window._pdCurrent.partNo, url:url}).then(function(res){
     if(res.success){
       window._pdCurrent.iplImages = res.iplImages;
-      renderPartDetailBox(window._pdCurrent, true);
+      renderPartDetailModalBody(window._pdCurrent, true);
+      updatePartDetailPreview();
     } else { toast(res.message,'error'); }
   });
 }
