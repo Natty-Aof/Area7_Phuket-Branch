@@ -4667,7 +4667,7 @@ function _doRenderCloseItems(readonly){
             +'<div style="background:#f0f4f8;border:1px solid var(--g200);border-radius:8px;padding:8px;text-align:center;font-size:15px;font-weight:700;color:var(--gd)">'+it.issued+' '+it.unit+'</div></div>'
           +'<div><div style="font-size:11px;color:#1565c0;margin-bottom:3px">🔧 ใช้จริง (ติดตั้งลงรถแล้ว)</div>'
             +'<input class="fc" type="number" min="0" max="'+it.issued+'" value="'+(usedEntered?usedVal:'')+'" placeholder="กรอกจำนวน" style="text-align:center;border-color:#1565c0;font-weight:700" '
-            +'oninput="_clSetUsed('+pi+',this.value)"></div>'
+            +'onchange="_clSetUsed('+pi+',this.value)"></div>'
         +'</div>'
         +(!usedEntered
           ? '<div style="font-size:12px;color:#e65100;background:#fff3e0;border-radius:6px;padding:6px 10px;margin-bottom:10px">⚠️ กรุณากรอกจำนวนที่ใช้จริงก่อน (ถ้าไม่ได้ใช้เลย ให้ใส่ 0)</div>'
@@ -4682,10 +4682,10 @@ function _doRenderCloseItems(readonly){
                 ? '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:6px">'
                     +'<span style="color:var(--red)">🗑️ ของเสีย (SCR): '
                       +'<input class="fc" type="number" min="0" max="'+remaining+'" value="'+(it.retBad||0)+'" style="width:55px;display:inline-block;text-align:center;border-color:var(--red);color:var(--red)" '
-                      +'oninput="_clSetBadFromRemaining('+pi+',this.value)"></span>'
+                      +'onchange="_clSetBadFromRemaining('+pi+',this.value)"></span>'
                     +'<span style="color:#00695c">🚐 เก็บสำรอง/ติดรถ Service: '
                       +'<input class="fc" type="number" min="0" max="'+remaining+'" value="'+(it.extQty||0)+'" style="width:55px;display:inline-block;text-align:center;border-color:#00695c;color:#00695c" '
-                      +'oninput="_clSetExtQty('+pi+',this.value)"></span>'
+                      +'onchange="_clSetExtQty('+pi+',this.value)"></span>'
                     +'<span style="color:var(--gm);font-weight:600">↩️ คืนดีเข้า Stock: '+it.retGood+'</span>'
                   +'</div>'
                   +((it.extQty||0)>0
@@ -4757,7 +4757,7 @@ function _doRenderCloseItems(readonly){
           // จำนวน
           +(readonly
             ? '<span style="font-size:13px;font-weight:600;min-width:50px">'+v.qty+' '+it.unit+'</span>'
-            : '<input class="fc" type="number" min="0" value="'+(v.qty||'')+'" placeholder="จำนวน" style="width:68px;text-align:center;font-size:13px" oninput="_clItemState['+pi+'].vehicles['+vi+'].qty=Number(this.value);renderCloseItems(false)">'
+            : '<input class="fc" type="number" min="0" value="'+(v.qty||'')+'" placeholder="จำนวน" style="width:68px;text-align:center;font-size:13px" onchange="_clItemState['+pi+'].vehicles['+vi+'].qty=Number(this.value);renderCloseItems(false)">'
           )
           // หมายเหตุ
           +(readonly
@@ -5141,6 +5141,7 @@ function loadCloseDetail(){
             +'<thead><tr style="background:#f5f5f5">'
             +'<th style="padding:8px;text-align:left;border:0.5px solid #ddd;color:#222;font-weight:700">Part No.</th>'
             +'<th style="padding:8px;text-align:left;border:0.5px solid #ddd;color:#222;font-weight:700">ชื่อ</th>'
+            +'<th style="padding:8px;text-align:left;border:0.5px solid #ddd;color:#6a1b9a;font-weight:700">🔒 Serial (อะไหล่ใหม่)</th>'
             +'<th style="padding:8px;text-align:center;border:0.5px solid #ddd;color:#222;font-weight:700">จ่ายจริง</th>'
             +'<th style="padding:8px;text-align:center;border:0.5px solid #ddd;color:var(--gm);font-weight:700">คืนดี</th>'
             +'<th style="padding:8px;text-align:center;border:0.5px solid #ddd;color:var(--red);font-weight:700">คืนเสีย</th>'
@@ -5155,6 +5156,9 @@ function loadCloseDetail(){
             if(vhLoading) vhLoading.remove();
             var vhByPart = {};
             vhRows.forEach(function(v){ (vhByPart[v.PartNo]||(vhByPart[v.PartNo]=[])).push(v); });
+            // Serial ของอะไหล่ใหม่ที่ Stock กรอกไว้ตอนจ่ายของ (RequisitionItems.SerialNo)
+            var newSerialByPart = {};
+            items.forEach(function(i){ if(i.SerialNo) newSerialByPart[i.PartNo] = i.SerialNo; });
             var tbody = document.getElementById('adminClItemsTbody');
             if(!tbody) return;
             tbody.innerHTML = window._clItemState.map(function(it){
@@ -5169,9 +5173,13 @@ function loadCloseDetail(){
                     return '<div style="display:flex;align-items:center;margin-bottom:3px">'+v.SerialNo+' ('+(v.Qty||0)+')'+serialTxt+photoImg+'</div>';
                   }).join('')
                 : (used>0 ? '<span style="color:#c62828">— ยังไม่ระบุ —</span>' : '<span style="color:var(--g400)">—</span>');
+              var newSerial = newSerialByPart[it.partNo]
+                ? '<span style="color:#6a1b9a;font-weight:600">'+newSerialByPart[it.partNo]+'</span>'
+                : '<span style="color:var(--g400)">—</span>';
               return '<tr style="border-bottom:0.5px solid #eee">'
                 +'<td style="padding:8px;border:0.5px solid #ddd;font-size:11px">'+it.partNo+'</td>'
                 +'<td style="padding:8px;border:0.5px solid #ddd">'+it.nameEN+'</td>'
+                +'<td style="padding:8px;border:0.5px solid #ddd;font-size:11px">'+newSerial+'</td>'
                 +'<td style="padding:8px;text-align:center;border:0.5px solid #ddd;font-weight:700">'+it.issued+' '+it.unit+'</td>'
                 +'<td style="padding:8px;text-align:center;border:0.5px solid #ddd;color:var(--gm)">'+it.retGood+'</td>'
                 +'<td style="padding:8px;text-align:center;border:0.5px solid #ddd;color:var(--red)">'+it.retBad+'</td>'
