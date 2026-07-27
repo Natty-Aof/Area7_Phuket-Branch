@@ -529,7 +529,7 @@ textarea.fc{min-height:70px;resize:vertical;}
             <div class="fg"><label class="fl">ช่างผู้เบิก</label><input class="fc" id="nReq" readonly></div>
             <div class="fg"><label class="fl">ช่างร่วม (ถ้ามี)</label><input class="fc" id="nCo" placeholder="ชื่อช่างที่ 2, ชื่อช่างที่ 3 ..."></div>
           </div>
-          <div class="fr"><div class="fg"><label class="fl">รุ่นรถ / Vehicle Model</label><div style="position:relative"><input class="fc" id="nModel" placeholder="เช่น Club Car Precedent, Tempo" oninput="onModelInput(this)" autocomplete="off"><div id="modelSuggest" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:500;background:#fff;border:1.5px solid var(--gm);border-top:none;border-radius:0 0 var(--rs) var(--rs);max-height:160px;overflow-y:auto;box-shadow:var(--shm)"></div></div></div><div class="fg"><label class="fl">SERIAL NO. รถ <span style="color:var(--red)">*</span></label><div style="position:relative"><input class="fc" id="nSerial" placeholder="พิมพ์เพื่อค้นหาเลขรถจริงในระบบ..." oninput="onSerialInput(this)" autocomplete="off"><div id="serialSuggest" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:500;background:#fff;border:1.5px solid var(--gm);border-top:none;border-radius:0 0 var(--rs) var(--rs);max-height:200px;overflow-y:auto;box-shadow:var(--shm)"></div></div>
+          <div class="fr"><div class="fg"><label class="fl">รุ่นรถ / Vehicle Model</label><div style="position:relative"><input class="fc" id="nModel" placeholder="เช่น Club Car Precedent, Tempo" oninput="onModelInput(this)" autocomplete="off"><div id="modelSuggest" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:500;background:#fff;border:1.5px solid var(--gm);border-top:none;border-radius:0 0 var(--rs) var(--rs);max-height:160px;overflow-y:auto;box-shadow:var(--shm)"></div></div></div><div class="fg"><label class="fl">SERIAL NO. รถ <span style="color:var(--red)">*</span></label><div style="position:relative"><input class="fc" id="nSerial" placeholder="พิมพ์เพื่อค้นหาเลขรถจริงในระบบ..." oninput="onSerialInput(this)" onblur="validateSerialOnBlur(this)" autocomplete="off"><div id="serialSuggest" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:500;background:#fff;border:1.5px solid var(--gm);border-top:none;border-radius:0 0 var(--rs) var(--rs);max-height:200px;overflow-y:auto;box-shadow:var(--shm)"></div></div>
           <div style="font-size:11px;color:var(--g400);margin-top:3px">💡 กรอกให้ตรงกับเลข Serial จริงของรถ (สำคัญมาก ใช้ตรวจสอบประวัติการเปลี่ยนอะไหล่) — ถ้าค้นไม่พบ พิมพ์เองได้ แต่ควรตรงกับที่ลงทะเบียนไว้</div>
           </div></div>
         </div>
@@ -6083,6 +6083,7 @@ function onSerialInput(inp){
   var val = inp.value.trim().toLowerCase();
   var sug = document.getElementById('serialSuggest');
   if(!sug) return;
+  inp.dataset.confirmed = ''; // พิมพ์ใหม่ = ยังไม่ยืนยันว่าตรงกับรถจริง
   if(!val){ sug.style.display='none'; return; }
   loadVehiclesDB().then(function(db){
     var matches = (db||[]).filter(function(v){
@@ -6091,13 +6092,13 @@ function onSerialInput(inp){
         || (v.Customer||'').toLowerCase().indexOf(val)>=0;
     }).slice(0, 15);
     if(!matches.length){
-      sug.innerHTML = '<div style="padding:8px 12px;font-size:12px;color:var(--g400)">ไม่พบในระบบ — พิมพ์ต่อได้ แต่กรุณาเช็คให้ตรงกับเลขจริงของรถ</div>';
+      sug.innerHTML = '<div style="padding:8px 12px;font-size:12px;color:#b71c1c">⚠️ ไม่พบ S/N นี้ในระบบ — ต้องเลือกจากรายการรถที่มีอยู่จริงเท่านั้น ถ้าไม่พบ กรุณาแจ้งแอดมินเพิ่มข้อมูลรถก่อน</div>';
       sug.style.display='block';
       return;
     }
     sug.innerHTML = matches.map(function(v){
       var label = v.SerialNo + (v.CarNo?' ('+v.CarNo+')':'') + ' — ' + (v.Customer||v.Location||'');
-      return '<div style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #eef2ef" onclick="selSerial(\''+v.SerialNo.replace(/'/g,"\\'")+'\')">'+label+'</div>';
+      return '<div style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #eef2ef" onmousedown="selSerial(\''+v.SerialNo.replace(/'/g,"\\'")+'\')">'+label+'</div>';
     }).join('');
     sug.style.display='block';
   });
@@ -6105,8 +6106,46 @@ function onSerialInput(inp){
 function selSerial(serialNo){
   var inp = document.getElementById('nSerial');
   var sug = document.getElementById('serialSuggest');
-  if(inp) inp.value = serialNo;
+  if(inp){
+    var existing = (inp.value||'').split(',').map(function(s){return s.trim();}).filter(Boolean);
+    if(existing.indexOf(serialNo)<0) existing.push(serialNo);
+    inp.value = existing.join(', ');
+    inp.dataset.confirmed = 'true';
+  }
   if(sug) sug.style.display = 'none';
+  // เติมรุ่นรถให้อัตโนมัติจากข้อมูลที่ลงทะเบียนไว้จริง กันกรณีลืมกรอก/กรอกไม่ตรง (เฉพาะตอนมีรถเดียว)
+  loadVehiclesDB().then(function(db){
+    var car = (db||[]).find(function(v){ return v.SerialNo===serialNo; });
+    var modelInp = document.getElementById('nModel');
+    if(car && modelInp && car.VehicleType && !modelInp.value) modelInp.value = car.VehicleType;
+  });
+}
+// ⛔ บังคับ: ออกจากช่องแล้วค่าที่กรอกต้องตรงกับ S/N รถจริงในระบบเท่านั้น ไม่งั้นเคลียร์ทิ้งกันกรอกมั่ว (เช่น "FO-01", "แม่บ้าน")
+// รองรับกรอกหลายคันคั่นด้วยคอมม่า — ตรวจสอบทีละตัว ตัวไหนไม่พบจะถูกตัดออกจากช่อง
+function validateSerialOnBlur(inp){
+  setTimeout(function(){
+    var raw = (inp.value||'').trim();
+    var sug = document.getElementById('serialSuggest');
+    if(sug) sug.style.display='none';
+    if(!raw) return;
+    if(inp.dataset.confirmed==='true') return; // เพิ่งเลือกจาก dropdown มา ไม่ต้อง fetch ซ้ำ
+    var parts = raw.split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+    loadVehiclesDB().then(function(db){
+      var known = {}; (db||[]).forEach(function(v){ known[String(v.SerialNo).trim()] = v; });
+      var valid = parts.filter(function(p){ return known[p]; });
+      var invalid = parts.filter(function(p){ return !known[p]; });
+      if(invalid.length){
+        toast('⚠️ ไม่พบ S/N ในระบบ: '+invalid.join(', ')+' — ตัดออกจากช่องแล้ว กรุณาเลือกจากรายการที่ค้นเจอเท่านั้น','error');
+      }
+      inp.value = valid.join(', ');
+      inp.dataset.confirmed = valid.length ? 'true' : '';
+      if(valid.length===1){
+        var modelInp = document.getElementById('nModel');
+        var car = known[valid[0]];
+        if(modelInp && car && car.VehicleType && !modelInp.value) modelInp.value = car.VehicleType;
+      }
+    });
+  }, 200);
 }
 
 // ── แจ้ง Stock ว่าหาอะไหล่ไม่พบในระบบ ขอให้เพิ่มพาร์ทใหม่ ──
