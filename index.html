@@ -4400,8 +4400,8 @@ function openStockAckModal(reqId){
     if(_stockAckReqId !== reqId) return;
     _stockAckItems = res.data ? (res.data.Items||res.data.items||[]) : [];
     var partNos = _stockAckItems.map(function(it){ return it.PartNo; }).filter(Boolean);
-    // ดึงว่าอะไหล่ตัวไหน "บังคับ Serial Number" จริง (ตั้งค่าไว้ในหน้า Stock Card) แทนการเดาจากชื่อ
-    callAPI('getPartsRequireSerial',{partNos:partNos}).then(function(rsRes){
+    // ดึงว่าอะไหล่ตัวไหน "บังคับ Serial/Code" จริง พร้อมป้ายกำกับที่ตั้งไว้ (ตั้งค่าไว้ในหน้า Stock Card)
+    callAPI('getPartsSerialConfig',{partNos:partNos}).then(function(rsRes){
       if(_stockAckReqId !== reqId) return;
       var reqSerialMap = (rsRes && rsRes.success && rsRes.data) || {};
       renderStockAckItems(reqId, reqSerialMap);
@@ -4419,6 +4419,7 @@ function renderStockAckItems(reqId, reqSerialMap){
     el.appendChild(title);
     _stockAckItems.forEach(function(it,i){
       var req = parseFloat(it.Qty)||0;
+      var snLabelTxt = reqSerialMap[it.PartNo] || 'Serial No.';
       var needSN = !!(it.SerialNo || reqSerialMap[it.PartNo]);
       var card = document.createElement('div');
       card.style.cssText = 'background:#f8faf9;border:1px solid #d4ddd7;border-radius:8px;padding:10px;margin-bottom:8px';
@@ -4451,7 +4452,7 @@ function renderStockAckItems(reqId, reqSerialMap){
       // Serial No.
       var snLabel = document.createElement('div');
       snLabel.style.cssText='font-size:11px;color:#8fa898;margin-bottom:4px';
-      snLabel.innerHTML='Serial No. '+(needSN?'<span style="color:#c62828">*บังคับ</span>':'(ถ้ามี)');
+      snLabel.innerHTML=snLabelTxt+' '+(needSN?'<span style="color:#c62828">*บังคับ</span>':'(ถ้ามี)');
       var snInp = document.createElement('input');
       snInp.type='text'; snInp.id='sack_serial_'+i;
       snInp.placeholder=needSN?'บังคับระบุ':'ระบุถ้ามี';
@@ -4623,7 +4624,12 @@ function _doRenderCloseItems(readonly){
         +'</div>'
         +(!usedEntered
           ? '<div style="font-size:12px;color:#e65100;background:#fff3e0;border-radius:6px;padding:6px 10px;margin-bottom:10px">⚠️ กรุณากรอกจำนวนที่ใช้จริงก่อน (ถ้าไม่ได้ใช้เลย ให้ใส่ 0)</div>'
-          : '<div style="font-size:12px;color:var(--g400);background:#f5f5f5;border-radius:6px;padding:8px 10px;margin-bottom:10px">'
+          : (usedVal===0
+            ? '<div style="font-size:12px;color:#b71c1c;background:#ffebee;border:1px solid #ffcdd2;border-radius:6px;padding:8px 10px;margin-bottom:10px;font-weight:600">'
+              +'⚠️ "ใช้จริง = 0" หมายความว่า<u>อะไหล่ชิ้นนี้ไม่ได้ถูกติดตั้งลงรถเลยสักชิ้น</u> — ทั้งหมด '+it.issued+' '+it.unit+' จะถูกคืน Stock เป็นของดี/ของเสียเท่านั้น'
+              +'<br>❓ ถ้าจริงๆ แล้วมีการติดตั้งอะไหล่นี้ลงรถ กรุณาแก้จำนวน "ใช้จริง" ใหม่ให้ตรงกับที่ติดตั้งจริง แล้วจะมีช่องให้ระบุ S/N รถ + Serial เดิมที่ถอดออกขึ้นมาให้กรอก'
+              +'</div>'
+            : '<div style="font-size:12px;color:var(--g400);background:#f5f5f5;border-radius:6px;padding:8px 10px;margin-bottom:10px">'
               +'เหลือคืน Stock <strong>'+remaining+' '+it.unit+'</strong>'
               +(remaining>0
                 ? ' — ระบบถือว่าเป็น<strong style="color:var(--gm)">ของดีทั้งหมด</strong>ให้อัตโนมัติ ถ้ามีของเสียปนอยู่ ระบุจำนวนได้ที่นี่: '
@@ -4632,14 +4638,16 @@ function _doRenderCloseItems(readonly){
                   +' → คืนดี <strong style="color:var(--gm)">'+it.retGood+'</strong> ชิ้น'
                 : ' (ใช้ครบตามที่จ่ายจริงพอดี ไม่มีของคืน)'
               )
-            +'</div>'
-        );
+            +'</div>')
+          )
+        ;
 
     // ── แถว S/N รถ ──
     var singleMode = !readonly && window._clVehMode==='single';
     var vehicleRows = it.vehicles.map(function(v, vi){
       var needPhoto = !readonly && Number(v.qty)>0 && !v.photo;
       var needSerial = !readonly && Number(v.qty)>0 && window._clRequireSerialMap && window._clRequireSerialMap[it.partNo];
+      var serialLabelTxt = (window._clRequireSerialMap && window._clRequireSerialMap[it.partNo]) || 'Serial Number';
       var photoHtml = v.photo
         ? '<div style="position:relative;display:inline-block">'
             +'<img src="'+v.photo+'" style="width:56px;height:56px;object-fit:cover;border-radius:6px;border:2px solid var(--gm);cursor:pointer" onclick="openImgLightbox(this.src)" title="รูปของเก่า/เสียที่ถอดออก">'
@@ -4650,7 +4658,7 @@ function _doRenderCloseItems(readonly){
         ? '<div style="font-size:11px;color:#6a1b9a;margin-top:4px">🔒 Serial เดิม: <strong>'+v.oldPartSerial+'</strong></div>'
         : (!readonly && (needSerial || v.oldPartSerial)
           ? '<div style="margin-top:6px">'
-            +'<label style="font-size:11px;color:'+(needSerial&&!v.oldPartSerial?'#6a1b9a':'var(--g400)')+';font-weight:600">🔒 Serial เดิม (ของที่ถอดออก)'+(needSerial?' *บังคับ':'')+'</label>'
+            +'<label style="font-size:11px;color:'+(needSerial&&!v.oldPartSerial?'#6a1b9a':'var(--g400)')+';font-weight:600">🔒 '+serialLabelTxt+'เดิม (ของที่ถอดออก)'+(needSerial?' *บังคับ':'')+'</label>'
             +'<input class="fc" value="'+(v.oldPartSerial||'')+'" placeholder="กรอก Serial ของเก่า" style="font-size:12px;border-color:'+(needSerial&&!v.oldPartSerial?'#6a1b9a':'var(--g200)')+'" '
               +'oninput="_clItemState['+pi+'].vehicles['+vi+'].oldPartSerial=this.value">'
             +'</div>'
@@ -5000,10 +5008,10 @@ function loadCloseDetail(){
 
     renderCloseItems(readonly);
 
-    // ดึงว่าอะไหล่ตัวไหนบังคับ Serial Number บ้าง (ใช้กับช่อง Serial ของเก่าที่ถอดออก)
+    // ดึงว่าอะไหล่ตัวไหนบังคับ Serial/Code บ้าง พร้อมป้ายกำกับ (ใช้กับช่อง Serial ของเก่าที่ถอดออก)
     if(!readonly){
       var clPartNos = items.map(function(it){ return it.PartNo; }).filter(Boolean);
-      callAPI('getPartsRequireSerial',{partNos:clPartNos}).then(function(rsRes){
+      callAPI('getPartsSerialConfig',{partNos:clPartNos}).then(function(rsRes){
         window._clRequireSerialMap = (rsRes && rsRes.success && rsRes.data) || {};
         renderCloseItems(false);
       });
@@ -10596,11 +10604,15 @@ function renderPartDetailModalBody(d, canEdit){
       )
     +'</div>'
     +(canEdit
-      ? '<label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:14px;cursor:pointer">'
-        +'<input type="checkbox" id="pdRequireSerial" '+(d.requireSerial?'checked':'')+'>'
+      ? '<label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:8px;cursor:pointer">'
+        +'<input type="checkbox" id="pdRequireSerial" '+(d.requireSerial?'checked':'')+' onchange="document.getElementById(\'pdSerialLabelBox\').style.display=this.checked?\'block\':\'none\'">'
         +'<span>🔒 <b>บังคับระบุ Serial Number</b> — อะไหล่ราคาสูง/ต้องตามรอย (เช่น มอเตอร์) ติ๊กไว้แล้วระบบจะขอเลข Serial ทุกครั้งที่รับเข้า/จ่ายออก/คืนของเก่า</span>'
         +'</label>'
-      : (d.requireSerial ? '<div style="font-size:12px;color:#e65100;background:#fff3e0;border-radius:6px;padding:6px 10px;margin-bottom:14px">🔒 อะไหล่นี้บังคับระบุ Serial Number ทุกครั้ง</div>' : '')
+        +'<div id="pdSerialLabelBox" style="display:'+(d.requireSerial?'block':'none')+';margin:0 0 14px 24px">'
+          +'<label class="fl">ป้ายกำกับที่จะแสดง (เช่น "Serial Number" หรือ "Code" สำหรับแบต Trojan)</label>'
+          +'<input class="fc" id="pdSerialLabel" value="'+(d.serialLabel||'Serial Number')+'" placeholder="Serial Number" style="max-width:220px">'
+        +'</div>'
+      : (d.requireSerial ? '<div style="font-size:12px;color:#e65100;background:#fff3e0;border-radius:6px;padding:6px 10px;margin-bottom:14px">🔒 อะไหล่นี้บังคับระบุ '+(d.serialLabel||'Serial Number')+' ทุกครั้ง</div>' : '')
     )
     +(canEdit ? '<button class="btn bp bsm" onclick="savePartDetail()" style="margin-bottom:16px">💾 บันทึกคำอธิบาย/การตั้งค่า</button>' : '')
     +'<div style="border-top:1px solid var(--g200);padding-top:12px">'
@@ -10620,11 +10632,12 @@ function savePartDetail(){
   if(!window._pdCurrent) return;
   var desc = (document.getElementById('pdExtraDesc')||{}).value||'';
   var reqSerial = (document.getElementById('pdRequireSerial')||{}).checked||false;
+  var serialLabel = (document.getElementById('pdSerialLabel')||{}).value||'Serial Number';
   toast('กำลังบันทึก...','info');
-  callAPI('savePartDetails',{partNo:window._pdCurrent.partNo, extraDescription:desc, requireSerial:reqSerial}).then(function(res){
+  callAPI('savePartDetails',{partNo:window._pdCurrent.partNo, extraDescription:desc, requireSerial:reqSerial, serialLabel:serialLabel}).then(function(res){
     toast(res.message, res.success?'success':'error');
     if(res.success){
-      window._pdCurrent.extraDescription=desc; window._pdCurrent.requireSerial=reqSerial;
+      window._pdCurrent.extraDescription=desc; window._pdCurrent.requireSerial=reqSerial; window._pdCurrent.serialLabel=serialLabel;
       updatePartDetailPreview();
     }
   });
