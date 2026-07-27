@@ -4674,9 +4674,14 @@ function _doRenderCloseItems(readonly){
                   +'</div>'
                   +((it.extQty||0)>0
                     ? '<div style="margin-top:6px">'
-                        +'<label style="font-size:11px;color:'+(it.extLocation?'#00695c':'#b71c1c')+';font-weight:600">🚐 เก็บที่ไหน/ติดรถ Service ของใคร'+(it.extLocation?'':' *บังคับ')+'</label>'
-                        +'<input class="fc" value="'+(it.extLocation||'')+'" placeholder="เช่น ติดรถ Service ช่างสมชาย / เก็บสำรองสาขาภูเก็ต" style="border-color:'+(it.extLocation?'#00695c':'#b71c1c')+'" '
-                        +'oninput="_clSetExtLocation('+pi+',this.value)"></div>'
+                        +'<label style="font-size:11px;color:'+(it.extLocation?'#00695c':'#b71c1c')+';font-weight:600">🚐 เก็บที่ไหน/ติดรถ Service ของใคร/ฝากลูกค้าคนไหน'+(it.extLocation?'':' *บังคับ')+'</label>'
+                        +'<input class="fc" value="'+(it.extLocation||'')+'" placeholder="เช่น ติดรถ Service ช่างสมชาย / เก็บสำรองสาขาภูเก็ต / ฝากลูกค้า บ.ABC" style="border-color:'+(it.extLocation?'#00695c':'#b71c1c')+'" '
+                        +'oninput="_clSetExtLocation('+pi+',this.value)">'
+                        +'<label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#666;margin-top:4px;cursor:pointer">'
+                          +'<input type="checkbox" '+(it.extPermanent?'checked':'')+' onchange="_clSetExtPermanent('+pi+',this.checked)">'
+                          +'<span>ฝากลูกค้าถาวร / ไม่ต้องตามคืน (ถ้าไม่ติ๊ก = เก็บชั่วคราว ต้องตามคืนภายหลัง เช่น รถ Service)</span>'
+                        +'</label>'
+                      +'</div>'
                     : '')
                 : ' (ใช้ครบตามที่จ่ายจริงพอดี ไม่มีของคืน)'
               )
@@ -4847,6 +4852,9 @@ function _clSetExtQty(pi, val){
 function _clSetExtLocation(pi, val){
   _clItemState[pi].extLocation = val;
 }
+function _clSetExtPermanent(pi, checked){
+  _clItemState[pi].extPermanent = checked;
+}
 function _clPartPhoto(event, pi){
   var files = Array.from(event.target.files||[]);
   if(!files.length) return;
@@ -4996,13 +5004,14 @@ function loadCloseDetail(){
     if(isPendingClearance && d.ClosedNote){
       try { clearInfo = JSON.parse(d.ClosedNote); } catch(e){ clearInfo = {}; }
     }
-    var retMap = {}, defMap = {}, extMap = {}, extLocMap = {};
+    var retMap = {}, defMap = {}, extMap = {}, extLocMap = {}, extPermMap = {};
     (clearInfo.returnedItems||[]).forEach(function(r){ retMap[r.partNo||r.PartNo] = r.returnedQty||r.ReturnedQty||0; });
     (clearInfo.defectItems||[]).forEach(function(dd){ defMap[dd.partNo||dd.PartNo] = dd.defectQty||dd.DefectQty||0; });
     (clearInfo.externalHoldings||[]).forEach(function(eh){
       var pn = eh.partNo||eh.PartNo;
       extMap[pn] = (extMap[pn]||0) + (eh.qty||eh.Qty||0);
       extLocMap[pn] = eh.location||eh.Location||'';
+      extPermMap[pn] = !!(eh.permanent||eh.Permanent);
     });
 
     var isTech = !isStock;
@@ -5058,6 +5067,7 @@ function loadCloseDetail(){
         var savedBad  = isPendingClearance ? (defMap[pn]||0) : 0;
         var savedExt  = isPendingClearance ? (extMap[pn]||0) : 0;
         var savedExtLoc = isPendingClearance ? (extLocMap[pn]||'') : '';
+        var savedExtPerm = isPendingClearance ? (extPermMap[pn]||false) : false;
         var hasSaved = isPendingClearance && (savedGood>0 || savedBad>0 || savedExt>0 || (retMap[pn]===0 && defMap.hasOwnProperty(pn)));
         return {
           partNo: pn,
@@ -5070,6 +5080,7 @@ function loadCloseDetail(){
           retBad:  savedBad,
           extQty: savedExt,
           extLocation: savedExtLoc,
+          extPermanent: savedExtPerm,
           note: '',
           unit: it.Unit||'ชิ้น',
           photos: [],
@@ -5221,7 +5232,7 @@ function submitClearByTech(){
     if(it.retBad>0)  defectItems.push({partNo:it.partNo, nameEN:it.nameEN, unit:it.unit, defectQty:it.retBad});
     if((it.extQty||0)>0){
       if(!it.extLocation) { errors.push(it.partNo+': กรุณาระบุว่าเก็บสำรอง/ติดรถ Service ของใคร/ที่ไหน'); return; }
-      externalHoldings.push({partNo:it.partNo, nameEN:it.nameEN, unit:it.unit, qty:it.extQty, location:it.extLocation});
+      externalHoldings.push({partNo:it.partNo, nameEN:it.nameEN, unit:it.unit, qty:it.extQty, location:it.extLocation, permanent: !!it.extPermanent});
     }
 
     if(expectedUsed > 0){
@@ -9973,6 +9984,7 @@ function loadExtHoldingsPage(){
   var box = document.getElementById('extHoldBox');
   if(!box) return;
   box.innerHTML = '<div class="card tc tm" style="padding:24px">⏳ กำลังโหลด...</div>';
+  if(!window._vehiclesDB || !window._vehiclesDB.length) loadVehiclesDB();
   callAPI('getExternalHoldings',{}).then(function(res){
     window._extHoldData = res.data||[];
     renderExtHoldingsPage();
@@ -9985,12 +9997,14 @@ function renderExtHoldingsPage(){
   var all = window._extHoldData||[];
   var outCount = all.filter(function(x){return x.Status==='OUT';}).length;
   var retCount = all.filter(function(x){return x.Status==='RETURNED';}).length;
+  var permCount = all.filter(function(x){return x.Status==='PERMANENT';}).length;
   var list = all.filter(function(x){ return _extHoldFilter==='all' || x.Status===_extHoldFilter; });
 
   var filterBar = '<div class="card" style="padding:10px 14px;margin-bottom:10px;background:#e0f2f1">'
     +'<div style="font-size:13px;font-weight:600;color:#00695c;margin-bottom:8px">🚐 ของที่เก็บสำรอง/ติดรถ Service นอกคลังหลัก — '+all.length+' รายการ</div>'
     +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
-      +'<button class="btn bsm '+(_extHoldFilter==='OUT'?'bp':'bo')+'" onclick="setExtHoldFilter(\'OUT\')">🚐 ยังอยู่นอกคลัง ('+outCount+')</button>'
+      +'<button class="btn bsm '+(_extHoldFilter==='OUT'?'bp':'bo')+'" onclick="setExtHoldFilter(\'OUT\')">🚐 ต้องตามคืน ('+outCount+')</button>'
+      +'<button class="btn bsm '+(_extHoldFilter==='PERMANENT'?'bp':'bo')+'" onclick="setExtHoldFilter(\'PERMANENT\')">🎁 ฝากลูกค้าถาวร ('+permCount+')</button>'
       +'<button class="btn bsm '+(_extHoldFilter==='RETURNED'?'bp':'bo')+'" onclick="setExtHoldFilter(\'RETURNED\')">✅ นำกลับแล้ว ('+retCount+')</button>'
       +'<button class="btn bsm '+(_extHoldFilter==='all'?'bp':'bo')+'" onclick="setExtHoldFilter(\'all\')">ทั้งหมด ('+all.length+')</button>'
     +'</div>'
@@ -10004,16 +10018,23 @@ function renderExtHoldingsPage(){
   var canReturn = CU && ['STOCK','MANAGER','ADMIN'].indexOf(CU.role)>=0;
   var html = list.map(function(x){
     var isOut = x.Status==='OUT';
-    return '<div class="card" style="padding:12px 14px;margin-bottom:8px;border-left:4px solid '+(isOut?'#00695c':'var(--gm)')+'">'
+    var isPerm = x.Status==='PERMANENT';
+    var borderColor = isOut ? '#00695c' : (isPerm ? '#9c27b0' : 'var(--gm)');
+    return '<div class="card" style="padding:12px 14px;margin-bottom:8px;border-left:4px solid '+borderColor+'">'
       +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">'
         +'<strong style="font-size:13px;color:var(--gd)">'+x.PartNo+'</strong>'
         +'<span style="font-size:12px;color:var(--g400)">'+(x.PartName||'')+'</span>'
+        +(isPerm?'<span style="font-size:11px;background:#f3e5f5;color:#9c27b0;padding:2px 8px;border-radius:8px">🎁 ฝากถาวร</span>':'')
         +'<span style="margin-left:auto;font-weight:700;font-size:13px;color:#00695c">'+x.Qty+' '+(x.Unit||'')+'</span>'
       +'</div>'
       +'<div style="font-size:12px;color:#333">📍 เก็บที่: <strong>'+(x.Location||'—')+'</strong></div>'
       +'<div style="font-size:12px;color:var(--g400);margin-top:2px">จากใบเบิก '+x.ReqID+' (Job '+(x.JobNo||'—')+') โดย '+(x.TechName||x.TechEmail||'—')+' เมื่อ '+(x.CreatedAt||'')+'</div>'
       +(x.Status==='RETURNED' ? '<div style="font-size:12px;color:var(--gm);margin-top:4px">✅ นำกลับเข้าคลังแล้วเมื่อ '+(x.ReturnedAt||'')+'</div>'
-        : (canReturn ? '<button class="btn bp bsm" style="margin-top:8px;background:#00695c;border-color:#00695c" onclick="doReturnExtHolding(\''+x.EntryID+'\')">✅ นำกลับเข้าคลัง</button>' : ''))
+        : x.Status==='INSTALLED' ? '<div style="font-size:12px;color:#1565c0;margin-top:4px">🚗 นำไปติดตั้งบนรถ <strong>'+(x.InstalledVehicleSerial||'')+'</strong> แล้วเมื่อ '+(x.InstalledAt||'')+'</div>'
+        : (canReturn ? '<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">'
+            +'<button class="btn bp bsm" style="background:#00695c;border-color:#00695c" onclick="doReturnExtHolding(\''+x.EntryID+'\')">✅ นำกลับเข้าคลัง</button>'
+            +'<button class="btn bp bsm" style="background:#1565c0;border-color:#1565c0" onclick="openInstallExtHoldingModal(\''+x.EntryID+'\',\''+x.PartNo+'\')">🚗 นำไปติดตั้งบนรถ</button>'
+          +'</div>' : ''))
     +'</div>';
   }).join('');
 
@@ -10025,6 +10046,94 @@ function doReturnExtHolding(entryId){
   callAPI('returnExternalHolding',{entryId:entryId}).then(function(res){
     toast(res.message, res.success?'success':'error');
     if(res.success) loadExtHoldingsPage();
+  });
+}
+
+// ── นำของสำรอง/รถ Service ไปติดตั้งบนรถจริง (ภายหลัง เมื่อรู้แล้วว่าใช้กับคันไหน) ──
+var _iehEntryId = '', _iehPartNo = '', _iehPhotoB64 = '';
+function openInstallExtHoldingModal(entryId, partNo){
+  _iehEntryId = entryId; _iehPartNo = partNo; _iehPhotoB64 = '';
+  var old = document.getElementById('iehModal');
+  if(old) old.remove();
+  var m = document.createElement('div');
+  m.id = 'iehModal';
+  m.className = 'mo';
+  m.style.zIndex = '3400';
+  m.innerHTML = '<div class="mow" style="max-width:420px">'
+    +'<div class="moh"><div class="mot">🚗 นำไปติดตั้งบนรถ</div>'
+      +'<button class="mcl" onclick="document.getElementById(\'iehModal\').remove()">✕</button></div>'
+    +'<div class="mob">'
+      +'<label class="fl">S/N รถที่นำไปติดตั้ง — ต้องเลือกจากรายการที่มีในระบบเท่านั้น</label>'
+      +'<div style="position:relative">'
+        +'<input class="fc" id="iehSerialInput" placeholder="พิมพ์ค้นหา S/N รถ..." autocomplete="off" '
+          +'oninput="_iehShowSerialDrop(this)" onblur="setTimeout(function(){var d=document.getElementById(\'iehVd\');if(d)d.style.display=\'none\';},200)">'
+        +'<div id="iehVd" style="display:none;position:absolute;top:calc(100% + 2px);left:0;right:0;background:#fff;border:1px solid var(--g200);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:300;max-height:160px;overflow-y:auto;font-size:12px"></div>'
+      +'</div>'
+      +'<div id="iehSerialBox" style="margin-top:12px;display:none">'
+        +'<label class="fl" id="iehOldSerialLabel">🔒 Serial ของเก่าที่ถอดออก</label>'
+        +'<input class="fc" id="iehOldSerial" placeholder="กรอก Serial ของเก่า">'
+      +'</div>'
+      +'<div style="margin-top:12px">'
+        +'<label class="fl">📷 รูปของเก่า/เสียที่ถอดออก</label>'
+        +'<div id="iehPhotoBox" style="width:90px;height:90px;border:1.5px dashed var(--g300);border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;color:var(--g400)" onclick="document.getElementById(\'iehPhotoInput\').click()">📷 เพิ่มรูป</div>'
+        +'<input type="file" id="iehPhotoInput" accept="image/*" style="display:none" onchange="_iehOnPhoto(event)">'
+      +'</div>'
+      +'<button class="btn bp" style="width:100%;margin-top:16px;background:#1565c0;border-color:#1565c0" onclick="_iehSubmit()">✅ บันทึกการติดตั้ง</button>'
+    +'</div>'
+  +'</div>';
+  document.body.appendChild(m);
+  m.style.display = 'flex';
+  // เช็คว่าอะไหล่นี้บังคับ Serial ไหม
+  callAPI('getPartsSerialConfig',{partNos:[partNo]}).then(function(res){
+    var label = res && res.success && res.data && res.data[partNo];
+    var box = document.getElementById('iehSerialBox');
+    if(label && box){
+      box.style.display = 'block';
+      document.getElementById('iehOldSerialLabel').textContent = '🔒 '+label+'เดิม (ของที่ถอดออก) *บังคับ';
+    }
+  });
+}
+function _iehShowSerialDrop(inp){
+  var q=(inp.value||'').toLowerCase(); var dd=document.getElementById('iehVd');
+  if(!dd) return;
+  if(!q||!window._vehiclesDB){dd.style.display='none';return;}
+  var res=window._vehiclesDB.filter(function(v){ return (v.SerialNo||'').toLowerCase().indexOf(q)>=0||(v.CarNo||'').toLowerCase().indexOf(q)>=0; }).slice(0,8);
+  if(!res.length){dd.style.display='none';return;}
+  dd.innerHTML=res.map(function(v){
+    return '<div onmousedown="document.getElementById(\'iehSerialInput\').value=\''+v.SerialNo+'\';document.getElementById(\'iehVd\').style.display=\'none\'" style="padding:8px 10px;cursor:pointer;border-bottom:1px solid #f5f5f5"><strong>'+v.SerialNo+'</strong>'+(v.CarNo?' ['+v.CarNo+']':'')+'</div>';
+  }).join('');
+  dd.style.display='block';
+}
+function _iehOnPhoto(event){
+  var f = event.target.files[0];
+  if(!f) return;
+  compressImage(f, function(b64){
+    if(!b64) return;
+    _iehPhotoB64 = b64;
+    var box = document.getElementById('iehPhotoBox');
+    if(box) box.innerHTML = '<img src="'+b64+'" style="width:100%;height:100%;object-fit:cover;border-radius:6px">';
+  });
+}
+function _iehSubmit(){
+  var serial = (document.getElementById('iehSerialInput').value||'').trim();
+  if(!serial) return toast('กรุณาเลือก S/N รถค่ะ','error');
+  if(!window._vehiclesDB || !window._vehiclesDB.find(function(v){ return String(v.SerialNo).trim()===serial; })){
+    return toast('⚠️ ไม่พบ S/N นี้ในระบบ — กรุณาเลือกจากรายการที่ค้นเจอเท่านั้น','error');
+  }
+  var oldSerialBox = document.getElementById('iehSerialBox');
+  var oldSerial = oldSerialBox && oldSerialBox.style.display!=='none' ? (document.getElementById('iehOldSerial').value||'').trim() : '';
+  if(oldSerialBox && oldSerialBox.style.display!=='none' && !oldSerial) return toast('กรุณากรอก Serial ของเก่าที่ถอดออกค่ะ','error');
+  if(!_iehPhotoB64) return toast('กรุณาถ่ายรูปของเก่า/เสียที่ถอดออกก่อนค่ะ','error');
+
+  toast('กำลังบันทึก...','info');
+  callAPI('installExternalHolding',{
+    entryId:_iehEntryId, vehicleSerial:serial, oldPartSerial:oldSerial, photoBase64:_iehPhotoB64,
+  }).then(function(res){
+    toast(res.message, res.success?'success':'error');
+    if(res.success){
+      document.getElementById('iehModal').remove();
+      loadExtHoldingsPage();
+    }
   });
 }
 
