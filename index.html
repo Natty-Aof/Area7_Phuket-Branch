@@ -3126,12 +3126,13 @@ function renderMasterParts(){
             ? '<span style="color:#b71c1c;font-size:12px;font-weight:700">🚫 ปิดใช้งาน</span>'
             : '<span style="color:#2d6a4f;font-size:12px;font-weight:700">✓ ใช้งาน</span>')+'</td>'
         +'<td style="white-space:nowrap">'
+          +'<button class="btn bo bsm" onclick="openPartDetailModalFor(\''+pnEsc+'\')" title="ดูรายละเอียด/แผนผัง IPL">📋 IPL</button> '
           +(canEditRow
             ? '<button class="btn bo bsm m-part-edit" data-pn="'+pnEsc+'">✏️</button> '
               +(inactive
                 ? '<button class="btn bp bsm m-part-on" data-pn="'+pnEsc+'">♻️ เปิด</button>'
                 : '<button class="btn bd bsm m-part-off" data-pn="'+pnEsc+'">🚫 ปิด</button>')
-            : '<span style="color:var(--g400);font-size:11px">— ดูอย่างเดียว —</span>'
+            : ''
           )
         +'</td></tr>';
     }).join('')
@@ -6433,6 +6434,7 @@ function _doSearchParts(){
     if(p.nameTH) html += '<div style="font-size:12px;color:#8fa898">' + p.nameTH + '</div>';
     html += '<div style="font-size:11px;color:#8fa898">' + p.group + '</div>';
     html += '</div>';
+    html += '<button class="btn bo bsm" style="flex-shrink:0;padding:3px 8px;font-size:11px" onclick="event.stopPropagation();openPartDetailModalFor(\'' + encodeURIComponent(p.partNo) + '\')" title="ดูรายละเอียด/แผนผัง IPL">📋</button>';
     html += '<button class="btn bp bsm" style="flex-shrink:0;padding:3px 10px;font-size:12px" onclick="event.stopPropagation();addPartFromEnc(decodeURIComponent(this.parentElement.dataset.p))">+ เพิ่ม</button>';
     html += '</div>';
     return html;
@@ -10806,6 +10808,16 @@ function updatePartDetailPreview(){
   if(d.iplImages && d.iplImages.length) bits.push(d.iplImages.length+' รูป IPL');
   if(d.requireSerial) bits.push('🔒บังคับ Serial');
   prev.textContent = bits.length ? bits.join(' • ') : 'แตะเพื่อดู/แก้ไข';
+}
+// ── เปิด modal รายละเอียด/IPL จากที่ไหนก็ได้ (เช่น หน้าจัดการอะไหล่/รถ) โดยไม่ต้องพึ่ง state ของหน้า Stock Card ──
+function openPartDetailModalFor(partNoEsc){
+  var partNo = decodeURIComponent(partNoEsc);
+  toast('กำลังโหลด...','info');
+  callAPI('getPartDetails',{partNo:partNo}).then(function(res){
+    if(!res.success){ toast('โหลดข้อมูลไม่สำเร็จค่ะ','error'); return; }
+    window._pdCurrent = res.data;
+    openPartDetailModal();
+  });
 }
 function openPartDetailModal(){
   if(!window._pdCurrent){ toast('กรุณาเลือกอะไหล่ก่อนค่ะ','error'); return; }
