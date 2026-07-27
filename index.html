@@ -4967,8 +4967,11 @@ function loadCloseDetail(){
     }
 
     // เก็บ items + init state
+    // ⛔ สำคัญ: ต้อง reset state ทุกครั้งที่ ReqID เปลี่ยน (แม้ทั้งคู่จะเป็น PENDING_CLEARANCE)
+    // ไม่งั้นข้อมูลคืนดี/คืนเสียของใบเบิกเก่าจะค้างและถูกส่งไปผิดใบเบิกตอน Stock กด "ยืนยัน+ปิดงาน"
     window._clearItems = items;
-    if(!window._clItemState || !isPendingClearance) {
+    if(!window._clItemState || !isPendingClearance || window._clItemStateReqId !== reqId) {
+      window._clItemStateReqId = reqId;
       window._clVehMode = 'multi';
       window._clSingleSerial = '';
       setTimeout(function(){
