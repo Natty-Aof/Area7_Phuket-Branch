@@ -335,6 +335,7 @@ textarea.fc{min-height:70px;resize:vertical;}
       <div class="ni" data-pg="stockcount" onclick="go('stockcount')" id="nStockCount"><span class="ic">🔢</span> นับสต็อก</div>
       <div class="ni hidden" id="nChangeReq" data-pg="changereq" onclick="go('changereq')"><span class="ic">🔑</span> คำขอแก้ไข<span class="badge" id="crBadge">0</span></div>
       <div class="ni hidden" id="nRejHist" data-pg="rejhist" onclick="go('rejhist')"><span class="ic">📋</span> ประวัติการตีกลับ</div>
+      <div class="ni hidden" id="nExtHold" data-pg="extholdings" onclick="go('extholdings')"><span class="ic">🚐</span> ของนอกคลัง (สำรอง/รถ Service)</div>
       <div class="ni" data-pg="sales" onclick="go('sales')"><span class="ic">🛒</span> ขาย/เบิกจ่ายภายใน</div>
       <div class="ni" data-pg="specialreq" onclick="go('specialreq')"><span class="ic">📮</span> สั่งซื้ออะไหล่พิเศษ<span class="badge hidden" id="sprBadge">0</span></div>
       <div class="ni hidden" id="nMaster" data-pg="master" onclick="go('master')"><span class="ic">🗂️</span> จัดการอะไหล่/รถ</div>
@@ -987,6 +988,13 @@ textarea.fc{min-height:70px;resize:vertical;}
       <!-- ═══════════════════════════════════════════════════ -->
       <div id="pg-rejhist" class="hidden">
         <div id="rejHistBox"><div class="card tc tm" style="padding:32px">⏳ กำลังโหลด...</div></div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════ -->
+      <!-- EXTERNAL HOLDINGS (ของนอกคลัง — สำรอง/ติดรถ Service) -->
+      <!-- ═══════════════════════════════════════════════════ -->
+      <div id="pg-extholdings" class="hidden">
+        <div id="extHoldBox"><div class="card tc tm" style="padding:32px">⏳ กำลังโหลด...</div></div>
       </div>
 
       <!-- ═══════════════════════════════════════════════════ -->
@@ -1968,6 +1976,7 @@ function _goWithoutPush(page){
   if(page==='profile') loadProfile();
   if(page==='changereq') loadChangeReqPage();
   if(page==='rejhist') loadRejHistPage();
+  if(page==='extholdings') loadExtHoldingsPage();
   if(page==='vehiclehistory'){ loadVehiclesDB(); }
   if(page==='stockcount'){
     var lbl = document.getElementById('scntDateLabel');
@@ -2662,6 +2671,7 @@ function go(page){
   if(page==='profile') loadProfile();
   if(page==='changereq') loadChangeReqPage();
   if(page==='rejhist') loadRejHistPage();
+  if(page==='extholdings') loadExtHoldingsPage();
   if(page==='inspection') loadInspectionPage();
   if(page==='vehiclehistory'){
     // preload vehicles ทันที เพื่อให้ค้นหาได้เร็ว
@@ -2769,6 +2779,8 @@ function _doRefreshBadges(){
   if(CU&&['STOCK','MANAGER','ADMIN'].indexOf(CU.role)>=0){
     var rhMenu=document.getElementById('nRejHist');
     if(rhMenu) rhMenu.classList.remove('hidden');
+    var ehMenu=document.getElementById('nExtHold');
+    if(ehMenu) ehMenu.classList.remove('hidden');
   }
   // Manager/Admin: badge = จำนวนที่รออนุมัติทั้งหมด | ช่าง/Stock: badge = จำนวนคำขอของตัวเองที่ยังรออยู่
   callAPI('getChangeRequests', CU&&(CU.role==='MANAGER'||CU.role==='ADMIN') ? {status:'PENDING'} : {}).then(function(res){
@@ -4617,7 +4629,7 @@ function _doRenderCloseItems(readonly){
 
   box.innerHTML = st.map(function(it, pi){
     var usedInVehicles = it.vehicles.reduce(function(s,v){ return s+(Number(v.qty)||0); },0);
-    var expectedUsed = (it.issued||0) - (it.retGood||0) - (it.retBad||0);
+    var expectedUsed = (it.usedQty!==null && it.usedQty!==undefined) ? Number(it.usedQty) : 0;
     var vOk = usedInVehicles === expectedUsed && expectedUsed >= 0;
     var vWarn = !vOk && expectedUsed > 0;
 
@@ -4628,7 +4640,8 @@ function _doRenderCloseItems(readonly){
     var qtySection = readonly
       ? '<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;margin-bottom:10px">'
           +'<span>📦 จ่ายจริง: <strong>'+it.issued+'</strong> '+it.unit+'</span>'
-          +'<span style="color:#1565c0">🔧 ใช้จริง: <strong>'+(it.issued-(it.retGood||0)-(it.retBad||0))+'</strong></span>'
+          +'<span style="color:#1565c0">🔧 ใช้จริง: <strong>'+(it.usedQty!==null&&it.usedQty!==undefined?it.usedQty:0)+'</strong></span>'
+          +(it.extQty>0 ? '<span style="color:#00695c">🚐 สำรอง/รถ Service: <strong>'+it.extQty+'</strong>'+(it.extLocation?' ('+it.extLocation+')':'')+'</span>' : '')
           +'<span style="color:var(--gm)">↩️ คืนดี: <strong>'+it.retGood+'</strong></span>'
           +'<span style="color:var(--red)">🗑️ คืนเสีย: <strong>'+it.retBad+'</strong></span>'
         +'</div>'
@@ -4647,12 +4660,23 @@ function _doRenderCloseItems(readonly){
               +'<br>❓ ถ้าจริงๆ แล้วมีการติดตั้งอะไหล่นี้ลงรถ กรุณาแก้จำนวน "ใช้จริง" ใหม่ให้ตรงกับที่ติดตั้งจริง แล้วจะมีช่องให้ระบุ S/N รถ + Serial เดิมที่ถอดออกขึ้นมาให้กรอก'
               +'</div>'
             : '<div style="font-size:12px;color:var(--g400);background:#f5f5f5;border-radius:6px;padding:8px 10px;margin-bottom:10px">'
-              +'เหลือคืน Stock <strong>'+remaining+' '+it.unit+'</strong>'
+              +'เหลือ <strong>'+remaining+' '+it.unit+'</strong> ที่ยังไม่ได้ติดตั้ง — ระบุว่าไปไหน (ค่าเริ่มต้นถือเป็นของดีทั้งหมด):'
               +(remaining>0
-                ? ' — ระบบถือว่าเป็น<strong style="color:var(--gm)">ของดีทั้งหมด</strong>ให้อัตโนมัติ ถ้ามีของเสียปนอยู่ ระบุจำนวนได้ที่นี่: '
-                  +'<input class="fc" type="number" min="0" max="'+remaining+'" value="'+(it.retBad||0)+'" style="width:60px;display:inline-block;text-align:center;margin:0 4px;border-color:var(--red);color:var(--red)" '
-                  +'oninput="_clSetBadFromRemaining('+pi+',this.value)"> <span style="color:var(--red)">ชิ้นเสีย (SCR)</span>'
-                  +' → คืนดี <strong style="color:var(--gm)">'+it.retGood+'</strong> ชิ้น'
+                ? '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:6px">'
+                    +'<span style="color:var(--red)">🗑️ ของเสีย (SCR): '
+                      +'<input class="fc" type="number" min="0" max="'+remaining+'" value="'+(it.retBad||0)+'" style="width:55px;display:inline-block;text-align:center;border-color:var(--red);color:var(--red)" '
+                      +'oninput="_clSetBadFromRemaining('+pi+',this.value)"></span>'
+                    +'<span style="color:#00695c">🚐 เก็บสำรอง/ติดรถ Service: '
+                      +'<input class="fc" type="number" min="0" max="'+remaining+'" value="'+(it.extQty||0)+'" style="width:55px;display:inline-block;text-align:center;border-color:#00695c;color:#00695c" '
+                      +'oninput="_clSetExtQty('+pi+',this.value)"></span>'
+                    +'<span style="color:var(--gm);font-weight:600">↩️ คืนดีเข้า Stock: '+it.retGood+'</span>'
+                  +'</div>'
+                  +((it.extQty||0)>0
+                    ? '<div style="margin-top:6px">'
+                        +'<label style="font-size:11px;color:'+(it.extLocation?'#00695c':'#b71c1c')+';font-weight:600">🚐 เก็บที่ไหน/ติดรถ Service ของใคร'+(it.extLocation?'':' *บังคับ')+'</label>'
+                        +'<input class="fc" value="'+(it.extLocation||'')+'" placeholder="เช่น ติดรถ Service ช่างสมชาย / เก็บสำรองสาขาภูเก็ต" style="border-color:'+(it.extLocation?'#00695c':'#b71c1c')+'" '
+                        +'oninput="_clSetExtLocation('+pi+',this.value)"></div>'
+                    : '')
                 : ' (ใช้ครบตามที่จ่ายจริงพอดี ไม่มีของคืน)'
               )
             +'</div>')
@@ -4788,11 +4812,12 @@ function _clSetUsed(pi, val){
   var v = (val==='' || val===null) ? null : Math.max(0, Math.min(Number(val)||0, it.issued));
   it.usedQty = v;
   if(v === null){
-    it.retGood = 0; it.retBad = 0;
+    it.retGood = 0; it.retBad = 0; it.extQty = 0;
   } else {
     var remaining = it.issued - v;
     it.retBad = Math.min(it.retBad||0, remaining); // คงจำนวนของเสียเดิมไว้ถ้ายังไม่เกิน remaining ใหม่
-    it.retGood = remaining - it.retBad;
+    it.extQty = Math.min(it.extQty||0, Math.max(0, remaining - it.retBad));
+    it.retGood = remaining - it.retBad - it.extQty;
   }
   if(window._clVehMode==='single' && window._clSingleSerial){ _clApplySingleSerialToAll(); return; }
   renderCloseItems(false);
@@ -4801,11 +4826,25 @@ function _clSetBadFromRemaining(pi, val){
   var it = _clItemState[pi];
   if(it.usedQty === null || it.usedQty === undefined) return;
   var remaining = Math.max(0, it.issued - Number(it.usedQty));
-  var bad = Math.max(0, Math.min(Number(val)||0, remaining));
+  var bad = Math.max(0, Math.min(Number(val)||0, remaining - (it.extQty||0)));
   it.retBad = bad;
-  it.retGood = remaining - bad;
+  it.retGood = remaining - bad - (it.extQty||0);
   if(window._clVehMode==='single' && window._clSingleSerial){ _clApplySingleSerialToAll(); return; }
   renderCloseItems(false);
+}
+// 🚐 เก็บเป็นสำรอง/ติดรถ Service — ไม่ได้ติดตั้งบนรถลูกค้า และไม่ได้กลับเข้าคลังหลัก
+function _clSetExtQty(pi, val){
+  var it = _clItemState[pi];
+  if(it.usedQty === null || it.usedQty === undefined) return;
+  var remaining = Math.max(0, it.issued - Number(it.usedQty));
+  var ext = Math.max(0, Math.min(Number(val)||0, remaining - (it.retBad||0)));
+  it.extQty = ext;
+  it.retGood = remaining - (it.retBad||0) - ext;
+  if(ext===0) it.extLocation = '';
+  renderCloseItems(false);
+}
+function _clSetExtLocation(pi, val){
+  _clItemState[pi].extLocation = val;
 }
 function _clPartPhoto(event, pi){
   var files = Array.from(event.target.files||[]);
@@ -4956,9 +4995,14 @@ function loadCloseDetail(){
     if(isPendingClearance && d.ClosedNote){
       try { clearInfo = JSON.parse(d.ClosedNote); } catch(e){ clearInfo = {}; }
     }
-    var retMap = {}, defMap = {};
+    var retMap = {}, defMap = {}, extMap = {}, extLocMap = {};
     (clearInfo.returnedItems||[]).forEach(function(r){ retMap[r.partNo||r.PartNo] = r.returnedQty||r.ReturnedQty||0; });
     (clearInfo.defectItems||[]).forEach(function(dd){ defMap[dd.partNo||dd.PartNo] = dd.defectQty||dd.DefectQty||0; });
+    (clearInfo.externalHoldings||[]).forEach(function(eh){
+      var pn = eh.partNo||eh.PartNo;
+      extMap[pn] = (extMap[pn]||0) + (eh.qty||eh.Qty||0);
+      extLocMap[pn] = eh.location||eh.Location||'';
+    });
 
     var isTech = !isStock;
     var readonly = isPendingClearance;
@@ -5011,16 +5055,20 @@ function loadCloseDetail(){
           ? Number(it.IssuedQty) : qty;
         var savedGood = isPendingClearance ? (retMap[pn]||0) : 0;
         var savedBad  = isPendingClearance ? (defMap[pn]||0) : 0;
-        var hasSaved = isPendingClearance && (savedGood>0 || savedBad>0 || (retMap[pn]===0 && defMap.hasOwnProperty(pn)));
+        var savedExt  = isPendingClearance ? (extMap[pn]||0) : 0;
+        var savedExtLoc = isPendingClearance ? (extLocMap[pn]||'') : '';
+        var hasSaved = isPendingClearance && (savedGood>0 || savedBad>0 || savedExt>0 || (retMap[pn]===0 && defMap.hasOwnProperty(pn)));
         return {
           partNo: pn,
           nameEN: it.NameEN||it.NameTH||'',
           nameTH: it.NameTH||'',
           qty: qty,
           issued: issued,
-          usedQty: hasSaved ? Math.max(0, issued - savedGood - savedBad) : null,
+          usedQty: hasSaved ? Math.max(0, issued - savedGood - savedBad - savedExt) : null,
           retGood: savedGood,
           retBad:  savedBad,
+          extQty: savedExt,
+          extLocation: savedExtLoc,
           note: '',
           unit: it.Unit||'ชิ้น',
           photos: [],
@@ -5158,17 +5206,22 @@ function submitClearByTech(){
   var st = window._clItemState||[];
   if(!st.length) return toast('ไม่พบรายการอะไหล่','error');
 
-  var errors=[], returnedItems=[], defectItems=[], vhEntries=[];
+  var errors=[], returnedItems=[], defectItems=[], vhEntries=[], externalHoldings=[];
 
   st.forEach(function(it){
     if(!it.photos || !it.photos.length) errors.push('⚠️ '+it.partNo+': กรุณาถ่ายรูปอะไหล่นี้อย่างน้อย 1 รูป');
     if(it.usedQty === null || it.usedQty === undefined){
       errors.push('⚠️ '+it.partNo+': กรุณากรอกจำนวน "ใช้จริง" ก่อนส่งเคลียร์ (ถ้าไม่ได้ใช้เลย ให้ใส่ 0)');
     }
-    var expectedUsed = (it.issued||0) - (it.retGood||0) - (it.retBad||0);
-    if(expectedUsed < 0){ errors.push(it.partNo+': คืนมากกว่าที่จ่ายออกไป'); return; }
+    var totalAccounted = (it.usedQty||0) + (it.retGood||0) + (it.retBad||0) + (it.extQty||0);
+    if(totalAccounted !== it.issued){ errors.push(it.partNo+': ยอดรวม (ใช้จริง+คืนดี+คืนเสีย+สำรอง) ไม่เท่ากับจ่ายจริง'); return; }
+    var expectedUsed = (it.usedQty!==null && it.usedQty!==undefined) ? Number(it.usedQty) : 0;
     if(it.retGood>0) returnedItems.push({partNo:it.partNo, nameEN:it.nameEN, unit:it.unit, returnedQty:it.retGood});
     if(it.retBad>0)  defectItems.push({partNo:it.partNo, nameEN:it.nameEN, unit:it.unit, defectQty:it.retBad});
+    if((it.extQty||0)>0){
+      if(!it.extLocation) { errors.push(it.partNo+': กรุณาระบุว่าเก็บสำรอง/ติดรถ Service ของใคร/ที่ไหน'); return; }
+      externalHoldings.push({partNo:it.partNo, nameEN:it.nameEN, unit:it.unit, qty:it.extQty, location:it.extLocation});
+    }
 
     if(expectedUsed > 0){
       var totalVh = it.vehicles.reduce(function(s,v){ return s+(Number(v.qty)||0); },0);
@@ -5219,6 +5272,7 @@ function submitClearByTech(){
       note:document.getElementById('clNote').value,
       returnedItems:returnedItems,
       defectItems:defectItems,
+      externalHoldings:externalHoldings,
       photoUrl:retPhotoB64||'',
     });
   }).then(function(res){
@@ -9909,6 +9963,67 @@ function renderRejHistPage(){
   }).join('');
 
   box.innerHTML = filterBar + html;
+}
+
+// ── ของนอกคลัง (สำรอง/ติดรถ Service) — ตามคืนได้ ──────────────
+var _extHoldFilter = 'OUT';
+function loadExtHoldingsPage(){
+  var box = document.getElementById('extHoldBox');
+  if(!box) return;
+  box.innerHTML = '<div class="card tc tm" style="padding:24px">⏳ กำลังโหลด...</div>';
+  callAPI('getExternalHoldings',{}).then(function(res){
+    window._extHoldData = res.data||[];
+    renderExtHoldingsPage();
+  });
+}
+function setExtHoldFilter(f){ _extHoldFilter = f; renderExtHoldingsPage(); }
+function renderExtHoldingsPage(){
+  var box = document.getElementById('extHoldBox');
+  if(!box) return;
+  var all = window._extHoldData||[];
+  var outCount = all.filter(function(x){return x.Status==='OUT';}).length;
+  var retCount = all.filter(function(x){return x.Status==='RETURNED';}).length;
+  var list = all.filter(function(x){ return _extHoldFilter==='all' || x.Status===_extHoldFilter; });
+
+  var filterBar = '<div class="card" style="padding:10px 14px;margin-bottom:10px;background:#e0f2f1">'
+    +'<div style="font-size:13px;font-weight:600;color:#00695c;margin-bottom:8px">🚐 ของที่เก็บสำรอง/ติดรถ Service นอกคลังหลัก — '+all.length+' รายการ</div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
+      +'<button class="btn bsm '+(_extHoldFilter==='OUT'?'bp':'bo')+'" onclick="setExtHoldFilter(\'OUT\')">🚐 ยังอยู่นอกคลัง ('+outCount+')</button>'
+      +'<button class="btn bsm '+(_extHoldFilter==='RETURNED'?'bp':'bo')+'" onclick="setExtHoldFilter(\'RETURNED\')">✅ นำกลับแล้ว ('+retCount+')</button>'
+      +'<button class="btn bsm '+(_extHoldFilter==='all'?'bp':'bo')+'" onclick="setExtHoldFilter(\'all\')">ทั้งหมด ('+all.length+')</button>'
+    +'</div>'
+  +'</div>';
+
+  if(!list.length){
+    box.innerHTML = filterBar + '<div class="card tc tm" style="padding:32px"><div style="font-size:28px">✅</div><div style="margin-top:8px">ไม่มีรายการในหมวดนี้ค่ะ</div></div>';
+    return;
+  }
+
+  var canReturn = CU && ['STOCK','MANAGER','ADMIN'].indexOf(CU.role)>=0;
+  var html = list.map(function(x){
+    var isOut = x.Status==='OUT';
+    return '<div class="card" style="padding:12px 14px;margin-bottom:8px;border-left:4px solid '+(isOut?'#00695c':'var(--gm)')+'">'
+      +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">'
+        +'<strong style="font-size:13px;color:var(--gd)">'+x.PartNo+'</strong>'
+        +'<span style="font-size:12px;color:var(--g400)">'+(x.PartName||'')+'</span>'
+        +'<span style="margin-left:auto;font-weight:700;font-size:13px;color:#00695c">'+x.Qty+' '+(x.Unit||'')+'</span>'
+      +'</div>'
+      +'<div style="font-size:12px;color:#333">📍 เก็บที่: <strong>'+(x.Location||'—')+'</strong></div>'
+      +'<div style="font-size:12px;color:var(--g400);margin-top:2px">จากใบเบิก '+x.ReqID+' (Job '+(x.JobNo||'—')+') โดย '+(x.TechName||x.TechEmail||'—')+' เมื่อ '+(x.CreatedAt||'')+'</div>'
+      +(x.Status==='RETURNED' ? '<div style="font-size:12px;color:var(--gm);margin-top:4px">✅ นำกลับเข้าคลังแล้วเมื่อ '+(x.ReturnedAt||'')+'</div>'
+        : (canReturn ? '<button class="btn bp bsm" style="margin-top:8px;background:#00695c;border-color:#00695c" onclick="doReturnExtHolding(\''+x.EntryID+'\')">✅ นำกลับเข้าคลัง</button>' : ''))
+    +'</div>';
+  }).join('');
+
+  box.innerHTML = filterBar + html;
+}
+function doReturnExtHolding(entryId){
+  if(!confirm('ยืนยันนำของกลับเข้าคลังหลัก? ระบบจะบวกยอดคืนให้ Part No. นี้ทันที')) return;
+  toast('กำลังบันทึก...','info');
+  callAPI('returnExternalHolding',{entryId:entryId}).then(function(res){
+    toast(res.message, res.success?'success':'error');
+    if(res.success) loadExtHoldingsPage();
+  });
 }
 
 // ── หน้า Manager ดูคำขอ ─────────────────────────────────────
