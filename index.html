@@ -2752,16 +2752,18 @@ function _doRefreshBadges(){
       });
     }
   }
-  if(CU&&(CU.role==='MANAGER'||CU.role==='ADMIN')){
-    var crMenu=document.getElementById('nChangeReq');
-    if(crMenu) crMenu.classList.remove('hidden');
-    // โหลด CR badge ทุกครั้ง (ไม่ต้อง force)
-    callAPI('getChangeRequests',{status:'PENDING'}).then(function(res){
-      var cnt=(res.data||[]).length;
-      var crb=document.getElementById('crBadge');
-      if(crb){ crb.textContent=cnt; crb.style.display=cnt>0?'inline':'none'; }
-    });
-  }
+  // เมนู "คำขอแก้ไข" — ทุก role เห็นได้ (ช่าง/Stock สร้างคำขอเองได้ ต้องเข้าไปดูสถานะได้ด้วย)
+  var crMenu=document.getElementById('nChangeReq');
+  if(crMenu) crMenu.classList.remove('hidden');
+  // Manager/Admin: badge = จำนวนที่รออนุมัติทั้งหมด | ช่าง/Stock: badge = จำนวนคำขอของตัวเองที่ยังรออยู่
+  callAPI('getChangeRequests', CU&&(CU.role==='MANAGER'||CU.role==='ADMIN') ? {status:'PENDING'} : {}).then(function(res){
+    var list = res.data||[];
+    var cnt = (CU&&(CU.role==='MANAGER'||CU.role==='ADMIN'))
+      ? list.length
+      : list.filter(function(r){ return r.Status==='PENDING'; }).length;
+    var crb=document.getElementById('crBadge');
+    if(crb){ crb.textContent=cnt; crb.style.display=cnt>0?'inline':'none'; }
+  });
 }
 
 
