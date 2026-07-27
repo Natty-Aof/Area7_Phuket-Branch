@@ -334,6 +334,7 @@ textarea.fc{min-height:70px;resize:vertical;}
       <div class="ni" data-pg="inspection" onclick="go('inspection')"><span class="ic">📋</span> ใบตรวจสภาพรถ <span id="insBadge" class="bdg hidden"></span></div>
       <div class="ni" data-pg="stockcount" onclick="go('stockcount')" id="nStockCount"><span class="ic">🔢</span> นับสต็อก</div>
       <div class="ni hidden" id="nChangeReq" data-pg="changereq" onclick="go('changereq')"><span class="ic">🔑</span> คำขอแก้ไข<span class="badge" id="crBadge">0</span></div>
+      <div class="ni hidden" id="nRejHist" data-pg="rejhist" onclick="go('rejhist')"><span class="ic">📋</span> ประวัติการตีกลับ</div>
       <div class="ni" data-pg="sales" onclick="go('sales')"><span class="ic">🛒</span> ขาย/เบิกจ่ายภายใน</div>
       <div class="ni" data-pg="specialreq" onclick="go('specialreq')"><span class="ic">📮</span> สั่งซื้ออะไหล่พิเศษ<span class="badge hidden" id="sprBadge">0</span></div>
       <div class="ni hidden" id="nMaster" data-pg="master" onclick="go('master')"><span class="ic">🗂️</span> จัดการอะไหล่/รถ</div>
@@ -979,6 +980,13 @@ textarea.fc{min-height:70px;resize:vertical;}
       <!-- ═══════════════════════════════════════════════════ -->
       <div id="pg-changereq" class="hidden">
         <div id="crListBox"><div class="card tc tm" style="padding:32px">⏳ กำลังโหลด...</div></div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════ -->
+      <!-- REJECTION HISTORY (ประวัติการตีกลับทั้งหมด — เคลียร์ใบเบิก + คำขอแก้ไข) -->
+      <!-- ═══════════════════════════════════════════════════ -->
+      <div id="pg-rejhist" class="hidden">
+        <div id="rejHistBox"><div class="card tc tm" style="padding:32px">⏳ กำลังโหลด...</div></div>
       </div>
 
       <!-- ═══════════════════════════════════════════════════ -->
@@ -1959,6 +1967,7 @@ function _goWithoutPush(page){
   if(page==='print') loadPrintSel();
   if(page==='profile') loadProfile();
   if(page==='changereq') loadChangeReqPage();
+  if(page==='rejhist') loadRejHistPage();
   if(page==='vehiclehistory'){ loadVehiclesDB(); }
   if(page==='stockcount'){
     var lbl = document.getElementById('scntDateLabel');
@@ -2652,6 +2661,7 @@ function go(page){
   if(page==='print') loadPrintSel();
   if(page==='profile') loadProfile();
   if(page==='changereq') loadChangeReqPage();
+  if(page==='rejhist') loadRejHistPage();
   if(page==='inspection') loadInspectionPage();
   if(page==='vehiclehistory'){
     // preload vehicles ทันที เพื่อให้ค้นหาได้เร็ว
@@ -2755,6 +2765,11 @@ function _doRefreshBadges(){
   // เมนู "คำขอแก้ไข" — ทุก role เห็นได้ (ช่าง/Stock สร้างคำขอเองได้ ต้องเข้าไปดูสถานะได้ด้วย)
   var crMenu=document.getElementById('nChangeReq');
   if(crMenu) crMenu.classList.remove('hidden');
+  // เมนู "ประวัติการตีกลับ" — เฉพาะฝั่งที่มีสิทธิ์ตีกลับ (Stock/Manager/Admin)
+  if(CU&&['STOCK','MANAGER','ADMIN'].indexOf(CU.role)>=0){
+    var rhMenu=document.getElementById('nRejHist');
+    if(rhMenu) rhMenu.classList.remove('hidden');
+  }
   // Manager/Admin: badge = จำนวนที่รออนุมัติทั้งหมด | ช่าง/Stock: badge = จำนวนคำขอของตัวเองที่ยังรออยู่
   callAPI('getChangeRequests', CU&&(CU.role==='MANAGER'||CU.role==='ADMIN') ? {status:'PENDING'} : {}).then(function(res){
     var list = res.data||[];
@@ -9829,6 +9844,66 @@ function submitChangeReq(){
     toast(res.message, res.success?'success':'error');
     if(res.success){ var m=document.getElementById('changeReqModal');m.classList.add('hidden');m.style.display=''; }
   });
+}
+
+// ── ประวัติการตีกลับทั้งหมด (เคลียร์ใบเบิก + คำขอแก้ไขที่ไม่อนุมัติ) — ดูย้อนหลังได้ทั้งหมด ──
+var _rejHistFilter = 'all';
+function loadRejHistPage(){
+  var box = document.getElementById('rejHistBox');
+  if(!box) return;
+  box.innerHTML = '<div class="card tc tm" style="padding:24px">⏳ กำลังโหลด...</div>';
+  callAPI('getRejectionHistory',{}).then(function(res){
+    window._rejHistData = res.data||[];
+    renderRejHistPage();
+  });
+}
+function setRejHistFilter(f){ _rejHistFilter = f; renderRejHistPage(); }
+function renderRejHistPage(){
+  var box = document.getElementById('rejHistBox');
+  if(!box) return;
+  var all = window._rejHistData||[];
+  var list = all.filter(function(x){
+    if(_rejHistFilter==='all') return true;
+    if(_rejHistFilter==='pending') return x.type==='clearance' && !x.resolved;
+    if(_rejHistFilter==='resolved') return x.type==='clearance' && x.resolved;
+    if(_rejHistFilter==='cr') return x.type==='changerequest';
+    return true;
+  });
+
+  var filterBar = '<div class="card" style="padding:10px 14px;margin-bottom:10px;background:#eef2f5">'
+    +'<div style="font-size:13px;font-weight:600;color:var(--gd);margin-bottom:8px">📋 ประวัติการตีกลับทั้งหมด — '+all.length+' รายการ</div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
+      +'<button class="btn bsm '+(_rejHistFilter==='all'?'bp':'bo')+'" onclick="setRejHistFilter(\'all\')">ทั้งหมด ('+all.length+')</button>'
+      +'<button class="btn bsm '+(_rejHistFilter==='pending'?'bp':'bo')+'" onclick="setRejHistFilter(\'pending\')">⏳ เคลียร์ใบเบิก ยังไม่แก้ ('+all.filter(function(x){return x.type==='clearance'&&!x.resolved;}).length+')</button>'
+      +'<button class="btn bsm '+(_rejHistFilter==='resolved'?'bp':'bo')+'" onclick="setRejHistFilter(\'resolved\')">✅ เคลียร์ใบเบิก แก้แล้ว ('+all.filter(function(x){return x.type==='clearance'&&x.resolved;}).length+')</button>'
+      +'<button class="btn bsm '+(_rejHistFilter==='cr'?'bp':'bo')+'" onclick="setRejHistFilter(\'cr\')">🔑 คำขอแก้ไขไม่อนุมัติ ('+all.filter(function(x){return x.type==='changerequest';}).length+')</button>'
+    +'</div>'
+  +'</div>';
+
+  if(!list.length){
+    box.innerHTML = filterBar + '<div class="card tc tm" style="padding:32px"><div style="font-size:28px">✅</div><div style="margin-top:8px">ไม่มีรายการในหมวดนี้ค่ะ</div></div>';
+    return;
+  }
+
+  var html = list.map(function(x){
+    var borderColor = x.type==='changerequest' ? '#6a1b9a' : (x.resolved ? 'var(--gm)' : '#e65100');
+    return '<div class="card" style="padding:12px 14px;margin-bottom:8px;border-left:4px solid '+borderColor+'">'
+      +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">'
+        +'<span style="font-size:11px;background:#f0f0f0;padding:2px 8px;border-radius:8px">'+x.typeLabel+'</span>'
+        +'<strong style="font-size:13px;color:var(--gd)">'+x.refId+'</strong>'
+        +(x.customer?'<span style="font-size:12px;color:var(--g400)">— '+x.customer+'</span>':'')
+        +'<span style="margin-left:auto;font-size:12px;font-weight:700;color:'+(x.resolved?'var(--gm)':'#e65100')+'">'+x.resolvedLabel+'</span>'
+      +'</div>'
+      +'<div style="font-size:12px;color:var(--g400)">ตีกลับโดย <strong>'+(x.rejectedBy||'—')+'</strong> เมื่อ '+(x.rejectedAt||'—')+'</div>'
+      +(x.requestedBy?'<div style="font-size:12px;color:var(--g400)">ผู้ขอแก้ไข: '+x.requestedBy+'</div>':'')
+      +(x.requestDesc?'<div style="font-size:12px;color:#555;margin-top:4px">📝 ที่ขอแก้: '+x.requestDesc+'</div>':'')
+      +(x.reason?'<div style="font-size:12px;color:var(--red);margin-top:2px">💬 เหตุผล: '+x.reason+'</div>':'')
+      +(x.resolvedAt?'<div style="font-size:11px;color:var(--gm);margin-top:2px">แก้ไขส่งใหม่เมื่อ '+x.resolvedAt+'</div>':'')
+      +'<button class="btn bo bsm" style="margin-top:8px" onclick="openDetail(\''+x.refId+'\')">เปิดดูใบเบิก</button>'
+    +'</div>';
+  }).join('');
+
+  box.innerHTML = filterBar + html;
 }
 
 // ── หน้า Manager ดูคำขอ ─────────────────────────────────────
