@@ -4835,9 +4835,11 @@ function _clSetUsed(pi, val){
     it.retGood = 0; it.retBad = 0; it.extQty = 0;
   } else {
     var remaining = it.issued - v;
-    it.retBad = Math.min(it.retBad||0, remaining); // คงจำนวนของเสียเดิมไว้ถ้ายังไม่เกิน remaining ใหม่
-    it.extQty = Math.min(it.extQty||0, Math.max(0, remaining - it.retBad));
-    it.retGood = remaining - it.retBad - it.extQty;
+    // ⛔ กันบั๊ก: รีเซ็ตของเสีย/สำรองเป็น 0 ทุกครั้งที่แก้ "ใช้จริง" ไม่คงค่าเก่าไว้
+    // (เดิมคงค่าของเสียเก่าไว้ถ้ายังพอดี ทำให้ข้อมูลจากรอบก่อน เช่น ตีกลับแล้วแก้ไข ค้างมาโดยช่างไม่รู้ตัว)
+    it.retBad = 0;
+    it.extQty = 0;
+    it.retGood = remaining;
   }
   if(window._clVehMode==='single' && window._clSingleSerial){ _clApplySingleSerialToAll(); return; }
   renderCloseItems(false);
