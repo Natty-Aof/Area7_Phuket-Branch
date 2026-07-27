@@ -606,6 +606,7 @@ textarea.fc{min-height:70px;resize:vertical;}
             <option value="PENDING_FINAL_APPROVAL">🔸 รออนุมัติปิดงาน</option>
             <option value="CLEARED">🏁 ปิดงาน</option>
             <option value="REJECTED">❌ ปฏิเสธ</option>
+            <option value="CANCELLED">🚫 ยกเลิกแล้ว</option>
           </select>
         </div>
         <div style="display:flex;gap:0;border-radius:8px;overflow:hidden;border:1px solid var(--g200);margin-bottom:10px;width:fit-content">
@@ -2722,6 +2723,13 @@ function _doRefreshBadges(){
     if(ab){ ab.textContent=apCount; ab.style.display=apCount>0?'inline':'none'; }
     if(sb){ sb.textContent=s.stockPending||0; sb.style.display=(s.stockPending||0)>0?'inline':'none'; }
     _badgeCache=s; _badgeCacheTime=Date.now(); _badgeRefreshing=false;
+    // นับคำขอยกเลิกที่รออนุมัติ (ผจก./Admin เท่านั้น) รวมเข้า badge รออนุมัติเดิม
+    if(CU.role==='MANAGER'||CU.role==='ADMIN'){
+      callAPI('getRequisitions',{}).then(function(rr){
+        var pendingCancel = (rr.data||[]).filter(function(r){ return r.CancelStatus==='PENDING'; }).length;
+        if(pendingCancel>0 && ab){ ab.textContent = apCount + pendingCancel; ab.style.display='inline'; }
+      });
+    }
   });
   // Badge ใบตรวจสภาพ — cache 2 นาที
   if(CU&&(CU.role==='TECHNICIAN'||CU.role==='SUPERVISOR'||CU.role==='MANAGER'||CU.role==='ADMIN')){
@@ -5533,6 +5541,47 @@ function saveReqEdit(reqId){
 }
 
 // ── DETAIL MODAL ─────────────────────────────────────────────
+// ── ขอยกเลิกใบเบิก / อนุมัติ / ไม่อนุมัติ ──────────────────
+function requestCancelReqUI(reqId){
+  var reason = prompt('เหตุผลที่ขอยกเลิกใบเบิก '+reqId+' (บังคับกรอก):','') || '';
+  if(!reason.trim()) return toast('กรุณาระบุเหตุผลค่ะ','error');
+  toast('กำลังส่งคำขอ...','info');
+  callAPI('requestCancelRequisition',{id:reqId, reason:reason}).then(function(res){
+    toast(res.message, res.success?'success':'error');
+    if(res.success){ closeMo(); if(typeof loadList==='function') setTimeout(loadList, 400); }
+  });
+}
+function approveCancelReqUI(reqId){
+  if(!confirm('ยืนยันอนุมัติยกเลิกใบเบิก '+reqId+' ? ถ้า Stock เคยจ่ายของไปแล้ว ระบบจะคืนยอดเข้าสต็อกให้อัตโนมัติ')) return;
+  toast('กำลังบันทึก...','info');
+  callAPI('approveCancelRequisition',{id:reqId}).then(function(res){
+    toast(res.message, res.success?'success':'error');
+    if(res.success){ closeMo(); if(typeof loadList==='function') setTimeout(loadList, 400); }
+  });
+}
+function rejectCancelReqUI(reqId){
+  var note = prompt('เหตุผลที่ไม่อนุมัติยกเลิก (ไม่บังคับ):','') || '';
+  toast('กำลังบันทึก...','info');
+  callAPI('rejectCancelRequisition',{id:reqId, note:note}).then(function(res){
+    toast(res.message, res.success?'success':'error');
+    if(res.success){ closeMo(); if(typeof loadList==='function') setTimeout(loadList, 400); }
+  });
+}
+
+// ── ส่งกลับให้ช่างแก้ไข จากหน้ารายละเอียดใบเบิกทั่วไป ──
+function rejectClearanceFromDetail(reqId){
+  var note = prompt('เหตุผลที่ตีกลับ (ระบุให้ชัดว่าต้องแก้อะไร):','') || '';
+  if(!note.trim()){ if(!confirm('ไม่ระบุเหตุผลเลยหรือคะ? ช่างอาจไม่รู้ว่าต้องแก้อะไร')) return; }
+  toast('กำลังส่งกลับ...','info');
+  callAPI('rejectClearance',{id:reqId, note:note}).then(function(res){
+    toast(res.message, res.success?'success':'error');
+    if(res.success){
+      closeMo();
+      if(typeof loadList==='function') setTimeout(loadList, 400);
+    }
+  });
+}
+
 function openDetail(reqId){
   callAPI('getRequisitionDetail',{id:reqId}).then(function(res){
     if(!res.success) return toast('โหลดรายละเอียดไม่ได้','error');
@@ -5563,10 +5612,31 @@ function openDetail(reqId){
       +(d.IMNumber?'<div class="di"><div class="dl">เลขที่ IM</div><div class="dv" style="color:var(--gm);font-weight:700">'+d.IMNumber+'</div></div>':'')
       +'</div>'
       +'<div style="display:flex;gap:8px;margin-bottom:16px">สถานะอนุมัติ: '+apChip(d.StatusApproval)+' &nbsp; Stock: '+stChip(d.StatusStock)+'</div>'
+      +(d.CancelStatus==='PENDING'
+        ? '<div class="card" style="border-left:4px solid #b71c1c;background:#ffebee;margin-bottom:14px;padding:10px 14px">'
+          +'<div style="font-weight:700;color:#b71c1c;font-size:13px">🚫 มีคำขอยกเลิกใบเบิกนี้ — รอผจก./Admin พิจารณา</div>'
+          +'<div style="font-size:12px;color:#555;margin-top:4px">ขอโดย '+(d.CancelRequestedBy||'')+' เมื่อ '+(d.CancelRequestedAt||'')+'</div>'
+          +'<div style="font-size:12px;color:#555;margin-top:2px">📝 เหตุผล: '+(d.CancelReason||'')+'</div>'
+          +'</div>'
+        : d.CancelStatus==='APPROVED'
+          ? '<div class="card" style="border-left:4px solid #757575;background:#f5f5f5;margin-bottom:14px;padding:10px 14px">'
+            +'<div style="font-weight:700;color:#555;font-size:13px">🚫 ใบเบิกนี้ถูกยกเลิกแล้ว</div>'
+            +'<div style="font-size:12px;color:#555;margin-top:4px">ขอโดย '+(d.CancelRequestedBy||'')+' | อนุมัติโดย '+(d.CancelApprovedBy||'')+' เมื่อ '+(d.CancelApprovedAt||'')+'</div>'
+            +'<div style="font-size:12px;color:#555;margin-top:2px">📝 เหตุผล: '+(d.CancelReason||'')+'</div>'
+            +'</div>'
+          : d.CancelStatus==='REJECTED'
+            ? '<div class="card" style="border-left:4px solid #e65100;background:#fff3e0;margin-bottom:14px;padding:10px 14px">'
+              +'<div style="font-weight:700;color:#e65100;font-size:13px">🚫 คำขอยกเลิกไม่ได้รับการอนุมัติ — ใบเบิกดำเนินการต่อตามปกติ</div>'
+              +'<div style="font-size:12px;color:#555;margin-top:4px">ขอโดย '+(d.CancelRequestedBy||'')+' | พิจารณาโดย '+(d.CancelApprovedBy||'')+' เมื่อ '+(d.CancelApprovedAt||'')+'</div>'
+              +(d.CancelRejectNote?'<div style="font-size:12px;color:#555;margin-top:2px">📝 '+d.CancelRejectNote+'</div>':'')
+              +'</div>'
+            : ''
+      )
       +'<hr class="sep">'
       +'<div style="font-weight:600;font-size:14px;margin-bottom:8px;color:var(--gd)">รายการอะไหล่</div>'
       +'<div class="tw"><table class="it"><thead><tr><th>Part No.</th><th>ชื่อTH</th><th>ชื่อEN</th><th>จำนวน</th><th>Serial</th><th>หมายเหตุ</th></tr></thead>'
       +'<tbody>'+(itRows||'<tr><td colspan="6" class="tc tm">ไม่มีรายการ</td></tr>')+'</tbody></table></div>'
+      +'<div id="moUsageDetail"></div>'
       +(d.PhotoUrl?'<div class="mt16"><img src="'+d.PhotoUrl+'" style="max-width:100%;border-radius:8px;max-height:240px"></div>':'')
       +'<hr class="sep">'
       +tl('✓','done','เปิดใบเบิก','โดย '+d.RequesterName+' — '+d.CreatedAt)
@@ -5633,6 +5703,53 @@ function openDetail(reqId){
       }
       if(!html) html = '<div class="tc tm" style="padding:12px">ไม่มีรูปภาพสำหรับใบเบิกนี้</div>';
       gal.outerHTML = '<div id="moPhotoGallery">'+html+'</div>';
+
+      // ── รายละเอียดการใช้อะไหล่: คืนดี/คืนเสีย/ใช้จริง + รถที่ติดตั้ง (จาก ClosedNote + VehicleHistory) ──
+      var usageBox = document.getElementById('moUsageDetail');
+      if(usageBox){
+        var clearInfoD = {};
+        try { clearInfoD = d.ClosedNote ? JSON.parse(d.ClosedNote) : {}; } catch(eCn){ clearInfoD = {}; }
+        var retMapD = {}, defMapD = {};
+        (clearInfoD.returnedItems||[]).forEach(function(r){ retMapD[r.partNo||r.PartNo] = r.returnedQty||r.ReturnedQty||0; });
+        (clearInfoD.defectItems||[]).forEach(function(dd){ defMapD[dd.partNo||dd.PartNo] = dd.defectQty||dd.DefectQty||0; });
+        var vhByPartD = {};
+        vhRows.forEach(function(v){ (vhByPartD[v.PartNo]||(vhByPartD[v.PartNo]=[])).push(v); });
+        var hasUsageData = Object.keys(retMapD).length || Object.keys(defMapD).length || vhRows.length;
+        if(hasUsageData){
+          var itemsForUsage = d.Items||d.items||[];
+          var rowsHtml = itemsForUsage.map(function(i){
+            var issuedQ = (i.IssuedQty!=null && i.IssuedQty!=='' && Number(i.IssuedQty)>0) ? Number(i.IssuedQty) : (Number(i.Qty)||0);
+            var good = retMapD[i.PartNo]||0, bad = defMapD[i.PartNo]||0;
+            var used = Math.max(0, issuedQ - good - bad);
+            var vhList = vhByPartD[i.PartNo]||[];
+            var vhTxt = vhList.length
+              ? vhList.map(function(v){ return '🚗 '+v.SerialNo+' ('+v.Qty+')'+(v.OldPartSerial?' 🔒'+v.OldPartSerial:''); }).join('<br>')
+              : (used>0 ? '<span style="color:#c62828">— ยังไม่ระบุ —</span>' : '—');
+            return '<tr>'
+              +'<td style="padding:6px 8px;border:0.5px solid #e0e0e0;font-size:11px">'+i.PartNo+'</td>'
+              +'<td style="padding:6px 8px;border:0.5px solid #e0e0e0;text-align:center;font-weight:700">'+issuedQ+'</td>'
+              +'<td style="padding:6px 8px;border:0.5px solid #e0e0e0;text-align:center;color:var(--gm)">'+good+'</td>'
+              +'<td style="padding:6px 8px;border:0.5px solid #e0e0e0;text-align:center;color:var(--red)">'+bad+'</td>'
+              +'<td style="padding:6px 8px;border:0.5px solid #e0e0e0;text-align:center;font-weight:700;color:#1565c0">'+used+'</td>'
+              +'<td style="padding:6px 8px;border:0.5px solid #e0e0e0;font-size:11px">'+vhTxt+'</td>'
+            +'</tr>';
+          }).join('');
+          usageBox.innerHTML = '<hr class="sep">'
+            +'<div style="font-weight:600;font-size:14px;margin-bottom:8px;color:var(--gd)">📦 รายละเอียดการใช้อะไหล่ (คืนดี/คืนเสีย/ใช้จริง + รถที่ติดตั้ง)</div>'
+            +'<div class="tw"><table style="width:100%;border-collapse:collapse;font-size:12px">'
+            +'<thead><tr style="background:#f5f5f5">'
+            +'<th style="padding:6px 8px;border:0.5px solid #e0e0e0;text-align:left">Part No.</th>'
+            +'<th style="padding:6px 8px;border:0.5px solid #e0e0e0">จ่ายจริง</th>'
+            +'<th style="padding:6px 8px;border:0.5px solid #e0e0e0;color:var(--gm)">คืนดี</th>'
+            +'<th style="padding:6px 8px;border:0.5px solid #e0e0e0;color:var(--red)">คืนเสีย</th>'
+            +'<th style="padding:6px 8px;border:0.5px solid #e0e0e0;color:#1565c0">ใช้จริง</th>'
+            +'<th style="padding:6px 8px;border:0.5px solid #e0e0e0;text-align:left">🚗 ใส่รถ (S/N)</th>'
+            +'</tr></thead><tbody>'+rowsHtml+'</tbody></table></div>';
+        } else {
+          usageBox.innerHTML = '<hr class="sep">'
+            +'<div style="font-size:12px;color:var(--g400);padding:8px 0">📦 ยังไม่มีข้อมูลการคืน/ติดตั้ง (ช่างยังไม่ได้ส่งเคลียร์ใบเบิกนี้)</div>';
+        }
+      }
     }).catch(function(){
       var gal = document.getElementById('moPhotoGallery');
       if(gal) gal.innerHTML = '<div class="tc tm" style="padding:12px;color:#c62828">โหลดรูปภาพไม่สำเร็จ</div>';
@@ -5652,6 +5769,23 @@ function openDetail(reqId){
       }
     }
     var canAckRole = ['STOCK','MANAGER'].indexOf(CU.role)>=0;
+    // ── ปุ่มส่งกลับให้ช่างแก้ไข (Stock/ผจก./Admin) — เฉพาะใบที่ยังไม่ปิดงานสมบูรณ์เท่านั้น ──
+    if(['STOCK','MANAGER','ADMIN'].indexOf(CU.role)>=0
+        && (d.StatusStock==='PENDING_CLEARANCE' || d.StatusStock==='PENDING_FINAL_APPROVAL')){
+      foot += '<button class="btn bd bsm" onclick="rejectClearanceFromDetail(\''+d.ReqID+'\')">✕ ส่งกลับให้ช่างแก้ไข</button>';
+    }
+    // ── ปุ่มขอยกเลิกใบเบิก (ผู้เบิกเอง หรือ Stock/ผจก./Admin) — ยกเว้นปิดงานแล้ว/ยกเลิกแล้ว/มีคำขอค้างอยู่ ──
+    var isMyReq = CU.email && d.RequesterEmail && CU.email.toLowerCase()===String(d.RequesterEmail).toLowerCase();
+    var canCancelReq = (isMyReq || ['STOCK','MANAGER','ADMIN'].indexOf(CU.role)>=0)
+      && d.StatusApproval!=='CANCELLED' && d.StatusStock!=='CLEARED' && d.CancelStatus!=='PENDING';
+    if(canCancelReq){
+      foot += '<button class="btn bd bsm" style="background:#b71c1c;border-color:#b71c1c" onclick="requestCancelReqUI(\''+d.ReqID+'\')">🚫 ขอยกเลิกใบเบิก</button>';
+    }
+    // ── ปุ่มอนุมัติ/ไม่อนุมัติคำขอยกเลิก (เฉพาะผจก./Admin ตอนมีคำขอค้างอยู่) ──
+    if(d.CancelStatus==='PENDING' && (CU.role==='MANAGER'||CU.role==='ADMIN')){
+      foot += '<button class="btn bd bsm" onclick="rejectCancelReqUI(\''+d.ReqID+'\')">✕ ไม่อนุมัติยกเลิก</button>'
+        +'<button class="btn bp bsm" style="background:#b71c1c;border-color:#b71c1c" onclick="approveCancelReqUI(\''+d.ReqID+'\')">✅ อนุมัติยกเลิก</button>';
+    }
     // (ลบปุ่ม "รับจัดของ" ออกจาก popup — ให้ไปจัดของที่หน้า "จัดอะไหล่" แทน)
     // เพิ่มปุ่มแก้ไข/ลบสำหรับ MANAGER เสมอ (ต่อจาก foot ปกติ)
     if(CU.role==='MANAGER'||CU.role==='ADMIN'){
@@ -6041,7 +6175,7 @@ function renderNew(d){
 
 
 // ── CHIPS ─────────────────────────────────────────────────────
-function apChip(s){var m={PENDING_SUPERVISOR:['chip-ora','⏳ รอหัวหน้า'],PENDING_MANAGER:['chip-blu','⏳ รอผจก.'],APPROVED:['chip-grn','✓ อนุมัติแล้ว'],REJECTED:['chip-red','✕ ปฏิเสธ']};var v=m[s]||['chip-gry',s];return '<span class="chip '+v[0]+'">'+v[1]+'</span>';}
+function apChip(s){var m={PENDING_SUPERVISOR:['chip-ora','⏳ รอหัวหน้า'],PENDING_MANAGER:['chip-blu','⏳ รอผจก.'],APPROVED:['chip-grn','✓ อนุมัติแล้ว'],REJECTED:['chip-red','✕ ปฏิเสธ'],CANCELLED:['chip-gry','🚫 ยกเลิกแล้ว']};var v=m[s]||['chip-gry',s];return '<span class="chip '+v[0]+'">'+v[1]+'</span>';}
 function stChip(s){
   var m={
     'PENDING':        ['chip-gry', '⏳ รอ Stock จัดของ'],
