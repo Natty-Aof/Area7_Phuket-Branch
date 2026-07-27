@@ -580,6 +580,7 @@ textarea.fc{min-height:70px;resize:vertical;}
           <div style="font-size:15px;font-weight:600;color:var(--gd);min-width:110px;text-align:center" id="listMonthLabel">—</div>
           <button class="btn bo bsm" onclick="shiftListMonth(1)">▶</button>
           <button class="btn bgd bsm" onclick="setListMonthToday()">เดือนนี้</button>
+          <button class="btn bgd bsm" id="listAllMonthsBtn" onclick="toggleListAllMonths()">ทุกเดือน</button>
           <div style="flex:1"></div>
           <label class="cbi" style="font-size:13px"><input type="checkbox" id="fMyOnly" onchange="loadList()"> เฉพาะของฉัน</label>
         </div>
@@ -603,7 +604,7 @@ textarea.fc{min-height:70px;resize:vertical;}
             <option value="PICKED_UP">🔧 ช่างรับแล้ว</option>
             <option value="PENDING_CLEARANCE">🔄 รอเคลียร์</option>
             <option value="PENDING_FINAL_APPROVAL">🔸 รออนุมัติปิดงาน</option>
-            <option value="CLOSED">🏁 ปิดงาน</option>
+            <option value="CLEARED">🏁 ปิดงาน</option>
             <option value="REJECTED">❌ ปฏิเสธ</option>
           </select>
         </div>
@@ -2779,9 +2780,10 @@ function _doRefreshBadges(){
   if(CU&&['STOCK','MANAGER','ADMIN'].indexOf(CU.role)>=0){
     var rhMenu=document.getElementById('nRejHist');
     if(rhMenu) rhMenu.classList.remove('hidden');
-    var ehMenu=document.getElementById('nExtHold');
-    if(ehMenu) ehMenu.classList.remove('hidden');
   }
+  // เมนู "ของนอกคลัง" — ทุก role เห็นได้ (ช่างขอนำของสำรอง/รถ Service ไปติดตั้งบนรถได้เอง รอ Stock/ผจก.ยืนยัน)
+  var ehMenu=document.getElementById('nExtHold');
+  if(ehMenu) ehMenu.classList.remove('hidden');
   // Manager/Admin: badge = จำนวนที่รออนุมัติทั้งหมด | ช่าง/Stock: badge = จำนวนคำขอของตัวเองที่ยังรออยู่
   callAPI('getChangeRequests', CU&&(CU.role==='MANAGER'||CU.role==='ADMIN') ? {status:'PENDING'} : {}).then(function(res){
     var list = res.data||[];
@@ -3786,6 +3788,7 @@ function setListMonthToday(){
   var now = new Date();
   _listYear  = now.getFullYear() + 543;
   _listMonth = now.getMonth() + 1;
+  if(_listShowAllMonths){ _listShowAllMonths=false; var b=document.getElementById('listAllMonthsBtn'); if(b) b.className='btn bgd bsm'; }
   loadList();
 }
 
@@ -3793,6 +3796,7 @@ function shiftListMonth(d){
   _listMonth += d;
   if(_listMonth > 12){ _listMonth = 1; _listYear++; }
   if(_listMonth < 1) { _listMonth = 12; _listYear--; }
+  if(_listShowAllMonths){ _listShowAllMonths=false; var b=document.getElementById('listAllMonthsBtn'); if(b) b.className='btn bgd bsm'; }
   loadList();
 }
 
@@ -3833,18 +3837,28 @@ function setListTab(t){
   renderListFromCache();
 }
 
+var _listShowAllMonths = false;
+function toggleListAllMonths(){
+  _listShowAllMonths = !_listShowAllMonths;
+  var btn = document.getElementById('listAllMonthsBtn');
+  if(btn) btn.className = 'btn bsm ' + (_listShowAllMonths ? 'bp' : 'bgd');
+  loadList();
+}
 function loadList(){
   _initListMonth();
   var mm = String(_listMonth).padStart(2,'0');
   var label = document.getElementById('listMonthLabel');
   var thMonths = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-  if(label) label.textContent = thMonths[_listMonth] + ' ' + _listYear;
+  if(label) label.textContent = _listShowAllMonths ? 'ทุกเดือน (ทั้งหมด)' : (thMonths[_listMonth] + ' ' + _listYear);
 
   var body = document.getElementById('listBody');
   if(body) body.innerHTML = '<div class="tc tm" style="padding:32px">⏳ กำลังโหลด...</div>';
 
   var myOnly = document.getElementById('fMyOnly') && document.getElementById('fMyOnly').checked;
-  callAPI('getRequisitions',{ month: mm+'/'+_listYear, myOnly: myOnly }).then(function(res){
+  callAPI('getRequisitions', _listShowAllMonths
+    ? { myOnly: myOnly }
+    : { month: mm+'/'+_listYear, myOnly: myOnly }
+  ).then(function(res){
     _listCache = res.data || [];
     _buildListSummary(_listCache);
     renderListFromCache();
@@ -3854,11 +3868,11 @@ function loadList(){
 function _buildListSummary(rows){
   var now = Date.now();
   var total = rows.length;
-  var notReturned = rows.filter(function(r){ return r.StatusStock !== 'CLOSED'; }).length;
-  var closed = rows.filter(function(r){ return r.StatusStock === 'CLOSED'; }).length;
+  var notReturned = rows.filter(function(r){ return r.StatusStock !== 'CLEARED'; }).length;
+  var closed = rows.filter(function(r){ return r.StatusStock === 'CLEARED'; }).length;
   var pending = rows.filter(function(r){ return r.StatusStock === 'PENDING_CLEARANCE'; }).length;
   var old = rows.filter(function(r){
-    if(r.StatusStock==='CLOSED') return false;
+    if(r.StatusStock==='CLEARED') return false;
     if(!r.PickedUpAt) return false;
     var d = new Date(r.PickedUpAt);
     return (now - d.getTime()) > 7*24*3600*1000;
@@ -3909,10 +3923,10 @@ function renderListFromCache(){
       else if(sf !== 'PENDING' && r.StatusStock !== sf && r.StatusApproval !== sf) return false;
     }
     // tab filter
-    if(_listTab==='open') return r.StatusStock !== 'CLOSED';
-    if(_listTab==='done') return r.StatusStock === 'CLOSED';
+    if(_listTab==='open') return r.StatusStock !== 'CLEARED';
+    if(_listTab==='done') return r.StatusStock === 'CLEARED';
     if(_listTab==='old'){
-      if(r.StatusStock==='CLOSED'||!r.PickedUpAt) return false;
+      if(r.StatusStock==='CLEARED'||!r.PickedUpAt) return false;
       return (Date.now()-new Date(r.PickedUpAt).getTime()) > 7*24*3600*1000;
     }
     return true;
@@ -3941,7 +3955,7 @@ function renderListFromCache(){
   var now = Date.now();
   var grpOld=[], grpOpen=[], grpPending=[], grpClosed=[];
   pageRows.forEach(function(r){
-    var isClosed = r.StatusStock==='CLOSED';
+    var isClosed = r.StatusStock==='CLEARED';
     var isPending = r.StatusStock==='PENDING_CLEARANCE';
     var isOld = !isClosed && r.PickedUpAt && (now-new Date(r.PickedUpAt).getTime())>7*24*3600*1000;
     if(isClosed) grpClosed.push(r);
@@ -9998,12 +10012,14 @@ function renderExtHoldingsPage(){
   var outCount = all.filter(function(x){return x.Status==='OUT';}).length;
   var retCount = all.filter(function(x){return x.Status==='RETURNED';}).length;
   var permCount = all.filter(function(x){return x.Status==='PERMANENT';}).length;
+  var pendCount = all.filter(function(x){return x.Status==='PENDING_INSTALL';}).length;
   var list = all.filter(function(x){ return _extHoldFilter==='all' || x.Status===_extHoldFilter; });
 
   var filterBar = '<div class="card" style="padding:10px 14px;margin-bottom:10px;background:#e0f2f1">'
     +'<div style="font-size:13px;font-weight:600;color:#00695c;margin-bottom:8px">🚐 ของที่เก็บสำรอง/ติดรถ Service นอกคลังหลัก — '+all.length+' รายการ</div>'
     +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
       +'<button class="btn bsm '+(_extHoldFilter==='OUT'?'bp':'bo')+'" onclick="setExtHoldFilter(\'OUT\')">🚐 ต้องตามคืน ('+outCount+')</button>'
+      +'<button class="btn bsm '+(_extHoldFilter==='PENDING_INSTALL'?'bp':'bo')+'" onclick="setExtHoldFilter(\'PENDING_INSTALL\')">⏳ รออนุมัติติดตั้ง ('+pendCount+')</button>'
       +'<button class="btn bsm '+(_extHoldFilter==='PERMANENT'?'bp':'bo')+'" onclick="setExtHoldFilter(\'PERMANENT\')">🎁 ฝากลูกค้าถาวร ('+permCount+')</button>'
       +'<button class="btn bsm '+(_extHoldFilter==='RETURNED'?'bp':'bo')+'" onclick="setExtHoldFilter(\'RETURNED\')">✅ นำกลับแล้ว ('+retCount+')</button>'
       +'<button class="btn bsm '+(_extHoldFilter==='all'?'bp':'bo')+'" onclick="setExtHoldFilter(\'all\')">ทั้งหมด ('+all.length+')</button>'
@@ -10019,7 +10035,8 @@ function renderExtHoldingsPage(){
   var html = list.map(function(x){
     var isOut = x.Status==='OUT';
     var isPerm = x.Status==='PERMANENT';
-    var borderColor = isOut ? '#00695c' : (isPerm ? '#9c27b0' : 'var(--gm)');
+    var isPending = x.Status==='PENDING_INSTALL';
+    var borderColor = isOut ? '#00695c' : (isPerm ? '#9c27b0' : (isPending ? '#e65100' : 'var(--gm)'));
     return '<div class="card" style="padding:12px 14px;margin-bottom:8px;border-left:4px solid '+borderColor+'">'
       +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">'
         +'<strong style="font-size:13px;color:var(--gd)">'+x.PartNo+'</strong>'
@@ -10031,10 +10048,18 @@ function renderExtHoldingsPage(){
       +'<div style="font-size:12px;color:var(--g400);margin-top:2px">จากใบเบิก '+x.ReqID+' (Job '+(x.JobNo||'—')+') โดย '+(x.TechName||x.TechEmail||'—')+' เมื่อ '+(x.CreatedAt||'')+'</div>'
       +(x.Status==='RETURNED' ? '<div style="font-size:12px;color:var(--gm);margin-top:4px">✅ นำกลับเข้าคลังแล้วเมื่อ '+(x.ReturnedAt||'')+'</div>'
         : x.Status==='INSTALLED' ? '<div style="font-size:12px;color:#1565c0;margin-top:4px">🚗 นำไปติดตั้งบนรถ <strong>'+(x.InstalledVehicleSerial||'')+'</strong> แล้วเมื่อ '+(x.InstalledAt||'')+'</div>'
-        : (canReturn ? '<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">'
-            +'<button class="btn bp bsm" style="background:#00695c;border-color:#00695c" onclick="doReturnExtHolding(\''+x.EntryID+'\')">✅ นำกลับเข้าคลัง</button>'
+        : isPending ? (
+            '<div style="font-size:12px;color:#e65100;margin-top:4px">⏳ รออนุมัติติดตั้งบนรถ <strong>'+(x.RequestedVehicleSerial||'')+'</strong></div>'
+            +'<div style="font-size:11px;color:var(--g400)">ขอโดย '+(x.RequestedBy||'')+' เมื่อ '+(x.RequestedAt||'')+'</div>'
+            +(canReturn ? '<div style="display:flex;gap:6px;margin-top:8px">'
+                +'<button class="btn bp bsm" style="background:#00695c;border-color:#00695c" onclick="doConfirmInstallExt(\''+x.EntryID+'\')">✅ ยืนยัน</button>'
+                +'<button class="btn bd bsm" onclick="doRejectInstallExt(\''+x.EntryID+'\')">✕ ปฏิเสธ</button>'
+              +'</div>' : '<div style="font-size:11px;color:var(--g400);margin-top:4px">รอ Stock/ผจก. ยืนยันค่ะ</div>')
+          )
+        : '<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">'
+            +(canReturn ? '<button class="btn bp bsm" style="background:#00695c;border-color:#00695c" onclick="doReturnExtHolding(\''+x.EntryID+'\')">✅ นำกลับเข้าคลัง</button>' : '')
             +'<button class="btn bp bsm" style="background:#1565c0;border-color:#1565c0" onclick="openInstallExtHoldingModal(\''+x.EntryID+'\',\''+x.PartNo+'\')">🚗 นำไปติดตั้งบนรถ</button>'
-          +'</div>' : ''))
+          +'</div>')
     +'</div>';
   }).join('');
 
@@ -10044,6 +10069,22 @@ function doReturnExtHolding(entryId){
   if(!confirm('ยืนยันนำของกลับเข้าคลังหลัก? ระบบจะบวกยอดคืนให้ Part No. นี้ทันที')) return;
   toast('กำลังบันทึก...','info');
   callAPI('returnExternalHolding',{entryId:entryId}).then(function(res){
+    toast(res.message, res.success?'success':'error');
+    if(res.success) loadExtHoldingsPage();
+  });
+}
+function doConfirmInstallExt(entryId){
+  if(!confirm('ยืนยันการติดตั้ง? ระบบจะบันทึกลงประวัติรถทันที')) return;
+  toast('กำลังบันทึก...','info');
+  callAPI('confirmInstallExternalHolding',{entryId:entryId}).then(function(res){
+    toast(res.message, res.success?'success':'error');
+    if(res.success) loadExtHoldingsPage();
+  });
+}
+function doRejectInstallExt(entryId){
+  var note = prompt('เหตุผลที่ปฏิเสธ (ไม่บังคับ):','') || '';
+  toast('กำลังบันทึก...','info');
+  callAPI('rejectInstallExternalHolding',{entryId:entryId, note:note}).then(function(res){
     toast(res.message, res.success?'success':'error');
     if(res.success) loadExtHoldingsPage();
   });
