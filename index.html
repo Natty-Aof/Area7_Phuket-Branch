@@ -5186,7 +5186,8 @@ function loadCloseDetail(){
                     var serialTxt = v.OldPartSerial
                       ? ' <span style="color:#6a1b9a;font-size:10px">🔒'+v.OldPartSerial+'</span>'
                       : (partRequiresSerial ? ' <span style="color:#c62828;font-size:10px;font-weight:600">⚠️ ไม่มี'+(serialConfig[it.partNo]||'Serial')+'เดิม (อะไหล่นี้บังคับ)</span>' : '');
-                    return '<div style="display:flex;align-items:center;margin-bottom:3px">'+v.SerialNo+' ('+(v.Qty||0)+')'+serialTxt+photoImg+'</div>';
+                    return '<div style="display:flex;align-items:center;margin-bottom:3px">'+v.SerialNo+' ('+(v.Qty||0)+')'+serialTxt+photoImg
+                      +' <span style="color:#8d6e63;font-size:9px">→ SCR '+(v.Qty||0)+'</span></div>';
                   }).join('')
                 : (used>0 ? '<span style="color:#c62828">— ยังไม่ระบุ —</span>' : '<span style="color:var(--g400)">—</span>');
               var newSerial = newSerialByPart[it.partNo]
@@ -5723,7 +5724,7 @@ function openDetail(reqId){
             var used = Math.max(0, issuedQ - good - bad);
             var vhList = vhByPartD[i.PartNo]||[];
             var vhTxt = vhList.length
-              ? vhList.map(function(v){ return '🚗 '+v.SerialNo+' ('+v.Qty+')'+(v.OldPartSerial?' 🔒'+v.OldPartSerial:''); }).join('<br>')
+              ? vhList.map(function(v){ return '🚗 '+v.SerialNo+' ('+v.Qty+')'+(v.OldPartSerial?' 🔒'+v.OldPartSerial:'')+' <span style="color:#8d6e63">→SCR '+v.Qty+'</span>'; }).join('<br>')
               : (used>0 ? '<span style="color:#c62828">— ยังไม่ระบุ —</span>' : '—');
             return '<tr>'
               +'<td style="padding:6px 8px;border:0.5px solid #e0e0e0;font-size:11px">'+i.PartNo+'</td>'
