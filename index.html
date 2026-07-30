@@ -4640,15 +4640,15 @@ function _doRenderCloseItems(readonly){
     var remaining = usedEntered ? Math.max(0, it.issued - usedVal) : null;
     var qtySection = readonly
       ? '<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;margin-bottom:10px">'
-          +'<span>📦 จ่ายจริง: <strong>'+it.issued+'</strong> '+it.unit+'</span>'
-          +'<span style="color:#1565c0">🔧 ใช้จริง: <strong>'+(it.usedQty!==null&&it.usedQty!==undefined?it.usedQty:0)+'</strong></span>'
+          +'<span style="color:#004d40;font-weight:700">📦 จ่ายจริง: <strong>'+it.issued+'</strong> '+it.unit+'</span>'
+          +'<span style="color:#1565c0;font-weight:700">🔧 ใช้จริง: <strong>'+(it.usedQty!==null&&it.usedQty!==undefined?it.usedQty:0)+'</strong></span>'
           +(it.extQty>0 ? '<span style="color:#00695c">🚐 สำรอง/รถ Service: <strong>'+it.extQty+'</strong>'+(it.extLocation?' ('+it.extLocation+')':'')+'</span>' : '')
           +'<span style="color:var(--gm)">↩️ คืนดี: <strong>'+it.retGood+'</strong></span>'
-          +'<span style="color:var(--red)">🗑️ คืนเสีย: <strong>'+it.retBad+'</strong></span>'
+          +'<span style="color:var(--red)">🗑️ เข้า SCR (ของเก่า): <strong>'+(it.usedQty||0)+'</strong></span>'
         +'</div>'
       : '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:8px">'
-          +'<div><div style="font-size:11px;color:var(--g400);margin-bottom:3px">📦 Stock จ่ายจริง (รับไป)</div>'
-            +'<div style="background:#f0f4f8;border:1px solid var(--g200);border-radius:8px;padding:8px;text-align:center;font-size:15px;font-weight:700;color:var(--gd)">'+it.issued+' '+it.unit+'</div></div>'
+          +'<div><div style="font-size:11px;color:#004d40;font-weight:600;margin-bottom:3px">📦 Stock จ่ายจริง (รับไป)</div>'
+            +'<div style="background:#f0f4f8;border:1px solid var(--g200);border-radius:8px;padding:8px;text-align:center;font-size:15px;font-weight:700;color:#004d40">'+it.issued+' '+it.unit+'</div></div>'
           +'<div><div style="font-size:11px;color:#1565c0;margin-bottom:3px">🔧 ใช้จริง (ติดตั้งลงรถแล้ว)</div>'
             +'<input class="fc" type="number" min="0" max="'+it.issued+'" value="'+(usedEntered?usedVal:'')+'" placeholder="กรอกจำนวน" style="text-align:center;border-color:#1565c0;font-weight:700" '
             +'onchange="_clSetUsed('+pi+',this.value)"></div>'
@@ -4657,16 +4657,13 @@ function _doRenderCloseItems(readonly){
           ? '<div style="font-size:12px;color:#e65100;background:#fff3e0;border-radius:6px;padding:6px 10px;margin-bottom:10px">⚠️ กรุณากรอกจำนวนที่ใช้จริงก่อน (ถ้าไม่ได้ใช้เลย ให้ใส่ 0)</div>'
           : (usedVal===0
             ? '<div style="font-size:12px;color:#b71c1c;background:#ffebee;border:1px solid #ffcdd2;border-radius:6px;padding:8px 10px;margin-bottom:10px;font-weight:600">'
-              +'⚠️ "ใช้จริง = 0" หมายความว่า<u>อะไหล่ชิ้นนี้ไม่ได้ถูกติดตั้งลงรถเลยสักชิ้น</u> — ทั้งหมด '+it.issued+' '+it.unit+' จะถูกคืน Stock เป็นของดี/ของเสียเท่านั้น'
+              +'⚠️ "ใช้จริง = 0" หมายความว่า<u>อะไหล่ชิ้นนี้ไม่ได้ถูกติดตั้งลงรถเลยสักชิ้น</u> — ทั้งหมด '+it.issued+' '+it.unit+' จะถูกคืน Stock เป็นของดีทั้งหมด'
               +'<br>❓ ถ้าจริงๆ แล้วมีการติดตั้งอะไหล่นี้ลงรถ กรุณาแก้จำนวน "ใช้จริง" ใหม่ให้ตรงกับที่ติดตั้งจริง แล้วจะมีช่องให้ระบุ S/N รถ + Serial เดิมที่ถอดออกขึ้นมาให้กรอก'
               +'</div>'
             : '<div style="font-size:12px;color:var(--g400);background:#f5f5f5;border-radius:6px;padding:8px 10px;margin-bottom:10px">'
-              +'เหลือ <strong>'+remaining+' '+it.unit+'</strong> ที่ยังไม่ได้ติดตั้ง — ระบุว่าไปไหน (ค่าเริ่มต้นถือเป็นของดีทั้งหมด):'
+              +'เหลือ <strong>'+remaining+' '+it.unit+'</strong> ที่ยังไม่ได้ติดตั้ง — ถือเป็น<strong style="color:var(--gm)">ของดีคืน Stock ทั้งหมดอัตโนมัติ</strong> เว้นแต่จะเก็บไว้เป็นสำรอง/ติดรถ Service:'
               +(remaining>0
                 ? '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:6px">'
-                    +'<span style="color:var(--red)">🗑️ ของเสีย (SCR): '
-                      +'<input class="fc" type="number" min="0" max="'+remaining+'" value="'+(it.retBad||0)+'" style="width:55px;display:inline-block;text-align:center;border-color:var(--red);color:var(--red)" '
-                      +'onchange="_clSetBadFromRemaining('+pi+',this.value)"></span>'
                     +'<span style="color:#00695c">🚐 เก็บสำรอง/ติดรถ Service: '
                       +'<input class="fc" type="number" min="0" max="'+remaining+'" value="'+(it.extQty||0)+'" style="width:55px;display:inline-block;text-align:center;border-color:#00695c;color:#00695c" '
                       +'onchange="_clSetExtQty('+pi+',this.value)"></span>'
@@ -4830,24 +4827,15 @@ function _clSetUsed(pi, val){
   if(window._clVehMode==='single' && window._clSingleSerial){ _clApplySingleSerialToAll(); return; }
   renderCloseItems(false);
 }
-function _clSetBadFromRemaining(pi, val){
-  var it = _clItemState[pi];
-  if(it.usedQty === null || it.usedQty === undefined) return;
-  var remaining = Math.max(0, it.issued - Number(it.usedQty));
-  var bad = Math.max(0, Math.min(Number(val)||0, remaining - (it.extQty||0)));
-  it.retBad = bad;
-  it.retGood = remaining - bad - (it.extQty||0);
-  if(window._clVehMode==='single' && window._clSingleSerial){ _clApplySingleSerialToAll(); return; }
-  renderCloseItems(false);
-}
 // 🚐 เก็บเป็นสำรอง/ติดรถ Service — ไม่ได้ติดตั้งบนรถลูกค้า และไม่ได้กลับเข้าคลังหลัก
 function _clSetExtQty(pi, val){
   var it = _clItemState[pi];
   if(it.usedQty === null || it.usedQty === undefined) return;
   var remaining = Math.max(0, it.issued - Number(it.usedQty));
-  var ext = Math.max(0, Math.min(Number(val)||0, remaining - (it.retBad||0)));
+  var ext = Math.max(0, Math.min(Number(val)||0, remaining));
   it.extQty = ext;
-  it.retGood = remaining - (it.retBad||0) - ext;
+  it.retBad = 0;
+  it.retGood = remaining - ext;
   if(ext===0) it.extLocation = '';
   renderCloseItems(false);
 }
@@ -5173,11 +5161,11 @@ function loadCloseDetail(){
                 +'<td style="padding:8px;border:0.5px solid #ddd;font-size:11px">'+it.partNo+'</td>'
                 +'<td style="padding:8px;border:0.5px solid #ddd">'+it.nameEN+'</td>'
                 +'<td style="padding:8px;border:0.5px solid #ddd;font-size:11px">'+newSerial+'</td>'
-                +'<td style="padding:8px;text-align:center;border:0.5px solid #ddd;font-weight:700">'+it.issued+' '+it.unit+'</td>'
+                +'<td style="padding:8px;text-align:center;border:0.5px solid #ddd;font-weight:700;color:#004d40">'+it.issued+' '+it.unit+'</td>'
                 +'<td style="padding:8px;text-align:center;border:0.5px solid #ddd;color:var(--gm)">'+it.retGood+'</td>'
-                +'<td style="padding:8px;text-align:center;border:0.5px solid #ddd;color:var(--red)">'+it.retBad+'</td>'
+                +'<td style="padding:8px;text-align:center;border:0.5px solid #ddd;color:var(--red)">'+used+'</td>'
                 +'<td style="padding:8px;text-align:center;border:0.5px solid #ddd;font-weight:700;color:#1565c0">'+used+'</td>'
-                +'<td style="padding:8px;border:0.5px solid #ddd;font-size:11px">'+vh+'</td>'
+                +'<td style="padding:8px;border:0.5px solid #ddd;font-size:11px;color:#1a237e">'+vh+'</td>'
               +'</tr>';
             }).join('');
           });
@@ -5696,29 +5684,29 @@ function openDetail(reqId){
           var itemsForUsage = d.Items||d.items||[];
           var rowsHtml = itemsForUsage.map(function(i){
             var issuedQ = (i.IssuedQty!=null && i.IssuedQty!=='' && Number(i.IssuedQty)>0) ? Number(i.IssuedQty) : (Number(i.Qty)||0);
-            var good = retMapD[i.PartNo]||0, bad = defMapD[i.PartNo]||0;
-            var used = Math.max(0, issuedQ - good - bad);
             var vhList = vhByPartD[i.PartNo]||[];
+            var used = vhList.reduce(function(s,v){ return s+(Number(v.Qty)||0); }, 0);
+            var good = Math.max(0, issuedQ - used);
             var vhTxt = vhList.length
               ? vhList.map(function(v){ return '🚗 '+v.SerialNo+' ('+v.Qty+')'+(v.OldPartSerial?' 🔒'+v.OldPartSerial:'')+' <span style="color:#8d6e63">→SCR '+v.Qty+'</span>'; }).join('<br>')
               : (used>0 ? '<span style="color:#c62828">— ยังไม่ระบุ —</span>' : '—');
             return '<tr>'
               +'<td style="padding:6px 8px;border:0.5px solid #e0e0e0;font-size:11px">'+i.PartNo+'</td>'
-              +'<td style="padding:6px 8px;border:0.5px solid #e0e0e0;text-align:center;font-weight:700">'+issuedQ+'</td>'
+              +'<td style="padding:6px 8px;border:0.5px solid #e0e0e0;text-align:center;font-weight:700;color:#004d40">'+issuedQ+'</td>'
               +'<td style="padding:6px 8px;border:0.5px solid #e0e0e0;text-align:center;color:var(--gm)">'+good+'</td>'
-              +'<td style="padding:6px 8px;border:0.5px solid #e0e0e0;text-align:center;color:var(--red)">'+bad+'</td>'
+              +'<td style="padding:6px 8px;border:0.5px solid #e0e0e0;text-align:center;color:var(--red)">'+used+'</td>'
               +'<td style="padding:6px 8px;border:0.5px solid #e0e0e0;text-align:center;font-weight:700;color:#1565c0">'+used+'</td>'
-              +'<td style="padding:6px 8px;border:0.5px solid #e0e0e0;font-size:11px">'+vhTxt+'</td>'
+              +'<td style="padding:6px 8px;border:0.5px solid #e0e0e0;font-size:11px;color:#1a237e">'+vhTxt+'</td>'
             +'</tr>';
           }).join('');
           usageBox.innerHTML = '<hr class="sep">'
-            +'<div style="font-weight:600;font-size:14px;margin-bottom:8px;color:var(--gd)">📦 รายละเอียดการใช้อะไหล่ (คืนดี/คืนเสีย/ใช้จริง + รถที่ติดตั้ง)</div>'
+            +'<div style="font-weight:600;font-size:14px;margin-bottom:8px;color:var(--gd)">📦 รายละเอียดการใช้อะไหล่ (คืนดี/เข้า SCR/ใช้จริง + รถที่ติดตั้ง)</div>'
             +'<div class="tw"><table style="width:100%;border-collapse:collapse;font-size:12px">'
             +'<thead><tr style="background:#f5f5f5">'
             +'<th style="padding:6px 8px;border:0.5px solid #e0e0e0;text-align:left">Part No.</th>'
             +'<th style="padding:6px 8px;border:0.5px solid #e0e0e0">จ่ายจริง</th>'
             +'<th style="padding:6px 8px;border:0.5px solid #e0e0e0;color:var(--gm)">คืนดี</th>'
-            +'<th style="padding:6px 8px;border:0.5px solid #e0e0e0;color:var(--red)">คืนเสีย</th>'
+            +'<th style="padding:6px 8px;border:0.5px solid #e0e0e0;color:var(--red)">เข้า SCR (ของเก่า)</th>'
             +'<th style="padding:6px 8px;border:0.5px solid #e0e0e0;color:#1565c0">ใช้จริง</th>'
             +'<th style="padding:6px 8px;border:0.5px solid #e0e0e0;text-align:left">🚗 ใส่รถ (S/N)</th>'
             +'</tr></thead><tbody>'+rowsHtml+'</tbody></table></div>';
@@ -5982,8 +5970,10 @@ function buildPrintData(reqId){
         items:(d.Items||d.items||[]).map(function(i){
           var issuedQty = typeof i.IssuedQty!=='undefined' ? (i.IssuedQty||0) : (i.Qty||0);
           var returnedGood = parseFloat(i.ReturnedQty)||0;
+          // สูตรใหม่: "เข้า SCR" (defectByPart) = "ใช้จริง" อยู่แล้วเสมอ (ของเก่าที่ถอดออกเท่ากับของใหม่ที่ติดตั้ง)
+          // ไม่ต้องเอาไปลบซ้ำจาก issuedQty อีก ไม่งั้นจะได้ 0 ผิดพลาด
           var returnedDefect = defectByPart[i.PartNo] || 0;
-          var actuallyUsed = Math.max(0, issuedQty - returnedGood - returnedDefect);
+          var actuallyUsed = returnedDefect;
           return {partNo:i.PartNo||'',desc:i.NameEN||i.NameTH||'',qty:i.Qty||'',issued:issuedQty||'',
             used:actuallyUsed||'', scrDefect:returnedDefect||'', rlrGood:returnedGood||'', note:i.Note||''};
         }),
