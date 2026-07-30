@@ -3485,7 +3485,10 @@ function loadDashboard(){
       +'<div class="sc grn"><div class="lb">อนุมัติแล้ว</div><div class="vl">'+(s.approved||0)+'</div></div>'
       +'<div class="sc gld"><div class="lb">รอ Stock จัดของ</div><div class="vl">'+(s.stockPending||0)+'</div></div>'
       +'<div class="sc grn"><div class="lb">ปิดงานแล้ว</div><div class="vl">'+(s.cleared||0)+'</div></div>'
-      +'<div class="sc red"><div class="lb">ปฏิเสธ</div><div class="vl">'+(s.rejected||0)+'</div></div>';
+      +'<div class="sc red"><div class="lb">ปฏิเสธ</div><div class="vl">'+(s.rejected||0)+'</div></div>'
+      +(( s.clearanceRejectedPending||0) > 0
+        ? '<div class="sc red" style="cursor:pointer" onclick="go(\'list\')" title="ไปดูรายการใบเบิก"><div class="lb">⚠️ ตีกลับ รอแก้ไข</div><div class="vl">'+s.clearanceRejectedPending+'</div></div>'
+        : '');
     // Manager Tools
     var mgTools = document.getElementById('mgToolsBar');
     if(mgTools) mgTools.innerHTML = CU&&(CU.role==='MANAGER'||CU.role==='ADMIN')
