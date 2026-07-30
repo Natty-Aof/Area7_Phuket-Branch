@@ -3506,7 +3506,7 @@ function loadDashboard(){
     if(sb){ sb.textContent = s.stockPending||0; }
     var rows=(res.recent||[]).map(function(r){
       var _db2=(CU&&CU.role==='MANAGER')?'<button class="btn bd bsm del-req-btn" style="padding:2px 7px;margin-left:4px" data-rid="'+r.ReqID+'">🗑️</button>':'';
-      return '<tr><td><strong>'+r.ReqID+'</strong></td><td>'+r.OpenDate+'</td><td>'+r.JobNo+'</td><td>'+(r.RequesterName||r.RequesterEmail||'')+'</td><td>'+r.CustomerName+'</td><td>'+apChip(r.StatusApproval)+'</td><td>'+stChip(r.StatusStock)+'</td><td style="white-space:nowrap"><button class="btn bo bsm" onclick="openDetail(\''+r.ReqID+'\')">ดู</button>'+_db2+'</td></tr>';
+      return '<tr><td><strong>'+r.ReqID+'</strong></td><td>'+r.OpenDate+'</td><td>'+r.JobNo+'</td><td>'+(r.RequesterName||r.RequesterEmail||'')+'</td><td>'+r.CustomerName+'</td><td>'+apChip(r.StatusApproval)+'</td><td>'+stChip(r.StatusStock, r)+'</td><td style="white-space:nowrap"><button class="btn bo bsm" onclick="openDetail(\''+r.ReqID+'\')">ดู</button>'+_db2+'</td></tr>';
     }).join('');
     var dt=document.getElementById('dashTbl');
     if(dt) dt.innerHTML=rows||'<tr><td colspan="8" class="tc tm" style="padding:24px">ยังไม่มีรายการ</td></tr>';
@@ -3960,7 +3960,7 @@ function renderListFromCache(){
       +'<td style="padding:7px 10px;font-size:12px"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px">'+(r.RequesterName||'')+'</div></td>'
       +'<td style="padding:7px 10px;font-size:12px"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">'+r.CustomerName+'</div></td>'
       +'<td style="padding:7px 10px;white-space:nowrap">'+apChip(r.StatusApproval)+'</td>'
-      +'<td style="padding:7px 10px;white-space:nowrap">'+stChip(r.StatusStock)+'</td>'
+      +'<td style="padding:7px 10px;white-space:nowrap">'+stChip(r.StatusStock, r)+'</td>'
       +'<td style="padding:7px 8px;white-space:nowrap;text-align:right">'
         +'<button class="btn bo bsm" style="padding:2px 8px;font-size:11px" onclick="openDetail(\'' + r.ReqID + '\')">ดู</button>'
         +(canDel?' <button class="btn bd bsm del-req-btn" style="padding:2px 6px;font-size:11px" data-rid="'+r.ReqID+'">🗑️</button>':'')
@@ -4305,7 +4305,7 @@ function loadStock(){
       var doneHtml = list.map(function(r){
         return '<div class="qc" style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px">'
           +'<div>'
-          +'<strong>'+r.ReqID+'</strong> '+stChip(r.StatusStock)
+          +'<strong>'+r.ReqID+'</strong> '+stChip(r.StatusStock, r)
           +'<div style="font-size:12px;color:var(--g400);margin-top:2px">'+r.CustomerName+' — '+r.JobNo+'</div>'
           +'<div style="font-size:11px;color:var(--g400)">จัดโดย: '+(r.StockHandlerEmail||'-')+'</div>'
           +'</div>'
@@ -4377,7 +4377,7 @@ function loadStock(){
           ?'<button class="btn bgd bsm stk-ack-btn" data-rid="'+encodeURIComponent(r.ReqID)+'">📦 รับจัดของ</button>'
           :'<span class="chip chip-grn">จัดของแล้ว โดย '+(r.StockHandlerEmail||'')+'</span>';
         cards += '<div class="qc '+(canAck?'urg':'')+'">'
-          +'<div class="fb2"><div><strong>'+r.ReqID+'</strong> '+stChip(r.StatusStock)+'</div><span class="tm" style="font-size:13px">'+r.OpenDate+'</span></div>'
+          +'<div class="fb2"><div><strong>'+r.ReqID+'</strong> '+stChip(r.StatusStock, r)+'</div><span class="tm" style="font-size:13px">'+r.OpenDate+'</span></div>'
           +pendingNote
           +'<div class="dg" style="grid-template-columns:repeat(3,1fr);gap:8px 16px;margin-top:8px">'
           +'<div class="di"><div class="dl">ผู้เบิก</div><div class="dv">'+r.RequesterName+'</div></div>'
@@ -5576,7 +5576,7 @@ function openDetail(reqId){
       +'<div class="di"><div class="dl">วัตถุประสงค์</div><div class="dv">'+(d.Purpose||'-')+'</div></div>'
       +(d.IMNumber?'<div class="di"><div class="dl">เลขที่ IM</div><div class="dv" style="color:var(--gm);font-weight:700">'+d.IMNumber+'</div></div>':'')
       +'</div>'
-      +'<div style="display:flex;gap:8px;margin-bottom:16px">สถานะอนุมัติ: '+apChip(d.StatusApproval)+' &nbsp; Stock: '+stChip(d.StatusStock)+'</div>'
+      +'<div style="display:flex;gap:8px;margin-bottom:16px">สถานะอนุมัติ: '+apChip(d.StatusApproval)+' &nbsp; Stock: '+stChip(d.StatusStock, d)+'</div>'
       +(d.CancelStatus==='PENDING'
         ? '<div class="card" style="border-left:4px solid #b71c1c;background:#ffebee;margin-bottom:14px;padding:10px 14px">'
           +'<div style="font-weight:700;color:#b71c1c;font-size:13px">🚫 มีคำขอยกเลิกใบเบิกนี้ — รอผจก./Admin พิจารณา</div>'
@@ -6143,7 +6143,11 @@ function renderNew(d){
 
 // ── CHIPS ─────────────────────────────────────────────────────
 function apChip(s){var m={PENDING_SUPERVISOR:['chip-ora','⏳ รอหัวหน้า'],PENDING_MANAGER:['chip-blu','⏳ รอผจก.'],APPROVED:['chip-grn','✓ อนุมัติแล้ว'],REJECTED:['chip-red','✕ ปฏิเสธ'],CANCELLED:['chip-gry','🚫 ยกเลิกแล้ว']};var v=m[s]||['chip-gry',s];return '<span class="chip '+v[0]+'">'+v[1]+'</span>';}
-function stChip(s){
+function stChip(s, r){
+  // ⛔ ตรวจก่อนว่ากำลัง "ถูกตีกลับ รอช่างแก้ไข" อยู่ไหม (ยังไม่ resubmitted) — ให้ความสำคัญกว่าสถานะปกติ
+  if(r && r.ClearanceRejectedAt && !r.ClearanceResubmittedAt){
+    return '<span class="chip chip-red" style="font-size:12px">⚠️ ตีกลับ รอแก้ไข</span>';
+  }
   var m={
     'PENDING':        ['chip-gry', '⏳ รอ Stock จัดของ'],
     'STOCK_NOTIFIED': ['chip-blu', '📨 แจ้ง Stock แล้ว'],
