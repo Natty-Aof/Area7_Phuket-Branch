@@ -424,33 +424,11 @@ textarea.fc{min-height:70px;resize:vertical;}
           <div id="rptTopParts" style="margin-top:12px"></div>
         </div>
 
-        <!-- ⑦ รายการค้างจ่าย ──────────────────────────── -->
+        <!-- ⑦ อะไหล่ที่จ่ายไม่พอบ่อย/หมดบ่อย (แบบง่าย) ──────── -->
         <div class="card" style="padding:14px 16px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
-            <div>
-              <div style="font-size:13px;font-weight:700;color:var(--gd)">⏳ รายการค้างจ่าย</div>
-              <div style="font-size:11px;color:var(--g400);margin-top:2px">รายการที่ Stock จ่ายได้ไม่ครบตามที่ขอ — เมื่อจ่ายครบแล้วรายการจะหายออกไป</div>
-            </div>
-            <div style="display:flex;gap:6px">
-              <button class="btn bo bsm" onclick="printPendingReport()" style="font-size:11px">🖨️ พิมพ์รายงาน</button>
-              <button class="btn bo bsm" onclick="document.getElementById('rptReturnReport').scrollIntoView({behavior:'smooth',block:'center'})" style="font-size:11px">📊 ดูการวิเคราะห์ขาดบ่อย + สั่ง HQ ↓</button>
-            </div>
-          </div>
-          <div id="rptPendingIssue"><div class="tc tm" style="padding:20px">กด "โหลดรายงาน" ค่ะ</div></div>
-        </div>
-
-        <!-- ⑧ รายการรอคืน / รอเคลียร์ ─────────────────── -->
-        <div class="card" style="padding:14px 16px">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-            <div style="font-size:13px;font-weight:700;color:var(--red)">⚠️ รายการอะไหล่ขาดจ่าย — ต้องเบิกเพิ่มจาก HQ</div>
-            <div style="display:flex;gap:6px">
-              <button class="btn bsm" id="boFilterAll" onclick="setRptShortageFilter('all')" style="background:var(--gd);color:#fff;border-color:var(--gd);font-size:11px">ทั้งหมด</button>
-              <button class="btn bo bsm" id="boFilterPending" onclick="setRptShortageFilter('pending')" style="font-size:11px">🔴 ยังขาด</button>
-              <button class="btn bo bsm" id="boFilterOrdered" onclick="setRptShortageFilter('ordered')" style="font-size:11px">🟡 รอ HQ</button>
-              <button class="btn bo bsm" id="boFilterReceived" onclick="setRptShortageFilter('received')" style="font-size:11px">✅ ได้แล้ว</button>
-            </div>
-          </div>
-          <div id="rptReturnReport"><div class="tc tm" style="padding:20px">กด "โหลดรายงาน" ค่ะ</div></div>
+          <div style="font-size:13px;font-weight:700;color:var(--gd);margin-bottom:4px">📊 อะไหล่ที่จ่ายไม่พอบ่อย / หมดบ่อย</div>
+          <div style="font-size:11px;color:var(--g400);margin-bottom:10px">รวมทุกใบเบิกที่ Stock จ่ายได้ไม่ครบตามที่ขอ เรียงจากขาดมากไปน้อย — ใช้ดูว่าอะไหล่ตัวไหนควรสต็อกเพิ่ม</div>
+          <div id="rptShortSimple"><div class="tc tm" style="padding:20px">กด "โหลดรายงาน" ค่ะ</div></div>
         </div>
 
         <!-- ⑨ รายงานการจ่ายแยกตามประเภทงาน ─────────────── -->
@@ -487,8 +465,6 @@ textarea.fc{min-height:70px;resize:vertical;}
               <select class="fc" id="exportTypeSelect" style="width:200px;font-size:12px">
                 <option value="requisition">ใบเบิกทั้งหมด</option>
                 <option value="overdue">งานค้าง / ต้องติดตาม</option>
-                <option value="pending">รายการค้างจ่าย</option>
-                <option value="return">รายการรอคืน/เคลียร์</option>
                 <option value="movement">การจ่ายแยกตามประเภท</option>
                 <option value="technician">รายงานตามช่าง</option>
                 <option value="slowmove">อะไหล่ไม่เคลื่อนไหว</option>
@@ -12077,8 +12053,8 @@ function _renderFullReport(){
     }
   }
 
-  // ── 8. รายการรอคืน — สรุประดับใบเบิก (ไม่แตก per item) ──
-  var returnEl=document.getElementById('rptReturnReport');
+  // ── 8. อะไหล่ที่จ่ายไม่พอบ่อย/หมดบ่อย — สรุปง่ายๆ ไม่ผูกกับสถานะสั่ง HQ ──
+  var returnEl=document.getElementById('rptShortSimple');
   if(returnEl){
     // รวบรวมอะไหล่ที่ขาดจ่าย (IssuedQty < Qty) แยกตาม Part No.
     var shortByPart = {}; // partNo → {nameEN, totalShort, totalReq, reqs:[]}
@@ -12098,13 +12074,14 @@ function _renderFullReport(){
         if(!shortByPart[pn]){
           shortByPart[pn] = {
             partNo:pn, nameEN:item.NameEN||item.NameTH||'—',
-            totalShort:0, totalReq:0, totalIssued:0,
+            totalShort:0, totalReq:0, totalIssued:0, count:0,
             reqs:[]
           };
         }
         shortByPart[pn].totalShort   += short;
         shortByPart[pn].totalReq     += requested;
         shortByPart[pn].totalIssued  += issued;
+        shortByPart[pn].count += 1;
         shortByPart[pn].reqs.push({
           reqId:r.ReqID, jobNo:r.JobNo||'—', customer:r.CustomerName||'—',
           requester:r.RequesterName||r.RequesterEmail||'—',
@@ -12119,12 +12096,24 @@ function _renderFullReport(){
     if(!shortList.length){
       returnEl.innerHTML='<div class="tc tm" style="padding:24px;color:var(--gm)">✅ ไม่มีอะไหล่ขาดจ่ายค่ะ — Stock จ่ายครบทุกรายการแล้ว</div>';
     } else {
-      // เก็บข้อมูลไว้ใน cache แล้ว load BackOrders มารวม
-      _rptShortageData = shortList;
-      returnEl.innerHTML = '<div class="tc tm" style="padding:16px">⏳ กำลังโหลดสถานะ HQ...</div>';
-      loadBackOrders().then(function(){
-        renderRptShortage();
+      var h4='<div class="tw"><table class="it" style="font-size:13px"><thead><tr style="font-size:13px;font-weight:700">'
+        +'<th>Part No.</th><th>ชื่ออะไหล่</th>'
+        +'<th style="text-align:center">จำนวนครั้งที่ขาด</th>'
+        +'<th style="text-align:center;color:var(--red)">รวมที่ขาด</th>'
+        +'<th style="text-align:center">รวมที่ขอ</th>'
+        +'</tr></thead><tbody>';
+      shortList.slice(0,30).forEach(function(row){
+        h4+='<tr>'
+          +'<td style="font-size:11px;color:var(--g600)">'+row.partNo+'</td>'
+          +'<td>'+row.nameEN+'</td>'
+          +'<td style="text-align:center">'+row.count+'</td>'
+          +'<td style="text-align:center;color:var(--red);font-weight:700">'+row.totalShort+'</td>'
+          +'<td style="text-align:center;color:var(--g400)">'+row.totalReq+'</td>'
+          +'</tr>';
       });
+      h4+='</tbody></table></div>';
+      if(shortList.length>30) h4+='<div class="tc tm" style="padding:8px;font-size:12px">แสดง 30 จาก '+shortList.length+' รายการ (เรียงจากขาดมากไปน้อย)</div>';
+      returnEl.innerHTML = h4;
     }
   }
 }
