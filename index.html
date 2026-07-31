@@ -4054,6 +4054,8 @@ function loadApproval(){
       var needMgr = isMgr && r.ManagerEmail && meEmailAp===String(r.ManagerEmail).toLowerCase() && !r.ManagerCloseApprovedAt;
       return needSup || needMgr;
     });
+    // ⚡ คำขอยกเลิกใบเบิกที่รออนุมัติ (ผจก./Admin เท่านั้น) — ให้ตรงกับตัวเลขใน badge เมนู "รออนุมัติ"
+    var cancelReqList = isMgr ? (results[2].data||[]).filter(function(r){ return r.CancelStatus==='PENDING'; }) : [];
     window._REQS_MAP = {};
     reqList.forEach(function(r){ window._REQS_MAP[r.ReqID]=r; });
 
@@ -4069,6 +4071,27 @@ function loadApproval(){
     var insCompleted = isMgr ? insListAll.filter(function(x){ return x.Status==='COMPLETED' && !x.ReviewedAt; }) : [];
 
     var html = '';
+
+    // ── คำขอยกเลิกใบเบิก รออนุมัติ (ผจก./Admin) — ให้ตรงกับ badge ──
+    if(cancelReqList.length){
+      html += '<div class="card" style="margin-bottom:10px;border-left:4px solid #b71c1c">';
+      html += '<div style="font-size:13px;font-weight:700;color:#b71c1c;padding:10px 14px;border-bottom:0.5px solid var(--g200)">🚫 คำขอยกเลิกใบเบิก รออนุมัติ ('+cancelReqList.length+')</div>';
+      html += cancelReqList.map(function(r){
+        return '<div style="padding:12px 14px;border-bottom:0.5px solid var(--g200);display:flex;align-items:center;gap:12px">'
+          +'<div style="flex:1">'
+            +'<div style="font-weight:700;color:#b71c1c;font-size:13px">'+r.ReqID+' — '+(r.CustomerName||'-')+'</div>'
+            +'<div style="font-size:12px;color:var(--g400);margin-top:3px">👷 ขอโดย '+(r.CancelRequestedBy||'-')+' เมื่อ '+(r.CancelRequestedAt||'-')+'</div>'
+            +'<div style="font-size:12px;color:#555;margin-top:2px">📝 เหตุผล: '+(r.CancelReason||'-')+'</div>'
+          +'</div>'
+          +'<div style="display:flex;gap:6px;flex-shrink:0">'
+            +'<button class="btn bo bsm" style="white-space:nowrap" onclick="openDetail(\''+r.ReqID+'\')">ดูรายละเอียด</button>'
+            +'<button class="btn bd bsm" style="white-space:nowrap" onclick="rejectCancelReqUI(\''+r.ReqID+'\')">✕ ไม่อนุมัติ</button>'
+            +'<button class="btn bp bsm" style="background:#b71c1c;border-color:#b71c1c;white-space:nowrap" onclick="approveCancelReqUI(\''+r.ReqID+'\')">✅ อนุมัติยกเลิก</button>'
+          +'</div>'
+        +'</div>';
+      }).join('');
+      html += '</div>';
+    }
 
     // ── ใบเบิกตัด SAP แล้ว รออนุมัติปิดงาน (หัวหน้าช่าง/ผจก.) ──
     if(closeApprList.length){
@@ -4985,6 +5008,9 @@ function loadCloseDetail(){
     var items=d.Items||d.items||[];
     var isStock = ['STOCK','ADMIN','MANAGER'].indexOf(CU.role) >= 0;
     var isPendingClearance = d.StatusStock === 'PENDING_CLEARANCE';
+    // ⚡ แยกจาก isPendingClearance: ใช้ตัดสินใจว่าควร "pre-fill" ข้อมูลเดิมที่ช่างเคยกรอกไว้หรือไม่
+    // ครอบคลุมทั้งกรณีปกติ (PENDING_CLEARANCE) และกรณีถูกตีกลับแล้วยังไม่ได้ส่งใหม่ (ClosedNote เดิมยังไม่ถูกทับ)
+    var hasPriorSubmission = isPendingClearance || (d.ClearanceRejectedAt && !d.ClearanceResubmittedAt);
 
     // ── แสดง section ตาม role + สถานะ ──
     // ช่าง (ยังไม่ส่งเคลียร์) → เห็นช่องกรอก + ปุ่มส่ง
@@ -4994,7 +5020,7 @@ function loadCloseDetail(){
 
     // ดึงข้อมูลที่ช่างกรอกไว้ (ถ้ามี)
     var clearInfo = {};
-    if(isPendingClearance && d.ClosedNote){
+    if(hasPriorSubmission && d.ClosedNote){
       try { clearInfo = JSON.parse(d.ClosedNote); } catch(e){ clearInfo = {}; }
     }
     var retMap = {}, defMap = {}, extMap = {}, extLocMap = {}, extPermMap = {};
@@ -5037,7 +5063,7 @@ function loadCloseDetail(){
     // ⛔ สำคัญ: ต้อง reset state ทุกครั้งที่ ReqID เปลี่ยน (แม้ทั้งคู่จะเป็น PENDING_CLEARANCE)
     // ไม่งั้นข้อมูลคืนดี/คืนเสียของใบเบิกเก่าจะค้างและถูกส่งไปผิดใบเบิกตอน Stock กด "ยืนยัน+ปิดงาน"
     window._clearItems = items;
-    if(!window._clItemState || !isPendingClearance || window._clItemStateReqId !== reqId) {
+    if(!window._clItemState || !hasPriorSubmission || window._clItemStateReqId !== reqId) {
       window._clItemStateReqId = reqId;
       window._clVehMode = 'multi';
       window._clSingleSerial = '';
@@ -5056,12 +5082,21 @@ function loadCloseDetail(){
         var qty = Number(it.Qty)||0;
         var issued = (it.IssuedQty!=null && it.IssuedQty!=='' && Number(it.IssuedQty)>0)
           ? Number(it.IssuedQty) : qty;
-        var savedGood = isPendingClearance ? (retMap[pn]||0) : 0;
-        var savedBad  = isPendingClearance ? (defMap[pn]||0) : 0;
-        var savedExt  = isPendingClearance ? (extMap[pn]||0) : 0;
-        var savedExtLoc = isPendingClearance ? (extLocMap[pn]||'') : '';
-        var savedExtPerm = isPendingClearance ? (extPermMap[pn]||false) : false;
-        var hasSaved = isPendingClearance && (savedGood>0 || savedBad>0 || savedExt>0 || (retMap[pn]===0 && defMap.hasOwnProperty(pn)));
+        var savedGood = hasPriorSubmission ? (retMap[pn]||0) : 0;
+        var savedBad  = hasPriorSubmission ? (defMap[pn]||0) : 0;
+        var savedExt  = hasPriorSubmission ? (extMap[pn]||0) : 0;
+        var savedExtLoc = hasPriorSubmission ? (extLocMap[pn]||'') : '';
+        var savedExtPerm = hasPriorSubmission ? (extPermMap[pn]||false) : false;
+        var hasSaved = hasPriorSubmission && (savedGood>0 || savedBad>0 || savedExt>0 || (retMap[pn]===0 && defMap.hasOwnProperty(pn)));
+        // ⚡ restore รายละเอียดรถ (S/N/จำนวน/รูปของเก่า/Serial เดิม) + รูปอะไหล่โดยรวม จากข้อมูลที่ช่างเคยกรอกไว้
+        var savedVehEntries = hasPriorSubmission ? (clearInfo.vehicleEntries||[]).filter(function(v){ return v.partNo===pn; }) : [];
+        var savedVehicles = savedVehEntries.length
+          ? savedVehEntries.map(function(v){
+              return { serialNo:v.serialNo||'', qty:Number(v.qty)||0, note:v.note||'',
+                photo:v.photoSerial||null, oldPartSerial:v.oldPartSerial||'' };
+            })
+          : [{serialNo:'', qty:0, note:'', photo:null, oldPartSerial:''}];
+        var savedItemPhoto = savedVehEntries.length && savedVehEntries[0].photoPartNo ? [savedVehEntries[0].photoPartNo] : [];
         return {
           partNo: pn,
           nameEN: it.NameEN||it.NameTH||'',
@@ -5076,8 +5111,8 @@ function loadCloseDetail(){
           extPermanent: savedExtPerm,
           note: '',
           unit: it.Unit||'ชิ้น',
-          photos: [],
-          vehicles: [{serialNo:'', qty:0, note:'', photo:null, oldPartSerial:''}],
+          photos: savedItemPhoto,
+          vehicles: savedVehicles,
         };
       });
     }
@@ -5178,7 +5213,7 @@ function loadCloseDetail(){
 
     var rl=document.getElementById('clIM'), cn=document.getElementById('clNote');
     if(rl) rl.value='';
-    if(cn) cn.value = isPendingClearance ? (clearInfo.techNote||'') : '';
+    if(cn) cn.value = hasPriorSubmission ? (clearInfo.techNote||'') : '';
     if(cd) cd.classList.remove('hidden');
     var closeBtn = document.getElementById('clCloseBtn');
     if(closeBtn) closeBtn.style.display = 'inline-block';
@@ -5524,7 +5559,12 @@ function approveCancelReqUI(reqId){
   toast('กำลังบันทึก...','info');
   callAPI('approveCancelRequisition',{id:reqId}).then(function(res){
     toast(res.message, res.success?'success':'error');
-    if(res.success){ closeMo(); if(typeof loadList==='function') setTimeout(loadList, 400); }
+    if(res.success){
+      closeMo();
+      if(typeof loadApproval==='function') setTimeout(loadApproval, 400);
+      if(typeof loadList==='function') setTimeout(loadList, 400);
+      if(typeof refreshBadges==='function') setTimeout(refreshBadges, 400);
+    }
   });
 }
 function rejectCancelReqUI(reqId){
@@ -5532,7 +5572,12 @@ function rejectCancelReqUI(reqId){
   toast('กำลังบันทึก...','info');
   callAPI('rejectCancelRequisition',{id:reqId, note:note}).then(function(res){
     toast(res.message, res.success?'success':'error');
-    if(res.success){ closeMo(); if(typeof loadList==='function') setTimeout(loadList, 400); }
+    if(res.success){
+      closeMo();
+      if(typeof loadApproval==='function') setTimeout(loadApproval, 400);
+      if(typeof loadList==='function') setTimeout(loadList, 400);
+      if(typeof refreshBadges==='function') setTimeout(refreshBadges, 400);
+    }
   });
 }
 
