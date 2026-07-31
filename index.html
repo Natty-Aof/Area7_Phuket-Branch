@@ -1288,10 +1288,10 @@ textarea.fc{min-height:70px;resize:vertical;}
           <div class="card" style="padding:12px 14px;margin-bottom:10px">
             <div style="display:flex;gap:8px">
               <div style="flex:1;position:relative">
-                <input class="fc" id="vhSearch" placeholder="🔍 พิมพ์ Serial No. / เบอร์รถ / ลูกค้า / สถานที่..." oninput="onVHSearch()" autocomplete="off">
+                <input class="fc" id="vhSearch" placeholder="🔍 พิมพ์ Serial No. / เบอร์รถ / ลูกค้า / สถานที่..." oninput="onVHSearch()" onkeydown="if(event.key==='Enter'){selectVH(this.value.trim());}" autocomplete="off">
                 <div id="vhSearchDrop" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid var(--g200);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.12);z-index:400;max-height:280px;overflow-y:auto"></div>
               </div>
-              <button class="btn bp bsm" onclick="loadVehicleHistory()">ค้นหา</button>
+              <button class="btn bp bsm" onclick="selectVH(document.getElementById('vhSearch').value.trim())">ค้นหา</button>
               <button class="btn bsm" onclick="openQRScanner('vehiclehistory')" style="background:#1565c0;color:#fff;border-color:#1565c0;white-space:nowrap">📷 Scan QR</button>
               <button class="btn bo bsm" onclick="openVehicleQRPrint()" style="white-space:nowrap">🖨️ พิมพ์ Label</button>
             </div>
