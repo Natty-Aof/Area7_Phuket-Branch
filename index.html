@@ -633,12 +633,8 @@ textarea.fc{min-height:70px;resize:vertical;}
           </div>
           <div class="card">
             <div class="ct">📷 ถ่ายรูปอะไหล่ที่รับมา<span class="rq">*</span></div>
-            <div class="pd" id="pickupPhotoDrop" onclick="document.getElementById('pickupPhotoIn').click()">
-              <div style="font-size:32px">📷</div>
-              <div style="margin-top:8px">แตะหรือคลิกเพื่อถ่ายรูปอะไหล่ที่รับมา</div>
-              <div class="tm" style="font-size:12px">ถ่ายรูปอะไหล่ทั้งหมดก่อนออกงาน (บังคับ)</div>
-              <img id="pickupPhotoPreview" class="pp hidden">
-            </div>
+            <div class="tm" style="font-size:12px;margin-bottom:8px">ถ่ายได้หลายรูป (เช่น ถ่ายแยกทีละตัวถ้ามีหลายรายการ) — บังคับอย่างน้อย 1 รูป</div>
+            <div id="pickupPhotoGallery" style="display:flex;gap:8px;flex-wrap:wrap"></div>
             <input type="file" id="pickupPhotoIn" accept="image/*" style="display:none" onchange="onPickupPhoto(event)">
           </div>
           <div style="display:flex;gap:12px;justify-content:flex-end;padding-bottom:24px">
@@ -6666,8 +6662,19 @@ function populateModelFilter(){
   });
 }
 
-// ── PICKUP: ช่างรับอะไหล่ + ถ่ายรูป ──────────────────────────
-var pickupPhotoB64 = null;
+// ── PICKUP: ช่างรับอะไหล่ + ถ่ายรูป (รองรับหลายรูป) ──────────────
+var pickupPhotos = [];
+function renderPickupPhotoGallery(){
+  var gal = document.getElementById('pickupPhotoGallery');
+  if(!gal) return;
+  gal.innerHTML = pickupPhotos.map(function(url, i){
+    return '<div style="position:relative;display:inline-block">'
+      +'<img src="'+url+'" style="width:90px;height:90px;object-fit:cover;border-radius:8px;border:1px solid var(--g200);cursor:pointer" onclick="openImgLightbox(\''+encodeURIComponent(url)+'\')">'
+      +'<button onclick="pickupPhotos.splice('+i+',1);renderPickupPhotoGallery()" style="position:absolute;top:-5px;right:-5px;background:var(--red);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer">✕</button>'
+    +'</div>';
+  }).join('')
+  + '<label style="width:90px;height:90px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f5f5f5;border:1.5px dashed var(--g300);border-radius:8px;cursor:pointer;font-size:11px;color:var(--g400)" onclick="document.getElementById(\'pickupPhotoIn\').click()">📷 เพิ่มรูป</label>';
+}
 
 function loadPickupPage(){
   if(!CU) return;
@@ -6722,10 +6729,8 @@ function loadPickupDetail(){
     }).join('');
     var warnEl = document.getElementById('pickupShortWarn');
     if(warnEl) warnEl.classList.toggle('hidden', !hasShort);
-    pickupPhotoB64 = null;
-    var pp = document.getElementById('pickupPhotoPreview'), drop = document.getElementById('pickupPhotoDrop');
-    if(pp){ pp.classList.add('hidden'); pp.src=''; }
-    if(drop) drop.classList.remove('hp');
+    pickupPhotos = [];
+    renderPickupPhotoGallery();
     if(pd) pd.classList.remove('hidden');
   });
 }
@@ -6790,25 +6795,25 @@ function compressSignature(file, cb){
 function onPickupPhoto(e){
   var file = e.target.files[0]; if(!file) return;
   compressImage(file, function(b64){
-    pickupPhotoB64 = b64;
-    var pp = document.getElementById('pickupPhotoPreview'), drop = document.getElementById('pickupPhotoDrop');
-    if(pp){ pp.src = pickupPhotoB64; pp.classList.remove('hidden'); }
-    if(drop){ drop.classList.add('hp'); drop.style.border='2px solid var(--gm)'; }
+    if(!b64) return;
+    pickupPhotos.push(b64);
+    renderPickupPhotoGallery();
   });
+  e.target.value = ''; // เคลียร์ input กันเลือกไฟล์เดิมซ้ำแล้วไม่ trigger onchange
 }
 
 function submitPickup(){
   var reqId = document.getElementById('pickupSel').value;
   if(!reqId) return toast('กรุณาเลือกใบเบิก','error');
-  if(!pickupPhotoB64) return toast('กรุณาถ่ายรูปอะไหล่ก่อนยืนยันค่ะ','error');
+  if(!pickupPhotos.length) return toast('กรุณาถ่ายรูปอะไหล่อย่างน้อย 1 รูปก่อนยืนยันค่ะ','error');
   var unlock = lockBtn(event.target, '⏳ กำลังบันทึก...');
   if(!unlock) return;
-  callAPI('confirmPickup',{id:reqId, photoUrl:pickupPhotoB64}).then(function(res){
+  callAPI('confirmPickup',{id:reqId, photoUrls:pickupPhotos}).then(function(res){
     unlock();
     toast(res.message, res.success?'success':'error');
     if(res.success){
       // รีเซ็ตรูป แล้วโหลดหน้า list ใหม่ (เผื่อ Sheet เพิ่งอัปเดต)
-      pickupPhotoB64 = null;
+      pickupPhotos = [];
       setTimeout(function(){ go('list'); refreshBadges(true); }, 600);
     }
   }).catch(function(){ unlock(); });
@@ -6934,12 +6939,12 @@ var _origSubmitPickup = submitPickup;
 submitPickup = function() {
   var reqId = document.getElementById('pickupSel').value;
   if (!reqId) return toast('กรุณาเลือกใบเบิก', 'error');
-  if (!pickupPhotoB64) return toast('กรุณาถ่ายรูปอะไหล่ก่อนค่ะ', 'error');
+  if (!pickupPhotos.length) return toast('กรุณาถ่ายรูปอะไหล่อย่างน้อย 1 รูปก่อนยืนยันค่ะ', 'error');
   toast('กำลังบันทึก...', 'info');
-  callAPI('confirmPickup', { id: reqId, photoUrl: pickupPhotoB64 })
+  callAPI('confirmPickup', { id: reqId, photoUrls: pickupPhotos })
     .then(function(res) {
       toast(res.message, res.success ? 'success' : 'error');
-      if (res.success){ pickupPhotoB64=null; setTimeout(function(){go('list');refreshBadges(true);},600); }
+      if (res.success){ pickupPhotos=[]; setTimeout(function(){go('list');refreshBadges(true);},600); }
     });
 };
 
