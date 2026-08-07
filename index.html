@@ -3403,14 +3403,18 @@ function renderVehicleAnalytics(res){
   }
 
   var summary = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">'
-    +'<div class="card" style="text-align:center;padding:14px"><div style="font-size:22px;font-weight:700;color:#1a237e">'+res.totalVehicles+'</div><div style="font-size:11px;color:var(--g400)">รถที่มีประวัติ</div></div>'
-    +'<div class="card" style="text-align:center;padding:14px"><div style="font-size:22px;font-weight:700;color:#2d6a4f">'+res.totalRecords+'</div><div style="font-size:11px;color:var(--g400)">ครั้งที่เบิก</div></div>'
-    +'<div class="card" style="text-align:center;padding:14px"><div style="font-size:22px;font-weight:700;color:#e65100">'+res.repeats.length+'</div><div style="font-size:11px;color:var(--g400)">รายการซ้ำ (จับตา)</div></div>'
-    +'</div>';
+    +'<div class="card" style="text-align:center;padding:14px;cursor:pointer" onclick="document.getElementById(\'vhTopVehiclesBox\').scrollIntoView({behavior:\'smooth\',block:\'start\'})" title="ดูรายการ (Top 30)"><div style="font-size:22px;font-weight:700;color:#1a237e">'+res.totalVehicles+'</div><div style="font-size:11px;color:var(--g400)">รถที่มีประวัติ ▾</div></div>'
+    +'<div class="card" style="text-align:center;padding:14px;cursor:pointer" onclick="document.getElementById(\'vhTopVehiclesBox\').scrollIntoView({behavior:\'smooth\',block:\'start\'})" title="ดูรายการ (Top 30)"><div style="font-size:22px;font-weight:700;color:#2d6a4f">'+res.totalRecords+'</div><div style="font-size:11px;color:var(--g400)">ครั้งที่เบิก ▾</div></div>'
+    +'<div class="card" style="text-align:center;padding:14px;cursor:pointer" onclick="document.getElementById(\'vhRepeatBox\').scrollIntoView({behavior:\'smooth\',block:\'start\'})" title="ดูรายการซ้ำ"><div style="font-size:22px;font-weight:700;color:#e65100">'+res.repeats.length+'</div><div style="font-size:11px;color:var(--g400)">รายการซ้ำ (จับตา) ▾</div></div>'
+    +'</div>'
+    +(res.excludedInvalidSerial>0
+      ? '<div style="font-size:11px;color:var(--g400);margin-bottom:14px;padding:6px 10px;background:#f5f5f5;border-radius:6px">'
+        +'ℹ️ ซ่อนไป '+res.excludedInvalidSerial+' รายการ ที่มี Serial ไม่ตรงกับรถจริงในระบบ (ข้อมูลเก่าก่อนบังคับเลือกจากลิสต์รถ) — ไม่นับรวมในรายงานนี้</div>'
+      : '');
 
-  var repeatHtml = '<div class="card" style="padding:14px 16px;margin-bottom:14px">'
+  var repeatHtml = '<div class="card" id="vhRepeatBox" style="padding:14px 16px;margin-bottom:14px">'
     +'<div style="font-size:14px;font-weight:700;color:#e65100;margin-bottom:4px">⚠️ รถที่เบิกอะไหล่ตัวเดิมซ้ำ</div>'
-    +'<div style="font-size:11px;color:var(--g400);margin-bottom:10px">อาจมีปัญหาที่ต้นเหตุ เช่น เปลี่ยนยางเส้นเดิมบ่อย — ควรตรวจสอบ</div>';
+    +'<div style="font-size:11px;color:var(--g400);margin-bottom:10px">อาจมีปัญหาที่ต้นเหตุ เช่น เปลี่ยนยางเส้นเดิมบ่อย — ควรตรวจสอบ (กดที่ Serial No. เพื่อดูประวัติเต็มของรถคันนั้น)</div>';
   if(!res.repeats.length){
     repeatHtml += '<div class="tc tm" style="padding:12px">✅ ไม่พบรถที่เบิกอะไหล่ตัวเดิมซ้ำค่ะ</div>';
   } else {
@@ -3433,7 +3437,7 @@ function renderVehicleAnalytics(res){
   }
   repeatHtml += '</div>';
 
-  var topHtml = '<div class="card" style="padding:14px 16px">'
+  var topHtml = '<div class="card" id="vhTopVehiclesBox" style="padding:14px 16px">'
     +'<div style="font-size:14px;font-weight:700;color:var(--gd);margin-bottom:10px">🏆 รถที่เบิกอะไหล่มากที่สุด (Top 30)</div>'
     +'<div class="tw"><table class="it" style="font-size:12px"><thead><tr>'
     +'<th>อันดับ</th><th>Serial No. รถ</th><th>รุ่น</th><th>ลูกค้า</th><th style="text-align:center">จำนวนครั้ง</th><th style="text-align:center">อะไหล่รวม</th><th>อะไหล่ที่เบิกบ่อยสุด</th>'
@@ -3458,10 +3462,9 @@ function renderVehicleAnalytics(res){
 function _vhJumpToSerial(encSerial){
   var serial = decodeURIComponent(encSerial);
   switchVHTab(1);
-  _vhCurrentSerial = serial;  // ตั้งให้ตรงกับรถที่คลิก (กันค้นหาผิดคัน)
-  var inp = document.getElementById('vhSearch');
-  if(inp){ inp.value = serial; }
-  if(typeof loadVehicleHistory === 'function') loadVehicleHistory();
+  // ⚡ ใช้ selectVH() แทนการเขียน logic ซ้ำเอง — ให้ใช้ code path เดียวกับปุ่ม "ค้นหา" ที่แก้ไปแล้ว
+  // (อัปเดตทั้งการ์ดข้อมูลรถ + ประวัติให้ตรงกันเสมอ กันบั๊กแบบที่เจอตอนกดปุ่มค้นหาก่อนหน้านี้)
+  selectVH(serial);
 }
 
 function loadDashboard(){
