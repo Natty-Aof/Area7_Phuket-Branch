@@ -10514,6 +10514,9 @@ function submitSCNTExcel(rows){
   var entries=rows.filter(function(r){return r.diff!=='?'&&r.diff!==0;});
   if(!entries.length){toast('ยอดตรงกันทั้งหมด ไม่มีรายการที่ต้องปรับ','info');return;}
   toast('กำลังบันทึก '+entries.length+' รายการ...','info');
+  var btn = document.getElementById('scntConfirmBtn');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ กำลังบันทึก...'; }
+
   Promise.all(entries.map(function(r){
     var diff=r.diff;
     return callAPI('saveStockCardEntry',{
@@ -10521,12 +10524,22 @@ function submitSCNTExcel(rows){
       qtyIn:diff>0?Math.abs(diff):0,qtyOut:diff<0?Math.abs(diff):0,
       date:today,docNo:'PCOUNT-'+today,
       note:'นับจริง='+r.countedQty+' ระบบ='+r.sysQty+' ส่วนต่าง='+(diff>0?'+':'')+diff,
-    });
-  })).then(function(){
-    toast('บันทึกการนับสต็อกแล้ว '+entries.length+' รายการ ✅','success');
+    }).then(function(res){ return {partNo:r.partNo, res:res}; })
+      .catch(function(err){ return {partNo:r.partNo, res:{success:false, message:(err&&err.message)||'เชื่อมต่อไม่ได้'}}; });
+  })).then(function(results){
+    // ⚡ เช็คผลลัพธ์จริงทีละรายการ ไม่ขึ้น "สำเร็จ" มั่วแม้บางรายการ error
+    var ok = results.filter(function(r){ return r.res && r.res.success; });
+    var failed = results.filter(function(r){ return !(r.res && r.res.success); });
+
     syncStockBalance();
     document.getElementById('scntPreviewBox').classList.add('hidden');
     document.getElementById('scntFileInput').value='';
+
+    if(!failed.length){
+      toast('บันทึกการนับสต็อกแล้ว '+ok.length+' รายการ ✅ — ดูรายการที่บันทึกได้ที่ Stock Card ของแต่ละอะไหล่ (Type: ADJUST)','success');
+    } else {
+      toast('บันทึกสำเร็จ '+ok.length+' รายการ — ⛔ ไม่สำเร็จ '+failed.length+' รายการ ('+failed.map(function(f){return f.partNo;}).join(', ')+') กรุณาลองใหม่เฉพาะรายการที่ไม่สำเร็จค่ะ','error');
+    }
   });
 }
 
