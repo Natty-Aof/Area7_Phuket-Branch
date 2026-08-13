@@ -3182,7 +3182,8 @@ function openCreateBackorderModal(){
         +'<button class="btn bo bsm" onclick="_cboAddItemRow()" style="margin-top:4px">➕ เพิ่มรายการอะไหล่</button>'
         +'<hr class="sep">'
         +'<div class="fg"><label class="fl">📄 ภาพ PO ลูกค้า</label>'
-          +'<input type="file" accept="image/*" id="cboPoPhotoInput" onchange="_cboOnPhoto(event,\'po\')" style="width:100%">'
+          +'<input type="file" accept="image/*,application/pdf" id="cboPoPhotoInput" onchange="_cboOnPhoto(event,\'po\')" style="width:100%">'
+          +'<div style="font-size:11px;color:var(--g400);margin-top:2px">แนบได้ทั้งรูปภาพหรือ PDF</div>'
           +'<img id="cboPoPhotoPreview" class="hidden" style="max-width:100%;max-height:140px;border-radius:6px;margin-top:6px">'
         +'</div>'
         +'<div class="fg"><label class="fl">กำหนดวันคาดว่าของเข้า (ใช้ร่วมกันทุกรายการ)</label><input class="fc" id="cboExpectedDate" type="date"></div>'
@@ -3194,7 +3195,8 @@ function openCreateBackorderModal(){
         +'</div>'
         +'<div class="fg"><label class="fl">แจ้งโดย (ชื่อพนักงาน)</label><input class="fc" id="cboNotifiedBy" placeholder="ชื่อคนที่แจ้งลูกค้า"></div>'
         +'<div class="fg"><label class="fl">🖼️ รูปหลักฐานการแจ้งลูกค้า</label>'
-          +'<input type="file" accept="image/*" id="cboNotifyPhotoInput" onchange="_cboOnPhoto(event,\'notify\')" style="width:100%">'
+          +'<input type="file" accept="image/*,application/pdf" id="cboNotifyPhotoInput" onchange="_cboOnPhoto(event,\'notify\')" style="width:100%">'
+          +'<div style="font-size:11px;color:var(--g400);margin-top:2px">แนบได้ทั้งรูปภาพหรือ PDF</div>'
           +'<img id="cboNotifyPhotoPreview" class="hidden" style="max-width:100%;max-height:140px;border-radius:6px;margin-top:6px">'
         +'</div>'
         +'<div class="fg"><label class="fl">หมายเหตุ</label><input class="fc" id="cboNote"></div>'
@@ -3208,18 +3210,67 @@ function openCreateBackorderModal(){
   _renderCboItemsList();
 }
 
-// ── จัดการรายการอะไหล่หลายรายการใน modal ──
+// ── จัดการรายการอะไหล่หลายรายการใน modal — ค้นหาแบบมีรูป เหมือนหน้าเปิดใบเบิก ──
 function _renderCboItemsList(){
   var box = document.getElementById('cboItemsList');
   if(!box) return;
   box.innerHTML = window._cboItems.map(function(it, i){
-    return '<div style="display:grid;grid-template-columns:2fr 3fr 1fr auto;gap:6px;margin-bottom:6px;align-items:center">'
-      +'<input class="fc" placeholder="Part No. (ถ้ามี)" value="'+(it.partNo||'').replace(/"/g,'&quot;')+'" oninput="_cboItems['+i+'].partNo=this.value" style="font-size:12px">'
-      +'<input class="fc" placeholder="ชื่ออะไหล่ *" value="'+(it.partName||'').replace(/"/g,'&quot;')+'" oninput="_cboItems['+i+'].partName=this.value" style="font-size:12px">'
-      +'<input class="fc" type="number" min="1" placeholder="จำนวน" value="'+(it.qty||1)+'" oninput="_cboItems['+i+'].qty=this.value" style="font-size:12px;text-align:center">'
-      +(window._cboItems.length>1?'<button class="btn bd bsm" onclick="_cboRemoveItemRow('+i+')" style="padding:4px 8px">✕</button>':'<span></span>')
+    var imgH = it.partNo ? partImgHtmlWithData(it.partNo, it.partName||'', 'sm') : '<div style="width:36px;height:36px;flex-shrink:0;background:#f5f5f5;border-radius:6px"></div>';
+    return '<div style="border:1px solid var(--g200);border-radius:8px;padding:8px;margin-bottom:8px;position:relative">'
+      +'<div style="display:flex;gap:8px;align-items:center">'
+        +'<div id="cboItemImg'+i+'">'+imgH+'</div>'
+        +'<div style="flex:1;min-width:0;position:relative">'
+          +'<input class="fc" placeholder="🔍 พิมพ์ค้นหาอะไหล่ (รหัส/ชื่อ) หรือพิมพ์เองถ้าไม่มีในระบบ" '
+            +'value="'+(it.partName?(it.partNo?it.partNo+' — ':'')+it.partName:'').replace(/"/g,'&quot;')+'" '
+            +'oninput="_cboSearchItem('+i+',this.value)" onfocus="_cboSearchItem('+i+',this.value)" '
+            +'onblur="setTimeout(function(){var d=document.getElementById(\'cboItemDrop'+i+'\');if(d)d.style.display=\'none\';},200)" '
+            +'style="font-size:12px" autocomplete="off">'
+          +'<div id="cboItemDrop'+i+'" style="display:none;position:absolute;top:calc(100% + 2px);left:0;right:0;background:#fff;border:1px solid var(--g200);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.12);z-index:400;max-height:220px;overflow-y:auto"></div>'
+        +'</div>'
+        +'<input class="fc" type="number" min="1" placeholder="จำนวน" value="'+(it.qty||1)+'" oninput="_cboItems['+i+'].qty=this.value" style="font-size:12px;text-align:center;width:64px;flex-shrink:0">'
+        +(window._cboItems.length>1?'<button class="btn bd bsm" onclick="_cboRemoveItemRow('+i+')" style="padding:4px 8px;flex-shrink:0">✕</button>':'<span style="width:30px"></span>')
+      +'</div>'
     +'</div>';
   }).join('');
+}
+function _cboSearchItem(i, q){
+  // ถ้าไม่ได้เลือกจาก dropdown ให้ถือว่าข้อความที่พิมพ์คือชื่ออะไหล่ตรงๆ (รองรับอะไหล่ที่ยังไม่มีในระบบ)
+  window._cboItems[i].partName = q||'';
+  window._cboItems[i].partNo = '';
+  var dd = document.getElementById('cboItemDrop'+i);
+  if(!dd) return;
+  q = (q||'').trim();
+  if(!q || typeof PARTS_DB==='undefined'){ dd.style.display='none'; return; }
+  var ql = q.toLowerCase();
+  var res = [];
+  for(var k=0; k<PARTS_DB.length && res.length<10; k++){
+    var p = PARTS_DB[k];
+    if(p._search && p._search.indexOf(ql)>=0) res.push(p);
+  }
+  if(!res.length){ dd.style.display='none'; return; }
+  dd.innerHTML = res.map(function(p){
+    var pj = encodeURIComponent(JSON.stringify({partNo:p.partNo, nameEN:p.nameEN||'', nameTH:p.nameTH||''}));
+    return '<div onmousedown="_cboPickItem('+i+',\''+pj+'\')" style="padding:7px 10px;cursor:pointer;border-bottom:1px solid #f5f5f5;display:flex;align-items:center;gap:8px">'
+      +partImgHtmlWithData(p.partNo, p.nameEN||'', 'sm')
+      +'<div style="min-width:0"><div style="font-weight:700;font-size:12px;color:#1a4a2e">'+p.partNo+'</div>'
+      +'<div style="font-size:11px;color:#4a5e51">'+(p.nameEN||p.nameTH||'')+'</div></div></div>';
+  }).join('');
+  dd.style.display = 'block';
+  // โหลดรูปแบบ batch ให้ผลค้นหา (เผื่อยังไม่เคยโหลด)
+  var uncached = res.map(function(p){ return p.partNo; }).filter(function(pn){ return pn && _partImages[pn]===undefined; });
+  if(uncached.length){
+    callAPI('getPartImages',{partNos:uncached}).then(function(res2){
+      var data = (res2 && res2.success && res2.data) || {};
+      uncached.forEach(function(pn){ _partImages[pn] = data[pn] || 'NONE'; });
+      if(dd.style.display!=='none') _cboSearchItem(i, q); // เรนเดอร์ใหม่ให้รูปโผล่
+    });
+  }
+}
+function _cboPickItem(i, pjEnc){
+  var p = JSON.parse(decodeURIComponent(pjEnc));
+  window._cboItems[i].partNo = p.partNo;
+  window._cboItems[i].partName = p.nameEN || p.nameTH || '';
+  _renderCboItemsList();
 }
 function _cboAddItemRow(){
   window._cboItems.push({partNo:'', partName:'', qty:1});
@@ -3229,13 +3280,48 @@ function _cboRemoveItemRow(i){
   window._cboItems.splice(i,1);
   _renderCboItemsList();
 }
+// ── อ่านไฟล์เป็น base64 ตรงๆ ไม่บีบอัด (ใช้กับ PDF ที่บีบอัดแบบรูปไม่ได้) ──
+function _readFileAsBase64(file, cb){
+  var reader = new FileReader();
+  reader.onload = function(ev){ cb(ev.target.result); };
+  reader.onerror = function(){ cb(null); };
+  reader.readAsDataURL(file);
+}
 function _cboOnPhoto(event, which){
   var file = event.target.files[0]; if(!file) return;
-  compressImage(file, function(b64){
+  var isPdf = file.type === 'application/pdf';
+  var handleResult = function(b64){
     if(!b64) return;
-    if(which==='po'){ window._cboPoPhotoB64 = b64; var pp=document.getElementById('cboPoPhotoPreview'); if(pp){pp.src=b64;pp.classList.remove('hidden');} }
-    else { window._cboNotifyPhotoB64 = b64; var pp2=document.getElementById('cboNotifyPhotoPreview'); if(pp2){pp2.src=b64;pp2.classList.remove('hidden');} }
-  });
+    if(which==='po'){
+      window._cboPoPhotoB64 = b64;
+      var pp=document.getElementById('cboPoPhotoPreview');
+      if(pp){ _cboRenderFilePreview(pp, b64, isPdf, file.name); }
+    } else {
+      window._cboNotifyPhotoB64 = b64;
+      var pp2=document.getElementById('cboNotifyPhotoPreview');
+      if(pp2){ _cboRenderFilePreview(pp2, b64, isPdf, file.name); }
+    }
+  };
+  if(isPdf) _readFileAsBase64(file, handleResult);
+  else compressImage(file, handleResult);
+}
+// ── แสดงตัวอย่างไฟล์ — รูปโชว์เป็น <img>, PDF โชว์เป็นไอคอน + ชื่อไฟล์ (สลับไปมาระหว่างรูป/PDF ได้) ──
+function _cboRenderFilePreview(imgEl, b64, isPdf, fileName){
+  var id = imgEl.id;
+  if(isPdf){
+    var wrap = document.createElement('div');
+    wrap.id = id;
+    wrap.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px;border:1px solid var(--g200);border-radius:6px;background:#f5f5f5;margin-top:6px';
+    wrap.innerHTML = '<span style="font-size:24px">📄</span><span style="font-size:12px;color:var(--gd);word-break:break-all">'+(fileName||'ไฟล์ PDF')+'</span>';
+    imgEl.replaceWith(wrap);
+  } else if(imgEl.tagName === 'IMG'){
+    imgEl.src = b64; imgEl.classList.remove('hidden');
+  } else {
+    var img = document.createElement('img');
+    img.id = id; img.src = b64;
+    img.style.cssText = 'max-width:100%;max-height:140px;border-radius:6px;margin-top:6px';
+    imgEl.replaceWith(img);
+  }
 }
 function submitCreateBackorder(){
   var items = (window._cboItems||[]).map(function(it){
@@ -3322,7 +3408,8 @@ function openCboNotifyModal(id){
         +'</div>'
         +'<div class="fg"><label class="fl">แจ้งโดย</label><input class="fc" id="cboNfBy" value="'+(row.NotifiedCustomerBy||'')+'"></div>'
         +'<div class="fg"><label class="fl">🖼️ รูปหลักฐาน'+(row.NotifyEvidenceUrl?' (มีอยู่แล้ว — อัปโหลดใหม่เพื่อแทนที่)':'')+'</label>'
-          +'<input type="file" accept="image/*" id="cboNfPhotoInput" onchange="_cboOnNotifyEditPhoto(event)" style="width:100%">'
+          +'<input type="file" accept="image/*,application/pdf" id="cboNfPhotoInput" onchange="_cboOnNotifyEditPhoto(event)" style="width:100%">'
+          +'<div style="font-size:11px;color:var(--g400);margin-top:2px">แนบได้ทั้งรูปภาพหรือ PDF</div>'
           +(row.NotifyEvidenceUrl?'<a href="'+row.NotifyEvidenceUrl+'" target="_blank" style="font-size:11px">ดูรูปเดิม</a>':'')
         +'</div>'
       +'</div>'
@@ -3335,7 +3422,11 @@ function openCboNotifyModal(id){
 }
 function _cboOnNotifyEditPhoto(event){
   var file = event.target.files[0]; if(!file) return;
-  compressImage(file, function(b64){ window._cboNotifyEditPhotoB64 = b64||''; });
+  if(file.type === 'application/pdf'){
+    _readFileAsBase64(file, function(b64){ window._cboNotifyEditPhotoB64 = b64||''; toast('แนบไฟล์ PDF แล้วค่ะ: '+file.name,'info'); });
+  } else {
+    compressImage(file, function(b64){ window._cboNotifyEditPhotoB64 = b64||''; });
+  }
 }
 function submitCboNotify(id){
   var data = {
