@@ -3166,25 +3166,26 @@ window._cboPoPhotoB64 = ''; window._cboNotifyPhotoB64 = '';
 function openCreateBackorderModal(){
   var existing = document.getElementById('cboAddModal'); if(existing) existing.remove();
   window._cboPoPhotoB64 = ''; window._cboNotifyPhotoB64 = '';
+  window._cboItems = [{partNo:'', partName:'', qty:1}]; // ⚡ รองรับหลายรายการอะไหล่ภายใต้ PO เดียวกัน
   var modal = document.createElement('div');
   modal.id = 'cboAddModal'; modal.className = 'mo'; modal.style.zIndex = '3300';
   modal.innerHTML =
-    '<div class="mow" style="max-width:460px">'
+    '<div class="mow" style="max-width:500px">'
       +'<div class="moh"><div class="mot">📦 บันทึกรายการค้างส่งลูกค้าใหม่</div>'
         +'<button class="mcl" onclick="document.getElementById(\'cboAddModal\').remove()">✕</button></div>'
       +'<div class="mob">'
         +'<div class="fg"><label class="fl">ชื่อลูกค้า <span style="color:var(--red)">*</span></label><input class="fc" id="cboCustomerName" placeholder="ชื่อลูกค้า/บริษัท"></div>'
         +'<div class="fg"><label class="fl">เลข PO ลูกค้า (ถ้ามี)</label><input class="fc" id="cboPONo" placeholder="เช่น PO-6907-0231"></div>'
-        +'<div style="display:grid;grid-template-columns:2fr 1fr;gap:10px">'
-          +'<div class="fg"><label class="fl">Part No.</label><input class="fc" id="cboPartNo" placeholder="ถ้ามี"></div>'
-          +'<div class="fg"><label class="fl">จำนวน</label><input class="fc" id="cboQty" type="number" min="1" value="1"></div>'
-        +'</div>'
-        +'<div class="fg"><label class="fl">ชื่ออะไหล่ <span style="color:var(--red)">*</span></label><input class="fc" id="cboPartName" placeholder="เช่น แบตเตอรี่ 48V 105Ah"></div>'
+        +'<hr class="sep">'
+        +'<div style="font-size:12px;font-weight:600;color:var(--gd);margin-bottom:6px">รายการอะไหล่ใน PO นี้ (กรอกได้หลายรายการ)</div>'
+        +'<div id="cboItemsList"></div>'
+        +'<button class="btn bo bsm" onclick="_cboAddItemRow()" style="margin-top:4px">➕ เพิ่มรายการอะไหล่</button>'
+        +'<hr class="sep">'
         +'<div class="fg"><label class="fl">📄 ภาพ PO ลูกค้า</label>'
           +'<input type="file" accept="image/*" id="cboPoPhotoInput" onchange="_cboOnPhoto(event,\'po\')" style="width:100%">'
           +'<img id="cboPoPhotoPreview" class="hidden" style="max-width:100%;max-height:140px;border-radius:6px;margin-top:6px">'
         +'</div>'
-        +'<div class="fg"><label class="fl">กำหนดวันคาดว่าของเข้า</label><input class="fc" id="cboExpectedDate" type="date"></div>'
+        +'<div class="fg"><label class="fl">กำหนดวันคาดว่าของเข้า (ใช้ร่วมกันทุกรายการ)</label><input class="fc" id="cboExpectedDate" type="date"></div>'
         +'<hr class="sep">'
         +'<div style="font-size:12px;font-weight:600;color:var(--gd);margin-bottom:6px">แจ้งลูกค้าแล้ว (กรอกตอนนี้เลยก็ได้ หรือค่อยมาเพิ่มทีหลัง)</div>'
         +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
@@ -3204,6 +3205,29 @@ function openCreateBackorderModal(){
       +'</div>'
     +'</div>';
   document.body.appendChild(modal); modal.style.display = 'flex';
+  _renderCboItemsList();
+}
+
+// ── จัดการรายการอะไหล่หลายรายการใน modal ──
+function _renderCboItemsList(){
+  var box = document.getElementById('cboItemsList');
+  if(!box) return;
+  box.innerHTML = window._cboItems.map(function(it, i){
+    return '<div style="display:grid;grid-template-columns:2fr 3fr 1fr auto;gap:6px;margin-bottom:6px;align-items:center">'
+      +'<input class="fc" placeholder="Part No. (ถ้ามี)" value="'+(it.partNo||'').replace(/"/g,'&quot;')+'" oninput="_cboItems['+i+'].partNo=this.value" style="font-size:12px">'
+      +'<input class="fc" placeholder="ชื่ออะไหล่ *" value="'+(it.partName||'').replace(/"/g,'&quot;')+'" oninput="_cboItems['+i+'].partName=this.value" style="font-size:12px">'
+      +'<input class="fc" type="number" min="1" placeholder="จำนวน" value="'+(it.qty||1)+'" oninput="_cboItems['+i+'].qty=this.value" style="font-size:12px;text-align:center">'
+      +(window._cboItems.length>1?'<button class="btn bd bsm" onclick="_cboRemoveItemRow('+i+')" style="padding:4px 8px">✕</button>':'<span></span>')
+    +'</div>';
+  }).join('');
+}
+function _cboAddItemRow(){
+  window._cboItems.push({partNo:'', partName:'', qty:1});
+  _renderCboItemsList();
+}
+function _cboRemoveItemRow(i){
+  window._cboItems.splice(i,1);
+  _renderCboItemsList();
 }
 function _cboOnPhoto(event, which){
   var file = event.target.files[0]; if(!file) return;
@@ -3214,12 +3238,14 @@ function _cboOnPhoto(event, which){
   });
 }
 function submitCreateBackorder(){
+  var items = (window._cboItems||[]).map(function(it){
+    return { partNo:(it.partNo||'').trim(), partName:(it.partName||'').trim(), qty:parseFloat(it.qty)||1 };
+  }).filter(function(it){ return it.partName; }); // ตัดแถวว่างที่ยังไม่ได้กรอกชื่ออะไหล่ทิ้ง
+
   var data = {
     customerName: (document.getElementById('cboCustomerName')||{}).value.trim(),
     poNo: (document.getElementById('cboPONo')||{}).value.trim(),
-    partNo: (document.getElementById('cboPartNo')||{}).value.trim(),
-    partName: (document.getElementById('cboPartName')||{}).value.trim(),
-    qty: parseFloat((document.getElementById('cboQty')||{}).value)||1,
+    items: items,
     unit: 'ชิ้น',
     poPhotoBase64: window._cboPoPhotoB64||'',
     expectedArrivalDate: (document.getElementById('cboExpectedDate')||{}).value||'',
@@ -3230,8 +3256,8 @@ function submitCreateBackorder(){
     note: (document.getElementById('cboNote')||{}).value.trim(),
   };
   if(!data.customerName) return toast('กรุณาระบุชื่อลูกค้าค่ะ','error');
-  if(!data.partName) return toast('กรุณาระบุชื่ออะไหล่ค่ะ','error');
-  toast('กำลังบันทึก...','info');
+  if(!items.length) return toast('กรุณาระบุอะไหล่อย่างน้อย 1 รายการค่ะ (ต้องมีชื่ออะไหล่)','error');
+  toast('กำลังบันทึก '+items.length+' รายการ...','info');
   callAPI('createCustomerBackorder', data).then(function(res){
     toast(res.message, res.success?'success':'error');
     if(res.success){
