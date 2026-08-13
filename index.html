@@ -3103,23 +3103,47 @@ function renderCboList(){
 
   if(!rows.length){ el.innerHTML = '<div class="tc tm" style="padding:24px">ไม่มีรายการในหมวดนี้ค่ะ</div>'; return; }
 
-  var stLabel = {BACKORDER:['📝 รอสั่งซื้อ HQ','#e65100'], ORDERED_HQ:['📦 สั่งซื้อแล้ว รอของเข้า','#1565c0'],
-    AVAILABLE:['✅ ของเข้าแล้ว รอส่งลูกค้า','#2d6a4f'], DELIVERED:['🏁 ปิดงานแล้ว','#4a5e51'], CANCELLED:['✕ ยกเลิก','#888']};
+  var stLabel = {BACKORDER:['รอสั่งซื้อ HQ','#e65100'], ORDERED_HQ:['สั่งซื้อแล้ว รอของเข้า','#1565c0'],
+    AVAILABLE:['ของเข้าแล้ว รอส่งลูกค้า','#2d6a4f'], DELIVERED:['ปิดงานแล้ว','#4a5e51'], CANCELLED:['ยกเลิก','#888']};
   var isStock = CU && (CU.role==='STOCK'||CU.role==='MANAGER'||CU.role==='ADMIN');
   var isAdmin = CU && (CU.role==='ADMIN'||CU.role==='MANAGER');
+  // ลำดับขั้นสำหรับ step-progress (CANCELLED ไม่มีในเส้นทางปกติ แสดงแยกด้านล่างแทน)
+  var STEPS = [
+    {key:'BACKORDER',  label:'📝 รับเรื่อง'},
+    {key:'ORDERED_HQ', label:'📦 สั่งซื้อ HQ'},
+    {key:'AVAILABLE',  label:'✅ ของเข้า'},
+    {key:'DELIVERED',  label:'🏁 ส่งลูกค้า'},
+  ];
 
   el.innerHTML = rows.map(function(r){
     var st = stLabel[r.Status]||['-','#888'];
     var daysLeft = (r.Status!=='DELIVERED'&&r.Status!=='CANCELLED') ? _cboDaysLeft(r.ExpectedArrivalDate) : null;
     var deadlineBadge = '';
     if(daysLeft!==null){
-      if(daysLeft<0) deadlineBadge = '<span style="background:#b71c1c;color:#fff;border-radius:10px;padding:2px 10px;font-size:11px;font-weight:700">⏰ เลยกำหนด '+Math.abs(daysLeft)+' วัน</span>';
-      else if(daysLeft===0) deadlineBadge = '<span style="background:#b71c1c;color:#fff;border-radius:10px;padding:2px 10px;font-size:11px;font-weight:700">⏰ ถึงกำหนดวันนี้</span>';
-      else if(daysLeft<=3) deadlineBadge = '<span style="background:#e65100;color:#fff;border-radius:10px;padding:2px 10px;font-size:11px;font-weight:700">⏰ อีก '+daysLeft+' วัน</span>';
+      if(daysLeft<0) deadlineBadge = '<span style="background:#b71c1c;color:#fff;border-radius:10px;padding:3px 10px;font-size:11px;font-weight:700;white-space:nowrap">⏰ เลยกำหนด '+Math.abs(daysLeft)+' วัน</span>';
+      else if(daysLeft===0) deadlineBadge = '<span style="background:#b71c1c;color:#fff;border-radius:10px;padding:3px 10px;font-size:11px;font-weight:700;white-space:nowrap">⏰ ถึงกำหนดวันนี้</span>';
+      else if(daysLeft<=7) deadlineBadge = '<span style="background:#e65100;color:#fff;border-radius:10px;padding:3px 10px;font-size:11px;font-weight:700;white-space:nowrap">⏰ อีก '+daysLeft+' วัน</span>';
     }
     var notifyBadge = r.NotifiedCustomerAt
-      ? '<span style="color:#2d6a4f;font-size:11px">✓ แจ้งลูกค้าแล้ว '+r.NotifiedCustomerAt+(r.NotifiedCustomerBy?' โดย '+r.NotifiedCustomerBy:'')+(r.NotifiedCustomerChannel?' ('+r.NotifiedCustomerChannel+')':'')+'</span>'
-      : '<span style="color:#b71c1c;font-size:11px">⚠️ ยังไม่ได้แจ้งลูกค้า</span>';
+      ? '<span style="color:#2d6a4f;font-size:12px">✓ แจ้งลูกค้าแล้ว '+r.NotifiedCustomerAt+(r.NotifiedCustomerBy?' โดย '+r.NotifiedCustomerBy:'')+(r.NotifiedCustomerChannel?' ('+r.NotifiedCustomerChannel+')':'')+'</span>'
+      : '<span style="color:#b71c1c;font-size:12px;font-weight:600">⚠️ ยังไม่ได้แจ้งลูกค้า</span>';
+
+    // ── step progress bar ──
+    var isCancelled = r.Status==='CANCELLED';
+    var curIdx = STEPS.findIndex(function(s){ return s.key===r.Status; });
+    var stepsHtml = '<div style="display:flex;align-items:center;margin:12px 0 4px">'
+      + STEPS.map(function(s, i){
+          var done = !isCancelled && i<=curIdx;
+          var isCur = !isCancelled && i===curIdx;
+          var circleColor = isCancelled ? '#ccc' : (done ? (isCur?st[1]:'#2d6a4f') : '#e0e0e0');
+          var circle = '<div style="width:26px;height:26px;border-radius:50%;background:'+circleColor+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0">'+(done && !isCur ? '✓' : (i+1))+'</div>';
+          var lineColor = (!isCancelled && i<curIdx) ? '#2d6a4f' : '#e0e0e0';
+          var line = i<STEPS.length-1 ? '<div style="flex:1;height:3px;background:'+lineColor+';margin:0 2px"></div>' : '';
+          return '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">'+circle
+            +'<div style="font-size:9px;color:'+(done?'var(--gd)':'var(--g400)')+';margin-top:3px;white-space:nowrap;font-weight:'+(isCur?'700':'400')+'">'+s.label+'</div>'
+            +'</div>' + line;
+        }).join('')
+      +'</div>';
 
     var actionBtns = [];
     if(isStock && r.Status==='BACKORDER'){
@@ -3138,25 +3162,49 @@ function renderCboList(){
       actionBtns.push('<button class="btn bd bsm" onclick="doCancelCbo(\''+r.BackorderID+'\')">✕ ยกเลิก</button>');
     }
 
-    return '<div class="card" style="padding:14px 16px;margin-bottom:10px;border-left:4px solid '+st[1]+'">'
-      +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">'
-        +'<strong style="font-size:14px;color:var(--gd)">'+(r.PONo?r.PONo+' — ':'')+(r.PartName||'-')+'</strong>'
-        +'<span style="font-size:12px;color:var(--g400)">'+(r.PartNo||'')+'</span>'
-        +'<span style="margin-left:auto;color:'+st[1]+';font-weight:700;font-size:12px">'+st[0]+'</span>'
+    var isPdfPo = r.POPhotoUrl && /\.pdf(\?|$)/i.test(r.POPhotoUrl);
+    var isPdfNotify = r.NotifyEvidenceUrl && /\.pdf(\?|$)/i.test(r.NotifyEvidenceUrl);
+    var poThumb = r.POPhotoUrl
+      ? '<a href="'+r.POPhotoUrl+'" target="_blank" style="display:block;width:52px;height:52px;border-radius:8px;border:1px solid var(--g200);overflow:hidden;flex-shrink:0;background:#fafafa;display:flex;align-items:center;justify-content:center">'
+        +(isPdfPo ? '<span style="font-size:20px">📄</span>' : '<img src="'+r.POPhotoUrl+'" style="width:100%;height:100%;object-fit:cover">')+'</a>'
+      : '';
+    var notifyThumb = r.NotifyEvidenceUrl
+      ? '<a href="'+r.NotifyEvidenceUrl+'" target="_blank" style="display:block;width:52px;height:52px;border-radius:8px;border:1px solid var(--g200);overflow:hidden;flex-shrink:0;background:#fafafa;display:flex;align-items:center;justify-content:center">'
+        +(isPdfNotify ? '<span style="font-size:20px">📄</span>' : '<img src="'+r.NotifyEvidenceUrl+'" style="width:100%;height:100%;object-fit:cover">')+'</a>'
+      : '';
+
+    return '<div class="card" style="padding:16px 18px;margin-bottom:12px;border-left:5px solid '+st[1]+';box-shadow:0 1px 4px rgba(0,0,0,.06)">'
+      // ── header ──
+      +'<div style="display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap">'
+        +'<div style="flex:1;min-width:200px">'
+          +'<div style="font-size:15px;font-weight:700;color:var(--gd)">'+(r.PONo?r.PONo+' — ':'')+(r.PartName||'-')+'</div>'
+          +'<div style="font-size:12px;color:var(--g400);margin-top:1px">'+(r.PartNo||'ไม่มีรหัสอะไหล่')+'</div>'
+        +'</div>'
+        +'<span style="background:'+st[1]+';color:#fff;border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;white-space:nowrap">'+st[0]+'</span>'
       +'</div>'
-      +'<div style="font-size:13px;color:#333">👤 ลูกค้า: <strong>'+(r.CustomerName||'-')+'</strong> — จำนวน '+r.Qty+' '+(r.Unit||'ชิ้น')
-        +(r.Status==='AVAILABLE'||r.Status==='DELIVERED' ? ' <span style="color:#2d6a4f">(พร้อมจ่าย: '+r.AvailableQty+')</span>' : '')+'</div>'
-      +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;align-items:center">'
-        +notifyBadge + deadlineBadge
-        +(r.ExpectedArrivalDate?'<span style="font-size:11px;color:var(--g400)">📅 คาดว่าของเข้า: '+r.ExpectedArrivalDate+'</span>':'')
+      // ── step progress ──
+      +stepsHtml
+      +'<hr class="sep" style="margin:10px 0">'
+      // ── body info ──
+      +'<div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">'
+        +'<div style="flex:1;min-width:220px">'
+          +'<div style="font-size:13px;color:#333;margin-bottom:4px">👤 ลูกค้า: <strong>'+(r.CustomerName||'-')+'</strong></div>'
+          +'<div style="font-size:13px;color:#333;margin-bottom:6px">📦 จำนวน: <strong>'+r.Qty+' '+(r.Unit||'ชิ้น')+'</strong>'
+            +(r.Status==='AVAILABLE'||r.Status==='DELIVERED' ? ' &nbsp;|&nbsp; พร้อมจ่าย: <strong style="color:#2d6a4f">'+r.AvailableQty+'</strong>' : '')+'</div>'
+          +'<div style="margin-bottom:4px">'+notifyBadge+'</div>'
+          +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+            +(r.ExpectedArrivalDate?'<span style="font-size:12px;color:var(--g400)">📅 คาดว่าของเข้า: '+r.ExpectedArrivalDate+'</span>':'<span style="font-size:12px;color:var(--g400)">📅 ยังไม่ระบุวันคาดว่าของเข้า</span>')
+            +deadlineBadge
+          +'</div>'
+        +'</div>'
+        +(poThumb||notifyThumb ? '<div style="display:flex;gap:8px;flex-shrink:0">'
+          +(poThumb?'<div style="text-align:center"><div style="font-size:9px;color:var(--g400);margin-bottom:2px">PO</div>'+poThumb+'</div>':'')
+          +(notifyThumb?'<div style="text-align:center"><div style="font-size:9px;color:var(--g400);margin-bottom:2px">แจ้งลูกค้า</div>'+notifyThumb+'</div>':'')
+        +'</div>' : '')
       +'</div>'
-      +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">'
-        +(r.POPhotoUrl?'<a href="'+r.POPhotoUrl+'" target="_blank" style="font-size:11px">📄 ภาพ PO</a>':'')
-        +(r.NotifyEvidenceUrl?'<a href="'+r.NotifyEvidenceUrl+'" target="_blank" style="font-size:11px">🖼️ หลักฐานแจ้งลูกค้า</a>':'')
-      +'</div>'
-      +(r.Note?'<div style="font-size:11px;color:var(--g400);margin-top:4px">📝 '+r.Note+'</div>':'')
-      +'<div style="font-size:10px;color:var(--g400);margin-top:6px">บันทึกโดย '+(r.CreatedByName||r.CreatedBy||'-')+' เมื่อ '+(r.CreatedAt?new Date(r.CreatedAt).toLocaleDateString('th-TH'):'-')+'</div>'
-      +(actionBtns.length?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">'+actionBtns.join('')+'</div>':'')
+      +(r.Note?'<div style="font-size:12px;color:var(--g400);margin-top:8px;padding:6px 10px;background:#f9f9f9;border-radius:6px">📝 '+r.Note+'</div>':'')
+      +'<div style="font-size:10px;color:var(--g400);margin-top:8px">บันทึกโดย '+(r.CreatedByName||r.CreatedBy||'-')+' เมื่อ '+(r.CreatedAt?new Date(r.CreatedAt).toLocaleDateString('th-TH'):'-')+'</div>'
+      +(actionBtns.length?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px solid var(--g100)">'+actionBtns.join('')+'</div>':'')
     +'</div>';
   }).join('');
 }
