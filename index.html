@@ -1125,18 +1125,25 @@ textarea.fc{min-height:70px;resize:vertical;}
                 <div style="font-size:14px;font-weight:700;color:var(--gd)">📦 สินค้าค้างส่งลูกค้า</div>
                 <div style="font-size:12px;color:var(--g400);margin-top:2px">ติดตามอะไหล่ที่ลูกค้าสั่งมาแล้วแต่ยังไม่มีของ — บันทึกไว้เพื่อ Stock ทราบ + เก็บหลักฐานตามกระบวนการ ISO</div>
               </div>
-              <button class="btn bp" id="cboAddBtn" onclick="openCreateBackorderModal()" style="display:none">➕ บันทึกรายการค้างส่งใหม่</button>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn bo" onclick="printCboReport()">🖨️ พิมพ์รายงาน</button>
+                <button class="btn bp" id="cboAddBtn" onclick="openCreateBackorderModal()" style="display:none">➕ บันทึกรายการค้างส่งใหม่</button>
+              </div>
             </div>
           </div>
           <div id="cboMonitor" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px"></div>
           <div class="card" style="padding:14px 16px">
-            <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+            <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
               <button class="btn bgd bsm" data-cbotab="active" onclick="switchCboTab('active')">🔴 ยังไม่ปิดงาน</button>
               <button class="btn bo bsm" data-cbotab="all" onclick="switchCboTab('all')">ทั้งหมด</button>
               <button class="btn bo bsm" data-cbotab="BACKORDER" onclick="switchCboTab('BACKORDER')">รอสั่งซื้อ HQ</button>
               <button class="btn bo bsm" data-cbotab="ORDERED_HQ" onclick="switchCboTab('ORDERED_HQ')">สั่งซื้อแล้ว รอของเข้า</button>
               <button class="btn bo bsm" data-cbotab="AVAILABLE" onclick="switchCboTab('AVAILABLE')">✅ ของเข้าแล้ว รอส่งลูกค้า</button>
               <button class="btn bo bsm" data-cbotab="DELIVERED" onclick="switchCboTab('DELIVERED')">ปิดงานแล้ว</button>
+              <div style="margin-left:auto;display:flex;gap:4px;background:var(--g100);border-radius:8px;padding:3px">
+                <button class="btn bsm" id="cboViewCardBtn" onclick="setCboViewMode('card')" style="background:var(--gd);color:#fff;border:none">🗂️ การ์ด</button>
+                <button class="btn bsm" id="cboViewListBtn" onclick="setCboViewMode('list')" style="background:transparent;border:none;color:var(--g400)">📋 List</button>
+              </div>
             </div>
             <div id="cboList"><div class="tc tm" style="padding:24px">⏳ กำลังโหลด...</div></div>
           </div>
@@ -3038,6 +3045,14 @@ function confirmSprAction(requestId, newStatus){
 // ══════════════════════════════════════════════════════════════
 var _cboData = [];
 var _cboTab = 'active';
+var _cboViewMode = 'card';
+function setCboViewMode(mode){
+  _cboViewMode = mode;
+  var cardBtn = document.getElementById('cboViewCardBtn'), listBtn = document.getElementById('cboViewListBtn');
+  if(cardBtn) cardBtn.style.cssText = mode==='card' ? 'background:var(--gd);color:#fff;border:none' : 'background:transparent;border:none;color:var(--g400)';
+  if(listBtn) listBtn.style.cssText = mode==='list' ? 'background:var(--gd);color:#fff;border:none' : 'background:transparent;border:none;color:var(--g400)';
+  renderCboList();
+}
 
 function loadCustomerBackorderPage(){
   var addBtn = document.getElementById('cboAddBtn');
@@ -3102,6 +3117,8 @@ function renderCboList(){
   else if(_cboTab!=='all') rows = rows.filter(function(r){ return r.Status===_cboTab; });
 
   if(!rows.length){ el.innerHTML = '<div class="tc tm" style="padding:24px">ไม่มีรายการในหมวดนี้ค่ะ</div>'; return; }
+
+  if(_cboViewMode==='list'){ renderCboListTable(el, rows); return; }
 
   var stLabel = {BACKORDER:['รอสั่งซื้อ HQ','#e65100'], ORDERED_HQ:['สั่งซื้อแล้ว รอของเข้า','#1565c0'],
     AVAILABLE:['ของเข้าแล้ว รอส่งลูกค้า','#2d6a4f'], DELIVERED:['ปิดงานแล้ว','#4a5e51'], CANCELLED:['ยกเลิก','#888']};
@@ -3207,6 +3224,88 @@ function renderCboList(){
       +(actionBtns.length?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px solid var(--g100)">'+actionBtns.join('')+'</div>':'')
     +'</div>';
   }).join('');
+}
+
+// ── มุมมอง List (ตาราง) — กระชับ ดูได้ทีละหลายรายการพร้อมกัน ──
+function renderCboListTable(el, rows){
+  var stLabel = {BACKORDER:['รอสั่งซื้อ HQ','#e65100'], ORDERED_HQ:['สั่งซื้อแล้ว รอของเข้า','#1565c0'],
+    AVAILABLE:['ของเข้าแล้ว รอส่งลูกค้า','#2d6a4f'], DELIVERED:['ปิดงานแล้ว','#4a5e51'], CANCELLED:['ยกเลิก','#888']};
+  var isStock = CU && (CU.role==='STOCK'||CU.role==='MANAGER'||CU.role==='ADMIN');
+
+  el.innerHTML = '<div class="tw"><table class="it" style="font-size:12px"><thead><tr>'
+    +'<th>PO / ลูกค้า</th><th>อะไหล่</th><th style="text-align:center">จำนวน</th>'
+    +'<th>สถานะ</th><th>แจ้งลูกค้า</th><th>คาดว่าของเข้า</th><th></th>'
+    +'</tr></thead><tbody>'
+    + rows.map(function(r){
+        var st = stLabel[r.Status]||['-','#888'];
+        var daysLeft = (r.Status!=='DELIVERED'&&r.Status!=='CANCELLED') ? _cboDaysLeft(r.ExpectedArrivalDate) : null;
+        var dateTxt = r.ExpectedArrivalDate||'-';
+        var dateColor = 'inherit';
+        if(daysLeft!==null){
+          if(daysLeft<=0) dateColor = '#b71c1c'; else if(daysLeft<=7) dateColor = '#e65100';
+        }
+        var quickBtn = '';
+        if(isStock && r.Status==='BACKORDER') quickBtn = '<button class="btn bo bsm" onclick="openCboOrderModal(\''+r.BackorderID+'\')" style="font-size:11px">สั่งซื้อ HQ</button>';
+        else if(isStock && r.Status==='ORDERED_HQ') quickBtn = '<button class="btn bo bsm" onclick="openCboAvailModal(\''+r.BackorderID+'\')" style="font-size:11px">อัปเดตพร้อมจ่าย</button>';
+        else if(isStock && r.Status==='AVAILABLE') quickBtn = '<button class="btn bp bsm" style="font-size:11px;background:#2d6a4f;border-color:#2d6a4f" onclick="doDeliverCbo(\''+r.BackorderID+'\')">ส่งลูกค้าแล้ว</button>';
+        return '<tr>'
+          +'<td><div style="font-weight:700;color:var(--gd)">'+(r.PONo||'-')+'</div><div style="font-size:11px;color:var(--g400)">'+(r.CustomerName||'-')+'</div></td>'
+          +'<td><div>'+(r.PartName||'-')+'</div><div style="font-size:11px;color:var(--g400)">'+(r.PartNo||'')+'</div></td>'
+          +'<td style="text-align:center">'+r.Qty+' '+(r.Unit||'')+'</td>'
+          +'<td><span style="color:'+st[1]+';font-weight:700">'+st[0]+'</span></td>'
+          +'<td>'+(r.NotifiedCustomerAt?'<span style="color:#2d6a4f">✓ '+r.NotifiedCustomerAt+'</span>':'<span style="color:#b71c1c">⚠️ ยังไม่แจ้ง</span>')+'</td>'
+          +'<td style="color:'+dateColor+';font-weight:'+(dateColor!=='inherit'?'700':'400')+'">'+dateTxt+'</td>'
+          +'<td style="white-space:nowrap">'+quickBtn+'</td>'
+        +'</tr>';
+      }).join('')
+    +'</tbody></table></div>';
+}
+
+// ── พิมพ์รายงาน — เปิดหน้าต่างใหม่จัดรูปแบบสำหรับพิมพ์/บันทึกเป็น PDF ──
+function printCboReport(){
+  var rows = _cboData;
+  if(_cboTab==='active') rows = rows.filter(function(r){ return r.Status!=='DELIVERED' && r.Status!=='CANCELLED'; });
+  else if(_cboTab!=='all') rows = rows.filter(function(r){ return r.Status===_cboTab; });
+  if(!rows.length){ toast('ไม่มีรายการให้พิมพ์ในหมวดนี้ค่ะ','error'); return; }
+
+  var stLabel = {BACKORDER:'รอสั่งซื้อ HQ', ORDERED_HQ:'สั่งซื้อแล้ว รอของเข้า', AVAILABLE:'ของเข้าแล้ว รอส่งลูกค้า', DELIVERED:'ปิดงานแล้ว', CANCELLED:'ยกเลิก'};
+  var rowsHtml = rows.map(function(r, i){
+    var daysLeft = (r.Status!=='DELIVERED'&&r.Status!=='CANCELLED') ? _cboDaysLeft(r.ExpectedArrivalDate) : null;
+    var flag = (daysLeft!==null && daysLeft<=0) ? ' ⚠️' : (daysLeft!==null && daysLeft<=7 ? ' ⏰' : '');
+    return '<tr>'
+      +'<td>'+(i+1)+'</td>'
+      +'<td>'+(r.PONo||'-')+'</td>'
+      +'<td>'+(r.CustomerName||'-')+'</td>'
+      +'<td>'+(r.PartNo||'-')+'</td>'
+      +'<td>'+(r.PartName||'-')+'</td>'
+      +'<td style="text-align:center">'+r.Qty+' '+(r.Unit||'')+'</td>'
+      +'<td>'+(stLabel[r.Status]||r.Status)+'</td>'
+      +'<td>'+(r.NotifiedCustomerAt||'-')+'</td>'
+      +'<td>'+(r.ExpectedArrivalDate||'-')+flag+'</td>'
+      +'<td>'+(r.CreatedByName||r.CreatedBy||'-')+'</td>'
+    +'</tr>';
+  }).join('');
+
+  var win = window.open('', '_blank');
+  win.document.write(
+    '<html><head><meta charset="utf-8"><title>รายงานสินค้าค้างส่งลูกค้า</title>'
+    +'<style>'
+    +'body{font-family:Sarabun,sans-serif;padding:24px;color:#222}'
+    +'h2{margin:0 0 4px}'
+    +'.sub{color:#666;font-size:13px;margin-bottom:16px}'
+    +'table{width:100%;border-collapse:collapse;font-size:12px}'
+    +'th,td{border:1px solid #ccc;padding:6px 8px;text-align:left}'
+    +'th{background:#f0f0f0}'
+    +'@media print{ body{padding:0} }'
+    +'</style></head><body>'
+    +'<h2>📦 รายงานสินค้าค้างส่งลูกค้า</h2>'
+    +'<div class="sub">พิมพ์เมื่อ '+new Date().toLocaleString('th-TH')+' — ทั้งหมด '+rows.length+' รายการ</div>'
+    +'<table><thead><tr><th>#</th><th>PO</th><th>ลูกค้า</th><th>รหัสอะไหล่</th><th>ชื่ออะไหล่</th><th>จำนวน</th><th>สถานะ</th><th>แจ้งลูกค้าแล้ว</th><th>คาดว่าของเข้า</th><th>บันทึกโดย</th></tr></thead>'
+    +'<tbody>'+rowsHtml+'</tbody></table>'
+    +'</body></html>'
+  );
+  win.document.close();
+  setTimeout(function(){ win.print(); }, 300);
 }
 
 // ── แอดมิน/ผจก. สร้างรายการค้างส่งใหม่ ──
