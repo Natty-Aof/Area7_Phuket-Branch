@@ -337,7 +337,7 @@ textarea.fc{min-height:70px;resize:vertical;}
       <div class="ni hidden" id="nRejHist" data-pg="rejhist" onclick="go('rejhist')"><span class="ic">📋</span> ประวัติการตีกลับ</div>
       <div class="ni hidden" id="nExtHold" data-pg="extholdings" onclick="go('extholdings')"><span class="ic">🚐</span> ของนอกคลัง (สำรอง/รถ Service)</div>
       <div class="ni" data-pg="sales" onclick="go('sales')"><span class="ic">🛒</span> ขาย/เบิกจ่ายภายใน</div>
-      <div class="ni" data-pg="specialreq" onclick="go('specialreq')"><span class="ic">📮</span> สั่งซื้ออะไหล่พิเศษ<span class="badge hidden" id="sprBadge">0</span></div>
+      <div class="ni" data-pg="specialreq" onclick="go('specialreq')"><span class="ic">📮</span> สั่งซื้อพิเศษ / ค้างส่งลูกค้า<span class="badge hidden" id="sprBadge">0</span></div>
       <div class="ni hidden" id="nMaster" data-pg="master" onclick="go('master')"><span class="ic">🗂️</span> จัดการอะไหล่/รถ</div>
       <div class="ni" data-pg="inventory" onclick="go('inventory')"><span class="ic">📦</span> คงเหลือ</div>
       <div style="flex:1"></div>
@@ -1087,24 +1087,59 @@ textarea.fc{min-height:70px;resize:vertical;}
       <!-- ═══════════════════════════════════════════════════ -->
       <div id="pg-specialreq" class="hidden">
         <div class="card" style="padding:14px 16px;margin-bottom:12px">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-            <div>
-              <div style="font-size:14px;font-weight:700;color:var(--gd)">📮 สั่งซื้ออะไหล่พิเศษ</div>
-              <div style="font-size:12px;color:var(--g400);margin-top:2px">สำหรับอะไหล่ที่ยังไม่มีในสต็อก ไม่ต้องรอเปิดใบเบิกก่อน — ร้องขอให้ Stock เตรียม/สั่งซื้อล่วงหน้าได้เลย</div>
-            </div>
-            <button class="btn bp" onclick="openSpecialReqModal()">➕ ขออะไหล่พิเศษ</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn bgd bsm" data-sprmtab="spr" onclick="switchSprMainTab('spr')">📮 สั่งซื้ออะไหล่พิเศษ</button>
+            <button class="btn bo bsm" data-sprmtab="cbo" onclick="switchSprMainTab('cbo')">📦 สินค้าค้างส่งลูกค้า</button>
           </div>
         </div>
-        <div id="sprMonitor" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px"></div>
-        <div class="card" style="padding:14px 16px">
-          <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-            <button class="btn bgd bsm" data-sprtab="all" onclick="switchSprTab('all')">ทั้งหมด</button>
-            <button class="btn bo bsm" data-sprtab="mine" onclick="switchSprTab('mine')">ของฉัน</button>
-            <button class="btn bo bsm" data-sprtab="REQUESTED" onclick="switchSprTab('REQUESTED')">รอ Stock ตรวจสอบ</button>
-            <button class="btn bo bsm" data-sprtab="ORDERED" onclick="switchSprTab('ORDERED')">สั่งซื้อแล้ว</button>
-            <button class="btn bo bsm" data-sprtab="RECEIVED" onclick="switchSprTab('RECEIVED')">ได้รับแล้ว</button>
+
+        <!-- ── แท็บ: สั่งซื้ออะไหล่พิเศษ ── -->
+        <div id="sprTabContent">
+          <div class="card" style="padding:14px 16px;margin-bottom:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+              <div>
+                <div style="font-size:14px;font-weight:700;color:var(--gd)">📮 สั่งซื้ออะไหล่พิเศษ</div>
+                <div style="font-size:12px;color:var(--g400);margin-top:2px">สำหรับอะไหล่ที่ยังไม่มีในสต็อก ไม่ต้องรอเปิดใบเบิกก่อน — ร้องขอให้ Stock เตรียม/สั่งซื้อล่วงหน้าได้เลย</div>
+              </div>
+              <button class="btn bp" onclick="openSpecialReqModal()">➕ ขออะไหล่พิเศษ</button>
+            </div>
           </div>
-          <div id="sprList"><div class="tc tm" style="padding:24px">⏳ กำลังโหลด...</div></div>
+          <div id="sprMonitor" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px"></div>
+          <div class="card" style="padding:14px 16px">
+            <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+              <button class="btn bgd bsm" data-sprtab="all" onclick="switchSprTab('all')">ทั้งหมด</button>
+              <button class="btn bo bsm" data-sprtab="mine" onclick="switchSprTab('mine')">ของฉัน</button>
+              <button class="btn bo bsm" data-sprtab="REQUESTED" onclick="switchSprTab('REQUESTED')">รอ Stock ตรวจสอบ</button>
+              <button class="btn bo bsm" data-sprtab="ORDERED" onclick="switchSprTab('ORDERED')">สั่งซื้อแล้ว</button>
+              <button class="btn bo bsm" data-sprtab="RECEIVED" onclick="switchSprTab('RECEIVED')">ได้รับแล้ว</button>
+            </div>
+            <div id="sprList"><div class="tc tm" style="padding:24px">⏳ กำลังโหลด...</div></div>
+          </div>
+        </div>
+
+        <!-- ── แท็บ: สินค้าค้างส่งลูกค้า (Customer Backorder) — ISO ── -->
+        <div id="cboTabContent" class="hidden">
+          <div class="card" style="padding:14px 16px;margin-bottom:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+              <div>
+                <div style="font-size:14px;font-weight:700;color:var(--gd)">📦 สินค้าค้างส่งลูกค้า</div>
+                <div style="font-size:12px;color:var(--g400);margin-top:2px">ติดตามอะไหล่ที่ลูกค้าสั่งมาแล้วแต่ยังไม่มีของ — บันทึกไว้เพื่อ Stock ทราบ + เก็บหลักฐานตามกระบวนการ ISO</div>
+              </div>
+              <button class="btn bp" id="cboAddBtn" onclick="openCreateBackorderModal()" style="display:none">➕ บันทึกรายการค้างส่งใหม่</button>
+            </div>
+          </div>
+          <div id="cboMonitor" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px"></div>
+          <div class="card" style="padding:14px 16px">
+            <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+              <button class="btn bgd bsm" data-cbotab="active" onclick="switchCboTab('active')">🔴 ยังไม่ปิดงาน</button>
+              <button class="btn bo bsm" data-cbotab="all" onclick="switchCboTab('all')">ทั้งหมด</button>
+              <button class="btn bo bsm" data-cbotab="BACKORDER" onclick="switchCboTab('BACKORDER')">รอสั่งซื้อ HQ</button>
+              <button class="btn bo bsm" data-cbotab="ORDERED_HQ" onclick="switchCboTab('ORDERED_HQ')">สั่งซื้อแล้ว รอของเข้า</button>
+              <button class="btn bo bsm" data-cbotab="AVAILABLE" onclick="switchCboTab('AVAILABLE')">✅ ของเข้าแล้ว รอส่งลูกค้า</button>
+              <button class="btn bo bsm" data-cbotab="DELIVERED" onclick="switchCboTab('DELIVERED')">ปิดงานแล้ว</button>
+            </div>
+            <div id="cboList"><div class="tc tm" style="padding:24px">⏳ กำลังโหลด...</div></div>
+          </div>
         </div>
       </div>
 
@@ -1941,7 +1976,7 @@ function _goWithoutPush(page){
   if(page==='stock'){loadStock();}
   if(page==='stockcard'){loadStockCard();}
   if(page==='sales'){initSales();}
-  if(page==='specialreq'){loadSpecialReqPage();}
+  if(page==='specialreq'){ switchSprMainTab(_sprMainTab||'spr'); }
   if(page==='master'){loadMasterPage();}
   if(page==='inventory'){loadInventory();}
   if(page==='pickup') loadPickupPage();
@@ -2607,7 +2642,7 @@ function roleLabel(r){
 }
 
 // ── NAVIGATE ─────────────────────────────────────────────────
-var pgTitles={dashboard:'Dashboard',create:'เปิดใบเบิกอะไหล่',list:'รายการใบเบิกอะไหล่',approval:'รายการรออนุมัติ',stock:'จัดอะไหล่ / รับคืน',pickup:'รับอะไหล่',close:'เคลียร์ใบเบิก',print:'พิมพ์ใบเบิก',profile:'ลายเซ็นของฉัน',jobs:'จัดการ Job No.',stockcard:'Stock Card',stockcount:'นับสต็อก',changereq:'คำขออนุมัติแก้ไข',vehiclehistory:'ประวัติรถ',sales:'เปิดรายการขาย',inventory:'ยอดคงเหลือ',specialreq:'สั่งซื้ออะไหล่พิเศษ',master:'จัดการอะไหล่ / รถ'};
+var pgTitles={dashboard:'Dashboard',create:'เปิดใบเบิกอะไหล่',list:'รายการใบเบิกอะไหล่',approval:'รายการรออนุมัติ',stock:'จัดอะไหล่ / รับคืน',pickup:'รับอะไหล่',close:'เคลียร์ใบเบิก',print:'พิมพ์ใบเบิก',profile:'ลายเซ็นของฉัน',jobs:'จัดการ Job No.',stockcard:'Stock Card',stockcount:'นับสต็อก',changereq:'คำขออนุมัติแก้ไข',vehiclehistory:'ประวัติรถ',sales:'เปิดรายการขาย',inventory:'ยอดคงเหลือ',specialreq:'สั่งซื้อพิเศษ / ค้างส่งลูกค้า',master:'จัดการอะไหล่ / รถ'};
 
 function go(page){
   curPage = page;
@@ -2636,7 +2671,7 @@ function go(page){
   if(page==='stock'){loadStock();}
   if(page==='stockcard'){loadStockCard();}
   if(page==='sales'){initSales();}
-  if(page==='specialreq'){loadSpecialReqPage();}
+  if(page==='specialreq'){ switchSprMainTab(_sprMainTab||'spr'); }
   if(page==='master'){loadMasterPage();}
   if(page==='inventory'){loadInventory();}
   if(page==='pickup') loadPickupPage();
@@ -2782,6 +2817,20 @@ function _doRefreshBadges(){
 // ══════════════════════════════════════════════════════════════
 var _sprData = [];
 var _sprTab = 'all';
+
+var _sprMainTab = 'spr';
+function switchSprMainTab(tab){
+  _sprMainTab = tab;
+  document.querySelectorAll('[data-sprmtab]').forEach(function(b){
+    b.className = (b.getAttribute('data-sprmtab')===tab) ? 'btn bgd bsm' : 'btn bo bsm';
+  });
+  var tSpr = document.getElementById('sprTabContent');
+  var tCbo = document.getElementById('cboTabContent');
+  if(tSpr) tSpr.classList.toggle('hidden', tab!=='spr');
+  if(tCbo) tCbo.classList.toggle('hidden', tab!=='cbo');
+  if(tab==='spr') loadSpecialReqPage();
+  if(tab==='cbo') loadCustomerBackorderPage();
+}
 
 function loadSpecialReqPage(){
   var list = document.getElementById('sprList');
@@ -2980,6 +3029,302 @@ function confirmSprAction(requestId, newStatus){
     if(res.success){
       var m = document.getElementById('sprActionModal'); if(m) m.remove();
       loadSpecialReqPage();
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// สินค้าค้างส่งลูกค้า (Customer Backorder) — ISO
+// ══════════════════════════════════════════════════════════════
+var _cboData = [];
+var _cboTab = 'active';
+
+function loadCustomerBackorderPage(){
+  var addBtn = document.getElementById('cboAddBtn');
+  if(addBtn) addBtn.style.display = (CU && (CU.role==='ADMIN'||CU.role==='MANAGER')) ? 'inline-block' : 'none';
+  var list = document.getElementById('cboList');
+  if(list) list.innerHTML = '<div class="tc tm" style="padding:24px">⏳ กำลังโหลด...</div>';
+  callAPI('getCustomerBackorders', {}).then(function(res){
+    _cboData = (res && res.success) ? (res.data||[]) : [];
+    renderCboMonitor();
+    renderCboList();
+  });
+}
+
+function _cboDaysLeft(dateStr){
+  if(!dateStr) return null;
+  var target = new Date(dateStr);
+  if(isNaN(target.getTime())) return null;
+  var today = new Date(); today.setHours(0,0,0,0); target.setHours(0,0,0,0);
+  return Math.round((target-today)/86400000);
+}
+
+function renderCboMonitor(){
+  var el = document.getElementById('cboMonitor');
+  if(!el) return;
+  var counts = {BACKORDER:0, ORDERED_HQ:0, AVAILABLE:0, DELIVERED:0};
+  var overdue = 0;
+  _cboData.forEach(function(r){
+    if(counts[r.Status]!==undefined) counts[r.Status]++;
+    if(r.Status!=='DELIVERED' && r.Status!=='CANCELLED'){
+      var d = _cboDaysLeft(r.ExpectedArrivalDate);
+      if(d!==null && d<=0) overdue++;
+    }
+  });
+  var cards = [
+    {label:'รอสั่งซื้อ HQ',       key:'BACKORDER',  val:counts.BACKORDER,  color:'#e65100', icon:'📝'},
+    {label:'สั่งซื้อแล้ว รอของเข้า', key:'ORDERED_HQ', val:counts.ORDERED_HQ, color:'#1565c0', icon:'📦'},
+    {label:'ของเข้าแล้ว รอส่งลูกค้า', key:'AVAILABLE',  val:counts.AVAILABLE,  color:'#2d6a4f', icon:'✅'},
+    {label:'ปิดงานแล้ว',          key:'DELIVERED',  val:counts.DELIVERED,  color:'#4a5e51', icon:'🏁'},
+    {label:'⚠️ ถึง/เลยกำหนดแล้ว',  key:'overdue',    val:overdue,           color:'#b71c1c', icon:'⏰'},
+  ];
+  el.innerHTML = cards.map(function(c){
+    return '<div class="card" style="text-align:center;padding:14px;cursor:pointer" onclick="switchCboTab(\''+(c.key==='overdue'?'active':c.key)+'\')">'
+      +'<div style="font-size:20px">'+c.icon+'</div>'
+      +'<div style="font-size:26px;font-weight:700;color:'+c.color+'">'+c.val+'</div>'
+      +'<div style="font-size:11px;color:var(--g400);margin-top:2px">'+c.label+'</div></div>';
+  }).join('');
+}
+
+function switchCboTab(tab){
+  _cboTab = tab;
+  document.querySelectorAll('[data-cbotab]').forEach(function(b){
+    b.className = (b.getAttribute('data-cbotab')===tab) ? 'btn bgd bsm' : 'btn bo bsm';
+  });
+  renderCboList();
+}
+
+function renderCboList(){
+  var el = document.getElementById('cboList');
+  if(!el) return;
+  var rows = _cboData;
+  if(_cboTab==='active') rows = rows.filter(function(r){ return r.Status!=='DELIVERED' && r.Status!=='CANCELLED'; });
+  else if(_cboTab!=='all') rows = rows.filter(function(r){ return r.Status===_cboTab; });
+
+  if(!rows.length){ el.innerHTML = '<div class="tc tm" style="padding:24px">ไม่มีรายการในหมวดนี้ค่ะ</div>'; return; }
+
+  var stLabel = {BACKORDER:['📝 รอสั่งซื้อ HQ','#e65100'], ORDERED_HQ:['📦 สั่งซื้อแล้ว รอของเข้า','#1565c0'],
+    AVAILABLE:['✅ ของเข้าแล้ว รอส่งลูกค้า','#2d6a4f'], DELIVERED:['🏁 ปิดงานแล้ว','#4a5e51'], CANCELLED:['✕ ยกเลิก','#888']};
+  var isStock = CU && (CU.role==='STOCK'||CU.role==='MANAGER'||CU.role==='ADMIN');
+  var isAdmin = CU && (CU.role==='ADMIN'||CU.role==='MANAGER');
+
+  el.innerHTML = rows.map(function(r){
+    var st = stLabel[r.Status]||['-','#888'];
+    var daysLeft = (r.Status!=='DELIVERED'&&r.Status!=='CANCELLED') ? _cboDaysLeft(r.ExpectedArrivalDate) : null;
+    var deadlineBadge = '';
+    if(daysLeft!==null){
+      if(daysLeft<0) deadlineBadge = '<span style="background:#b71c1c;color:#fff;border-radius:10px;padding:2px 10px;font-size:11px;font-weight:700">⏰ เลยกำหนด '+Math.abs(daysLeft)+' วัน</span>';
+      else if(daysLeft===0) deadlineBadge = '<span style="background:#b71c1c;color:#fff;border-radius:10px;padding:2px 10px;font-size:11px;font-weight:700">⏰ ถึงกำหนดวันนี้</span>';
+      else if(daysLeft<=3) deadlineBadge = '<span style="background:#e65100;color:#fff;border-radius:10px;padding:2px 10px;font-size:11px;font-weight:700">⏰ อีก '+daysLeft+' วัน</span>';
+    }
+    var notifyBadge = r.NotifiedCustomerAt
+      ? '<span style="color:#2d6a4f;font-size:11px">✓ แจ้งลูกค้าแล้ว '+r.NotifiedCustomerAt+(r.NotifiedCustomerBy?' โดย '+r.NotifiedCustomerBy:'')+(r.NotifiedCustomerChannel?' ('+r.NotifiedCustomerChannel+')':'')+'</span>'
+      : '<span style="color:#b71c1c;font-size:11px">⚠️ ยังไม่ได้แจ้งลูกค้า</span>';
+
+    var actionBtns = [];
+    if(isStock && r.Status==='BACKORDER'){
+      actionBtns.push('<button class="btn bo bsm" onclick="openCboOrderModal(\''+r.BackorderID+'\')">📦 สั่งซื้อไป HQ แล้ว</button>');
+    }
+    if(isStock && (r.Status==='BACKORDER'||r.Status==='ORDERED_HQ')){
+      actionBtns.push('<button class="btn bo bsm" onclick="openCboAvailModal(\''+r.BackorderID+'\')">✏️ อัปเดตจำนวนพร้อมจ่าย</button>');
+    }
+    if(isStock && r.Status==='AVAILABLE'){
+      actionBtns.push('<button class="btn bp bsm" style="background:#2d6a4f;border-color:#2d6a4f" onclick="doDeliverCbo(\''+r.BackorderID+'\')">✅ ส่งของลูกค้าแล้ว (ปิดงาน)</button>');
+    }
+    if(isAdmin){
+      actionBtns.push('<button class="btn bo bsm" onclick="openCboNotifyModal(\''+r.BackorderID+'\')">📝 '+(r.NotifiedCustomerAt?'แก้ไข':'บันทึก')+'ข้อมูลแจ้งลูกค้า</button>');
+    }
+    if(isAdmin && r.Status!=='DELIVERED' && r.Status!=='CANCELLED'){
+      actionBtns.push('<button class="btn bd bsm" onclick="doCancelCbo(\''+r.BackorderID+'\')">✕ ยกเลิก</button>');
+    }
+
+    return '<div class="card" style="padding:14px 16px;margin-bottom:10px;border-left:4px solid '+st[1]+'">'
+      +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">'
+        +'<strong style="font-size:14px;color:var(--gd)">'+(r.PONo?r.PONo+' — ':'')+(r.PartName||'-')+'</strong>'
+        +'<span style="font-size:12px;color:var(--g400)">'+(r.PartNo||'')+'</span>'
+        +'<span style="margin-left:auto;color:'+st[1]+';font-weight:700;font-size:12px">'+st[0]+'</span>'
+      +'</div>'
+      +'<div style="font-size:13px;color:#333">👤 ลูกค้า: <strong>'+(r.CustomerName||'-')+'</strong> — จำนวน '+r.Qty+' '+(r.Unit||'ชิ้น')
+        +(r.Status==='AVAILABLE'||r.Status==='DELIVERED' ? ' <span style="color:#2d6a4f">(พร้อมจ่าย: '+r.AvailableQty+')</span>' : '')+'</div>'
+      +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;align-items:center">'
+        +notifyBadge + deadlineBadge
+        +(r.ExpectedArrivalDate?'<span style="font-size:11px;color:var(--g400)">📅 คาดว่าของเข้า: '+r.ExpectedArrivalDate+'</span>':'')
+      +'</div>'
+      +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">'
+        +(r.POPhotoUrl?'<a href="'+r.POPhotoUrl+'" target="_blank" style="font-size:11px">📄 ภาพ PO</a>':'')
+        +(r.NotifyEvidenceUrl?'<a href="'+r.NotifyEvidenceUrl+'" target="_blank" style="font-size:11px">🖼️ หลักฐานแจ้งลูกค้า</a>':'')
+      +'</div>'
+      +(r.Note?'<div style="font-size:11px;color:var(--g400);margin-top:4px">📝 '+r.Note+'</div>':'')
+      +'<div style="font-size:10px;color:var(--g400);margin-top:6px">บันทึกโดย '+(r.CreatedByName||r.CreatedBy||'-')+' เมื่อ '+(r.CreatedAt?new Date(r.CreatedAt).toLocaleDateString('th-TH'):'-')+'</div>'
+      +(actionBtns.length?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">'+actionBtns.join('')+'</div>':'')
+    +'</div>';
+  }).join('');
+}
+
+// ── แอดมิน/ผจก. สร้างรายการค้างส่งใหม่ ──
+window._cboPoPhotoB64 = ''; window._cboNotifyPhotoB64 = '';
+function openCreateBackorderModal(){
+  var existing = document.getElementById('cboAddModal'); if(existing) existing.remove();
+  window._cboPoPhotoB64 = ''; window._cboNotifyPhotoB64 = '';
+  var modal = document.createElement('div');
+  modal.id = 'cboAddModal'; modal.className = 'mo'; modal.style.zIndex = '3300';
+  modal.innerHTML =
+    '<div class="mow" style="max-width:460px">'
+      +'<div class="moh"><div class="mot">📦 บันทึกรายการค้างส่งลูกค้าใหม่</div>'
+        +'<button class="mcl" onclick="document.getElementById(\'cboAddModal\').remove()">✕</button></div>'
+      +'<div class="mob">'
+        +'<div class="fg"><label class="fl">ชื่อลูกค้า <span style="color:var(--red)">*</span></label><input class="fc" id="cboCustomerName" placeholder="ชื่อลูกค้า/บริษัท"></div>'
+        +'<div class="fg"><label class="fl">เลข PO ลูกค้า (ถ้ามี)</label><input class="fc" id="cboPONo" placeholder="เช่น PO-6907-0231"></div>'
+        +'<div style="display:grid;grid-template-columns:2fr 1fr;gap:10px">'
+          +'<div class="fg"><label class="fl">Part No.</label><input class="fc" id="cboPartNo" placeholder="ถ้ามี"></div>'
+          +'<div class="fg"><label class="fl">จำนวน</label><input class="fc" id="cboQty" type="number" min="1" value="1"></div>'
+        +'</div>'
+        +'<div class="fg"><label class="fl">ชื่ออะไหล่ <span style="color:var(--red)">*</span></label><input class="fc" id="cboPartName" placeholder="เช่น แบตเตอรี่ 48V 105Ah"></div>'
+        +'<div class="fg"><label class="fl">📄 ภาพ PO ลูกค้า</label>'
+          +'<input type="file" accept="image/*" id="cboPoPhotoInput" onchange="_cboOnPhoto(event,\'po\')" style="width:100%">'
+          +'<img id="cboPoPhotoPreview" class="hidden" style="max-width:100%;max-height:140px;border-radius:6px;margin-top:6px">'
+        +'</div>'
+        +'<div class="fg"><label class="fl">กำหนดวันคาดว่าของเข้า</label><input class="fc" id="cboExpectedDate" type="date"></div>'
+        +'<hr class="sep">'
+        +'<div style="font-size:12px;font-weight:600;color:var(--gd);margin-bottom:6px">แจ้งลูกค้าแล้ว (กรอกตอนนี้เลยก็ได้ หรือค่อยมาเพิ่มทีหลัง)</div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+          +'<div class="fg"><label class="fl">วันที่แจ้งลูกค้า</label><input class="fc" id="cboNotifiedAt" type="date"></div>'
+          +'<div class="fg"><label class="fl">ช่องทาง</label><input class="fc" id="cboNotifiedChannel" placeholder="เช่น LINE, โทร"></div>'
+        +'</div>'
+        +'<div class="fg"><label class="fl">แจ้งโดย (ชื่อพนักงาน)</label><input class="fc" id="cboNotifiedBy" placeholder="ชื่อคนที่แจ้งลูกค้า"></div>'
+        +'<div class="fg"><label class="fl">🖼️ รูปหลักฐานการแจ้งลูกค้า</label>'
+          +'<input type="file" accept="image/*" id="cboNotifyPhotoInput" onchange="_cboOnPhoto(event,\'notify\')" style="width:100%">'
+          +'<img id="cboNotifyPhotoPreview" class="hidden" style="max-width:100%;max-height:140px;border-radius:6px;margin-top:6px">'
+        +'</div>'
+        +'<div class="fg"><label class="fl">หมายเหตุ</label><input class="fc" id="cboNote"></div>'
+      +'</div>'
+      +'<div class="mof">'
+        +'<button class="btn bo" onclick="document.getElementById(\'cboAddModal\').remove()">ยกเลิก</button>'
+        +'<button class="btn bp" onclick="submitCreateBackorder()">📨 บันทึก</button>'
+      +'</div>'
+    +'</div>';
+  document.body.appendChild(modal); modal.style.display = 'flex';
+}
+function _cboOnPhoto(event, which){
+  var file = event.target.files[0]; if(!file) return;
+  compressImage(file, function(b64){
+    if(!b64) return;
+    if(which==='po'){ window._cboPoPhotoB64 = b64; var pp=document.getElementById('cboPoPhotoPreview'); if(pp){pp.src=b64;pp.classList.remove('hidden');} }
+    else { window._cboNotifyPhotoB64 = b64; var pp2=document.getElementById('cboNotifyPhotoPreview'); if(pp2){pp2.src=b64;pp2.classList.remove('hidden');} }
+  });
+}
+function submitCreateBackorder(){
+  var data = {
+    customerName: (document.getElementById('cboCustomerName')||{}).value.trim(),
+    poNo: (document.getElementById('cboPONo')||{}).value.trim(),
+    partNo: (document.getElementById('cboPartNo')||{}).value.trim(),
+    partName: (document.getElementById('cboPartName')||{}).value.trim(),
+    qty: parseFloat((document.getElementById('cboQty')||{}).value)||1,
+    unit: 'ชิ้น',
+    poPhotoBase64: window._cboPoPhotoB64||'',
+    expectedArrivalDate: (document.getElementById('cboExpectedDate')||{}).value||'',
+    notifiedAt: (document.getElementById('cboNotifiedAt')||{}).value||'',
+    notifiedChannel: (document.getElementById('cboNotifiedChannel')||{}).value.trim(),
+    notifiedBy: (document.getElementById('cboNotifiedBy')||{}).value.trim(),
+    notifyEvidenceBase64: window._cboNotifyPhotoB64||'',
+    note: (document.getElementById('cboNote')||{}).value.trim(),
+  };
+  if(!data.customerName) return toast('กรุณาระบุชื่อลูกค้าค่ะ','error');
+  if(!data.partName) return toast('กรุณาระบุชื่ออะไหล่ค่ะ','error');
+  toast('กำลังบันทึก...','info');
+  callAPI('createCustomerBackorder', data).then(function(res){
+    toast(res.message, res.success?'success':'error');
+    if(res.success){
+      var m = document.getElementById('cboAddModal'); if(m) m.remove();
+      loadCustomerBackorderPage();
+    }
+  });
+}
+
+// ── Stock: สั่งซื้อไป HQ แล้ว ──
+function openCboOrderModal(id){
+  var d = prompt('กำหนดวันคาดว่าของเข้า (YYYY-MM-DD) — เว้นว่างได้ถ้ายังไม่รู้:','');
+  if(d===null) return;
+  toast('กำลังบันทึก...','info');
+  callAPI('markBackorderOrderedToHQ',{backorderId:id, expectedArrivalDate:d}).then(function(res){
+    toast(res.message, res.success?'success':'error');
+    if(res.success) loadCustomerBackorderPage();
+  });
+}
+// ── Stock: อัปเดตจำนวนพร้อมจ่าย ──
+function openCboAvailModal(id){
+  var q = prompt('จำนวนที่พร้อมจ่ายตอนนี้ (ชิ้น):','0');
+  if(q===null) return;
+  toast('กำลังบันทึก...','info');
+  callAPI('updateBackorderAvailableQty',{backorderId:id, availableQty:q}).then(function(res){
+    toast(res.message, res.success?'success':'error');
+    if(res.success) loadCustomerBackorderPage();
+  });
+}
+function doDeliverCbo(id){
+  if(!confirm('ยืนยันว่าส่งของให้ลูกค้าเรียบร้อยแล้ว? ระบบจะปิดงานรายการนี้')) return;
+  toast('กำลังบันทึก...','info');
+  callAPI('deliverCustomerBackorder',{backorderId:id}).then(function(res){
+    toast(res.message, res.success?'success':'error');
+    if(res.success) loadCustomerBackorderPage();
+  });
+}
+function doCancelCbo(id){
+  var note = prompt('เหตุผลที่ยกเลิก (ไม่บังคับ):','') || '';
+  toast('กำลังบันทึก...','info');
+  callAPI('cancelCustomerBackorder',{backorderId:id, note:note}).then(function(res){
+    toast(res.message, res.success?'success':'error');
+    if(res.success) loadCustomerBackorderPage();
+  });
+}
+// ── แอดมิน: บันทึก/แก้ไขข้อมูลแจ้งลูกค้า ──
+window._cboNotifyEditPhotoB64 = '';
+function openCboNotifyModal(id){
+  var row = _cboData.find(function(r){ return r.BackorderID===id; }) || {};
+  window._cboNotifyEditPhotoB64 = '';
+  var existing = document.getElementById('cboNotifyModal'); if(existing) existing.remove();
+  var modal = document.createElement('div');
+  modal.id = 'cboNotifyModal'; modal.className = 'mo'; modal.style.zIndex = '3350';
+  modal.innerHTML =
+    '<div class="mow" style="max-width:420px">'
+      +'<div class="moh"><div class="mot">📝 บันทึกข้อมูลแจ้งลูกค้า</div>'
+        +'<button class="mcl" onclick="document.getElementById(\'cboNotifyModal\').remove()">✕</button></div>'
+      +'<div class="mob">'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+          +'<div class="fg"><label class="fl">วันที่แจ้งลูกค้า</label><input class="fc" id="cboNfDate" type="date" value="'+(row.NotifiedCustomerAt||'')+'"></div>'
+          +'<div class="fg"><label class="fl">ช่องทาง</label><input class="fc" id="cboNfChannel" value="'+(row.NotifiedCustomerChannel||'')+'" placeholder="LINE, โทร"></div>'
+        +'</div>'
+        +'<div class="fg"><label class="fl">แจ้งโดย</label><input class="fc" id="cboNfBy" value="'+(row.NotifiedCustomerBy||'')+'"></div>'
+        +'<div class="fg"><label class="fl">🖼️ รูปหลักฐาน'+(row.NotifyEvidenceUrl?' (มีอยู่แล้ว — อัปโหลดใหม่เพื่อแทนที่)':'')+'</label>'
+          +'<input type="file" accept="image/*" id="cboNfPhotoInput" onchange="_cboOnNotifyEditPhoto(event)" style="width:100%">'
+          +(row.NotifyEvidenceUrl?'<a href="'+row.NotifyEvidenceUrl+'" target="_blank" style="font-size:11px">ดูรูปเดิม</a>':'')
+        +'</div>'
+      +'</div>'
+      +'<div class="mof">'
+        +'<button class="btn bo" onclick="document.getElementById(\'cboNotifyModal\').remove()">ยกเลิก</button>'
+        +'<button class="btn bp" onclick="submitCboNotify(\''+id+'\')">บันทึก</button>'
+      +'</div>'
+    +'</div>';
+  document.body.appendChild(modal); modal.style.display='flex';
+}
+function _cboOnNotifyEditPhoto(event){
+  var file = event.target.files[0]; if(!file) return;
+  compressImage(file, function(b64){ window._cboNotifyEditPhotoB64 = b64||''; });
+}
+function submitCboNotify(id){
+  var data = {
+    backorderId: id,
+    notifiedAt: (document.getElementById('cboNfDate')||{}).value||'',
+    notifiedChannel: (document.getElementById('cboNfChannel')||{}).value.trim(),
+    notifiedBy: (document.getElementById('cboNfBy')||{}).value.trim(),
+    notifyEvidenceBase64: window._cboNotifyEditPhotoB64||'',
+  };
+  toast('กำลังบันทึก...','info');
+  callAPI('updateBackorderNotifyInfo', data).then(function(res){
+    toast(res.message, res.success?'success':'error');
+    if(res.success){
+      var m = document.getElementById('cboNotifyModal'); if(m) m.remove();
+      loadCustomerBackorderPage();
     }
   });
 }
@@ -11421,7 +11766,7 @@ function _buildSCTable(p, realEntries, el){
       +'<td style="padding:8px 10px;text-align:center;font-weight:500;color:#e65100">'+(e.QtyOut>0?'-'+e.QtyOut+' '+e.Unit:'—')+'</td>'
       +'<td style="padding:8px 10px;text-align:center;font-weight:500;color:#b71c1c">'+(e.QtyDefect>0?e.QtyDefect+' '+e.Unit:'—')+'</td>'
       +'<td style="padding:8px 10px;text-align:right;font-size:14px;font-weight:500;'+balColor2+'">'+e.Balance+'</td>'
-      +'<td style="padding:8px 10px;font-size:11px;color:var(--g400);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(e.Note||'—')+'</td>'
+      +'<td style="padding:8px 10px;font-size:11px;color:var(--g400);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:'+(e.Note?'pointer':'default')+'" title="'+String(e.Note||'').replace(/"/g,'&quot;')+'" '+(e.Note?'onclick="toast(this.getAttribute(\'title\'),\'info\')"':'')+'>'+(e.Note||'—')+'</td>'
       +(canDel&&!isInit?'<td style="padding:4px 6px"><button class="del-sc-btn btn bd" style="padding:2px 6px;font-size:11px" data-id="'+e.EntryID+'">🗑️</button></td>':(canDel?'<td></td>':''))
     +'</tr>';
   });
