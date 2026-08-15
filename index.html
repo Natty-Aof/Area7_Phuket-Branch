@@ -331,6 +331,7 @@ textarea.fc{min-height:70px;resize:vertical;}
       <div style="height:1px;background:rgba(255,255,255,.15);margin:8px 12px"></div>
       <div class="ni" data-pg="stockcard" onclick="go('stockcard')"><span class="ic">🗂️</span> Stock Card</div>
       <div class="ni" data-pg="vehiclehistory" onclick="go('vehiclehistory')"><span class="ic">🚗</span> ประวัติรถ</div>
+      <div class="ni" data-pg="pmcheck" onclick="go('pmcheck')"><span class="ic">🔧</span> ตรวจเช็ครถ PM (ใบแช็ง)</div>
       <div class="ni" data-pg="inspection" onclick="go('inspection')"><span class="ic">📋</span> ใบตรวจสภาพรถ <span id="insBadge" class="bdg hidden"></span></div>
       <div class="ni" data-pg="stockcount" onclick="go('stockcount')" id="nStockCount"><span class="ic">🔢</span> นับสต็อก</div>
       <div class="ni hidden" id="nChangeReq" data-pg="changereq" onclick="go('changereq')"><span class="ic">🔑</span> คำขอแก้ไข<span class="badge" id="crBadge">0</span></div>
@@ -1374,6 +1375,25 @@ textarea.fc{min-height:70px;resize:vertical;}
       </div>
 
       <!-- ═══════════════════════════════════════════════════ -->
+      <!-- ตรวจเช็ครถ PM ประจำเดือน (ใบแช็ง) — ISO FM-BR-004     -->
+      <!-- ═══════════════════════════════════════════════════ -->
+      <div id="pg-pmcheck" class="hidden">
+        <div class="card" style="padding:14px 16px;margin-bottom:12px">
+          <div style="font-size:14px;font-weight:700;color:var(--gd)">🔧 ตรวจเช็ครถ PM ประจำเดือน (ใบแช็ง)</div>
+          <div style="font-size:12px;color:var(--g400);margin-top:2px">สำหรับรถเช่า / รถที่อยู่ใน Warranty ที่ต้องเข้า MA ทุกเดือน — ตามแบบฟอร์ม ISO FM-BR-004</div>
+        </div>
+        <div class="card" style="padding:14px 16px;margin-bottom:12px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+            <input class="fc" id="pmVehSearch" placeholder="🔍 พิมพ์ Serial No. รถที่จะตรวจเช็ค..." style="flex:1;min-width:200px" oninput="onPMVehSearch()" autocomplete="off">
+            <button class="btn bp" onclick="loadPMDueList()">📋 ดูรายชื่อรถที่ต้องตรวจ PM</button>
+          </div>
+          <div id="pmVehDrop" style="display:none;max-height:220px;overflow-y:auto;border:1px solid var(--g200);border-radius:8px;margin-bottom:10px"></div>
+          <div id="pmDueListBox"></div>
+        </div>
+        <div id="pmFormBox"></div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════ -->
     </div><!-- /content -->
   </div><!-- /main -->
 </div><!-- /app -->
@@ -1984,6 +2004,7 @@ function _goWithoutPush(page){
   if(page==='stockcard'){loadStockCard();}
   if(page==='sales'){initSales();}
   if(page==='specialreq'){ switchSprMainTab(_sprMainTab||'spr'); }
+  if(page==='pmcheck'){ initPMCheckPage(); }
   if(page==='master'){loadMasterPage();}
   if(page==='inventory'){loadInventory();}
   if(page==='pickup') loadPickupPage();
@@ -2649,7 +2670,7 @@ function roleLabel(r){
 }
 
 // ── NAVIGATE ─────────────────────────────────────────────────
-var pgTitles={dashboard:'Dashboard',create:'เปิดใบเบิกอะไหล่',list:'รายการใบเบิกอะไหล่',approval:'รายการรออนุมัติ',stock:'จัดอะไหล่ / รับคืน',pickup:'รับอะไหล่',close:'เคลียร์ใบเบิก',print:'พิมพ์ใบเบิก',profile:'ลายเซ็นของฉัน',jobs:'จัดการ Job No.',stockcard:'Stock Card',stockcount:'นับสต็อก',changereq:'คำขออนุมัติแก้ไข',vehiclehistory:'ประวัติรถ',sales:'เปิดรายการขาย',inventory:'ยอดคงเหลือ',specialreq:'สั่งซื้อพิเศษ / ค้างส่งลูกค้า',master:'จัดการอะไหล่ / รถ'};
+var pgTitles={dashboard:'Dashboard',create:'เปิดใบเบิกอะไหล่',list:'รายการใบเบิกอะไหล่',approval:'รายการรออนุมัติ',stock:'จัดอะไหล่ / รับคืน',pickup:'รับอะไหล่',close:'เคลียร์ใบเบิก',print:'พิมพ์ใบเบิก',profile:'ลายเซ็นของฉัน',jobs:'จัดการ Job No.',stockcard:'Stock Card',stockcount:'นับสต็อก',changereq:'คำขออนุมัติแก้ไข',vehiclehistory:'ประวัติรถ',pmcheck:'ตรวจเช็ครถ PM (ใบแช็ง)',sales:'เปิดรายการขาย',inventory:'ยอดคงเหลือ',specialreq:'สั่งซื้อพิเศษ / ค้างส่งลูกค้า',master:'จัดการอะไหล่ / รถ'};
 
 function go(page){
   curPage = page;
@@ -2679,6 +2700,7 @@ function go(page){
   if(page==='stockcard'){loadStockCard();}
   if(page==='sales'){initSales();}
   if(page==='specialreq'){ switchSprMainTab(_sprMainTab||'spr'); }
+  if(page==='pmcheck'){ initPMCheckPage(); }
   if(page==='master'){loadMasterPage();}
   if(page==='inventory'){loadInventory();}
   if(page==='pickup') loadPickupPage();
@@ -3655,6 +3677,245 @@ function submitCboNotify(id){
 // วิธีใช้: เปิด Console (F12) แล้วพิมพ์  migratePartsToSheet()
 // ปลอดภัย: ไม่ทับข้อมูลเดิมในชีท (เติมเฉพาะช่องที่ว่าง) และรันซ้ำได้
 // ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+// ตรวจเช็ครถ PM ประจำเดือน (ใบแช็ง) — ISO FM-BR-004
+// รายการตรวจเช็คตายตัวตามแบบฟอร์มกระดาษ 5 หมวด
+// ══════════════════════════════════════════════════════════════
+var PM_CHECKLIST_ITEMS = [
+  { sectionKey:'body', sectionLabel:'1. ตรวจเช็คคุณภาพอุปกรณ์บริเวณรอบตัวรถ (Body and Trim)', items:[
+    {key:'body1', label:'ตรวจเช็ครอบตัวรถ หน้า กลาง หลัง'},
+    {key:'body2', label:'ตรวจเช็คชุดเบาะนั่งหน้า-หลัง'},
+    {key:'body3', label:'ตรวจเช็คโครงหลังคาและหลังคา'},
+    {key:'body4', label:'ตรวจเช็คกันชนหน้า-กันชนหลัง'},
+    {key:'body5', label:'กระจกหน้ารถ / กระจกมองข้างซ้าย-ขวาและมองหลัง'},
+    {key:'body6', label:'ป้ายสติกเกอร์ ขั้นตอนต่างๆ'},
+  ]},
+  { sectionKey:'elec', sectionLabel:'2. ตรวจเช็คระบบไฟฟ้าและอุปกรณ์ (Electrical system)', items:[
+    {key:'elec1', label:'สวิทช์กุญแจและสวิทช์ TOW/RUN'},
+    {key:'elec2', label:'สวิทช์เดินหน้า-ถอยหลัง'},
+    {key:'elec3', label:'ชุดสวิทช์ควบคุมความเร็ว MCOR / V-guide'},
+    {key:'elec4', label:'อุปกรณ์ควบคุมการชาร์จไฟออนบอร์ด'},
+    {key:'elec5', label:'กล่องไฟคอนโทรลเลอร์ / โซลินอยด์'},
+    {key:'elec6', label:'มอเตอร์ขับเคลื่อนและเซ็นเซอร์มอเตอร์'},
+    {key:'elec7', label:'ไฟส่องสว่างหน้า-หลัง / ไฟเบรก / สัญญาณแตร'},
+  ]},
+  { sectionKey:'susp', sectionLabel:'3. ตรวจเช็คระบบช่วงล่าง / ระบบรองรับน้ำหนัก (Suspension)', items:[
+    {key:'susp1', label:'โช้คหน้า-หลัง'},
+    {key:'susp2', label:'แหนบหน้า-หลัง'},
+    {key:'susp3', label:'สภาพยางหน้า-หลัง / ลมยาง'},
+    {key:'susp4', label:'ลูกปืนล้อ'},
+  ]},
+  { sectionKey:'drive', sectionLabel:'4. ตรวจเช็คระบบการขับเคลื่อน (Drive system)', items:[
+    {key:'drive1', label:'ระบบพวงมาลัย ยอยบน ยอยล่าง'},
+    {key:'drive2', label:'ชุดคอม้า ปิ้นกน และแกนกังหัน (Clevises, Pinions, Kingpins)'},
+    {key:'drive3', label:'ลูกหมาก'},
+    {key:'drive4', label:'ชุดบูชช่วงล่างหน้า-หลัง / สัญญาณเดินหน้า-ถอยหลัง'},
+    {key:'drive5', label:'การเดินหน้า-ถอยหลัง ซ้าย-ขวา'},
+    {key:'drive6', label:'ความเร็วของรถ / ระบบเบรค'},
+    {key:'drive7', label:'เฟืองท้าย และระบบเสียบ'},
+  ]},
+  { sectionKey:'battery', sectionLabel:'5. ตรวจเช็คระบบชาร์จไฟ-แบตเตอรี่ (Charging system - battery)', items:[
+    {key:'batt1', label:'สายไฟ AC และปลั๊กไฟเสียบ'},
+    {key:'batt2', label:'สายไฟ DC และปลั๊กชาร์จไฟเสียบที่รถ'},
+    {key:'batt3', label:'การทำงานของตู้ชาร์จ'},
+    {key:'batt4', label:'แจ็คเสียบที่ตัวรถ (Charger Receptacle)'},
+    {key:'batt5', label:'ขั้วแบตเตอรี่ (แบตเตอรี่น้ำกรด)'},
+    {key:'batt6', label:'สายไฟขั้วแบตเตอรี่ (แบตเตอรี่น้ำกรด)'},
+    {key:'batt7', label:'ระดับน้ำกลั่นภายในแบตเตอรี่ (แบตเตอรี่น้ำกรด)'},
+    {key:'batt8', label:'สภาพกล่องแบตเตอรี่ (แบตเตอรี่ลิเธียม)'},
+    {key:'batt9', label:'ปลั๊กต่อขั้วต่างๆ (แบตเตอรี่ลิเธียม)'},
+    {key:'batt10', label:'ไฟบอกระดับแบตเตอรี่ (แบตเตอรี่ลิเธียม)'},
+  ]},
+];
+
+var _pmCurrentVehicle = null;
+var _pmItemState = {}; // key -> {status, problemDesc, initialFix, needsPartReplace, partNo, partQty, followUpDate, photos:[b64...]}
+
+function initPMCheckPage(){
+  var box = document.getElementById('pmFormBox');
+  if(box) box.innerHTML = '';
+  var due = document.getElementById('pmDueListBox');
+  if(due) due.innerHTML = '';
+  if(!window._vehiclesDB || !window._vehiclesDB.length) loadVehiclesDB();
+}
+
+function onPMVehSearch(){
+  var q = (document.getElementById('pmVehSearch').value||'').trim().toLowerCase();
+  var dd = document.getElementById('pmVehDrop');
+  if(!dd) return;
+  if(!q || !window._vehiclesDB || !window._vehiclesDB.length){ dd.style.display='none'; return; }
+  var res = window._vehiclesDB.filter(function(v){
+    return (v.SerialNo||'').toLowerCase().indexOf(q)>=0 || (v.Customer||'').toLowerCase().indexOf(q)>=0;
+  }).slice(0,10);
+  if(!res.length){ dd.style.display='none'; return; }
+  dd.innerHTML = res.map(function(v){
+    return '<div onmousedown="selectPMVehicle(\''+v.SerialNo+'\')" style="padding:9px 12px;cursor:pointer;border-bottom:1px solid #f5f5f5">'
+      +'<strong>'+v.SerialNo+'</strong> — '+(v.VehicleType||'')+'<div style="font-size:11px;color:var(--g400)">'+(v.Customer||'')+'</div></div>';
+  }).join('');
+  dd.style.display = 'block';
+}
+
+function loadPMDueList(){
+  var box = document.getElementById('pmDueListBox');
+  box.innerHTML = '<div class="tc tm" style="padding:16px">⏳ กำลังโหลด...</div>';
+  callAPI('getVehiclesRequiringPM',{}).then(function(res){
+    var list = (res && res.success) ? (res.data||[]) : [];
+    if(!list.length){ box.innerHTML = '<div class="tc tm" style="padding:16px">ยังไม่มีรถที่ตั้งค่า "ต้องตรวจ PM ทุกเดือน" ไว้ในระบบค่ะ (ไปตั้งค่าได้ที่หน้า "จัดการอะไหล่/รถ")</div>'; return; }
+    box.innerHTML = '<div style="font-size:12px;font-weight:600;color:var(--gd);margin:10px 0 6px">🚙 รถที่ต้องตรวจ PM ทุกเดือน ('+list.length+' คัน)</div>'
+      + list.map(function(v){
+          var overdue = !v.lastCheckDate;
+          var daysSince = v.lastCheckDate ? Math.round((new Date()-new Date(v.lastCheckDate))/86400000) : null;
+          var badge = !v.lastCheckDate ? '<span style="background:#b71c1c;color:#fff;border-radius:10px;padding:2px 8px;font-size:11px">ยังไม่เคยตรวจ</span>'
+            : (daysSince>=30 ? '<span style="background:#e65100;color:#fff;border-radius:10px;padding:2px 8px;font-size:11px">ตรวจล่าสุด '+daysSince+' วันก่อน — ครบกำหนดแล้ว</span>'
+            : '<span style="background:#2d6a4f;color:#fff;border-radius:10px;padding:2px 8px;font-size:11px">ตรวจล่าสุด '+daysSince+' วันก่อน</span>');
+          return '<div class="card" style="padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+            +'<div style="flex:1;min-width:180px"><strong>'+v.serialNo+'</strong> — '+(v.vehicleType||'')+'<div style="font-size:11px;color:var(--g400)">'+(v.customer||'')+'</div></div>'
+            + badge
+            +'<button class="btn bp bsm" onclick="selectPMVehicle(\''+v.serialNo+'\')">🔧 ตรวจเช็คเลย</button>'
+          +'</div>';
+        }).join('');
+  });
+}
+
+function selectPMVehicle(serialNo){
+  var inp = document.getElementById('pmVehSearch'); if(inp) inp.value = serialNo;
+  var dd = document.getElementById('pmVehDrop'); if(dd) dd.style.display = 'none';
+  var v = (window._vehiclesDB||[]).find(function(x){ return x.SerialNo===serialNo; }) || {SerialNo:serialNo};
+  _pmCurrentVehicle = v;
+  _pmItemState = {};
+  PM_CHECKLIST_ITEMS.forEach(function(sec){
+    sec.items.forEach(function(it){ _pmItemState[it.key] = {status:'', problemDesc:'', initialFix:'', needsPartReplace:false, partNo:'', partQty:1, followUpDate:'', photos:[]}; });
+  });
+  renderPMCheckForm();
+}
+
+function renderPMCheckForm(){
+  var box = document.getElementById('pmFormBox');
+  if(!box || !_pmCurrentVehicle) return;
+  var v = _pmCurrentVehicle;
+  var totalItems = PM_CHECKLIST_ITEMS.reduce(function(s,sec){ return s+sec.items.length; },0);
+  var doneItems = Object.values(_pmItemState).filter(function(s){ return s.status; }).length;
+
+  var html = '<div class="card" style="padding:14px 16px;margin-bottom:12px;background:#eef2ef">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+      +'<div><strong style="font-size:15px">🚙 '+v.SerialNo+'</strong> — '+(v.VehicleType||'')+'<div style="font-size:12px;color:var(--g400)">ลูกค้า: '+(v.Customer||'-')+' | สถานที่: '+(v.Location||'-')+'</div></div>'
+      +'<div style="font-size:12px;color:var(--gd);font-weight:600">ตรวจแล้ว '+doneItems+' / '+totalItems+' หัวข้อ</div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">'
+      +'<div class="fg"><label class="fl">วันที่ตรวจ</label><input class="fc" id="pmCheckDate" type="date" value="'+new Date().toISOString().slice(0,10)+'"></div>'
+      +'<div class="fg"><label class="fl">เลขที่ฟอร์ม (ถ้ามี)</label><input class="fc" id="pmFormNo" placeholder="FM-BR-004-XX"></div>'
+    +'</div>'
+    +'<div class="fg"><label class="fl">ชื่อผู้ตรวจเช็ค (ช่าง)</label><input class="fc" id="pmTechName" value="'+(CU&&CU.name||'')+'"></div>'
+  +'</div>';
+
+  PM_CHECKLIST_ITEMS.forEach(function(sec){
+    html += '<div class="card" style="padding:12px 14px;margin-bottom:10px">'
+      +'<div style="font-size:13px;font-weight:700;color:var(--gd);margin-bottom:8px">'+sec.sectionLabel+'</div>';
+    sec.items.forEach(function(it){
+      var st = _pmItemState[it.key];
+      html += '<div style="border-top:1px solid var(--g100);padding:8px 0">'
+        +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+          +'<div style="flex:1;min-width:160px;font-size:13px">'+it.label+'</div>'
+          +'<div style="display:flex;gap:6px">'
+            + ['✓','O','X'].map(function(opt){
+                var active = st.status===opt;
+                var col = opt==='✓'?'#2d6a4f':(opt==='O'?'#e65100':'#b71c1c');
+                return '<button type="button" onclick="setPMItemStatus(\''+it.key+'\',\''+opt+'\')" style="width:36px;height:36px;border-radius:8px;border:2px solid '+col+';background:'+(active?col:'#fff')+';color:'+(active?'#fff':col)+';font-weight:700;font-size:15px;cursor:pointer">'+opt+'</button>';
+              }).join('')
+          +'</div>'
+        +'</div>'
+        +(st.status==='X' ? renderPMDefectDetail(it.key) : '')
+      +'</div>';
+    });
+    html += '</div>';
+  });
+
+  html += '<div class="card" style="padding:14px 16px;text-align:center">'
+    +'<button class="btn bp" style="width:100%;font-size:15px;padding:12px" onclick="submitPMCheckForm()">✅ บันทึกผลตรวจเช็คทั้งหมด</button>'
+  +'</div>';
+
+  box.innerHTML = html;
+}
+
+function setPMItemStatus(key, status){
+  _pmItemState[key].status = status;
+  renderPMCheckForm();
+}
+
+function renderPMDefectDetail(key){
+  var st = _pmItemState[key];
+  return '<div style="background:#ffebee;border:1px solid #ffcdd2;border-radius:8px;padding:10px;margin-top:8px">'
+    +'<div class="fg"><label class="fl" style="font-size:11px">รายละเอียดปัญหา *</label>'
+      +'<input class="fc" value="'+(st.problemDesc||'').replace(/"/g,'&quot;')+'" oninput="_pmItemState[\''+key+'\'].problemDesc=this.value" style="font-size:12px"></div>'
+    +'<div class="fg"><label class="fl" style="font-size:11px">การแก้ไขเบื้องต้น</label>'
+      +'<input class="fc" value="'+(st.initialFix||'').replace(/"/g,'&quot;')+'" oninput="_pmItemState[\''+key+'\'].initialFix=this.value" style="font-size:12px"></div>'
+    +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;margin:6px 0;cursor:pointer">'
+      +'<input type="checkbox" '+(st.needsPartReplace?'checked':'')+' onchange="_pmItemState[\''+key+'\'].needsPartReplace=this.checked;renderPMCheckForm()"> ต้องเปลี่ยนอะไหล่'
+    +'</label>'
+    + (st.needsPartReplace
+      ? '<div style="display:grid;grid-template-columns:2fr 1fr;gap:8px">'
+          +'<input class="fc" placeholder="Part No." value="'+(st.partNo||'').replace(/"/g,'&quot;')+'" oninput="_pmItemState[\''+key+'\'].partNo=this.value" style="font-size:12px">'
+          +'<input class="fc" type="number" min="1" placeholder="จำนวน" value="'+(st.partQty||1)+'" oninput="_pmItemState[\''+key+'\'].partQty=this.value" style="font-size:12px">'
+        +'</div>'
+      : '')
+    +'<div class="fg" style="margin-top:6px"><label class="fl" style="font-size:11px">วันนัดแก้ไข</label>'
+      +'<input class="fc" type="date" value="'+(st.followUpDate||'')+'" oninput="_pmItemState[\''+key+'\'].followUpDate=this.value" style="font-size:12px"></div>'
+    +'<div class="fg"><label class="fl" style="font-size:11px">📷 ถ่ายรูปปัญหา</label>'
+      +'<input type="file" accept="image/*" onchange="_pmOnPhoto(event,\''+key+'\')" style="font-size:12px">'
+      +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">'
+        + (st.photos||[]).map(function(p,pi){ return '<img src="'+p+'" style="width:50px;height:50px;object-fit:cover;border-radius:6px;cursor:pointer" onclick="openImgLightbox(\''+encodeURIComponent(p)+'\')">'; }).join('')
+      +'</div>'
+    +'</div>'
+  +'</div>';
+}
+
+function _pmOnPhoto(event, key){
+  var file = event.target.files[0]; if(!file) return;
+  compressImage(file, function(b64){
+    if(!b64) return;
+    _pmItemState[key].photos.push(b64);
+    renderPMCheckForm();
+  });
+}
+
+function submitPMCheckForm(){
+  if(!_pmCurrentVehicle) return toast('กรุณาเลือกรถก่อนค่ะ','error');
+  var missingProblem = [];
+  var items = [];
+  PM_CHECKLIST_ITEMS.forEach(function(sec){
+    sec.items.forEach(function(it){
+      var st = _pmItemState[it.key];
+      if(!st.status) return; // ยังไม่ได้ตรวจหัวข้อนี้ ข้ามไป (ไม่บังคับตรวจครบทุกหัวข้อในครั้งเดียว)
+      if(st.status==='X' && !st.problemDesc) missingProblem.push(it.label);
+      items.push({
+        sectionKey: sec.sectionKey, sectionLabel: sec.sectionLabel,
+        itemKey: it.key, itemLabel: it.label, status: st.status,
+        problemDesc: st.problemDesc||'', initialFix: st.initialFix||'',
+        needsPartReplace: !!st.needsPartReplace, partNo: st.partNo||'', partQty: st.partQty||'',
+        followUpDate: st.followUpDate||'', photoBase64Arr: st.photos||[],
+      });
+    });
+  });
+  if(!items.length) return toast('กรุณาตรวจเช็คอย่างน้อย 1 หัวข้อก่อนบันทึกค่ะ','error');
+  if(missingProblem.length) return toast('กรุณากรอกรายละเอียดปัญหาให้ครบ: '+missingProblem.join(', '),'error');
+
+  toast('กำลังบันทึก...','info');
+  callAPI('submitPMCheck', {
+    vehicleSerial: _pmCurrentVehicle.SerialNo,
+    checkDate: (document.getElementById('pmCheckDate')||{}).value||'',
+    formNo: (document.getElementById('pmFormNo')||{}).value||'',
+    techName: (document.getElementById('pmTechName')||{}).value||'',
+    items: items,
+  }).then(function(res){
+    toast(res.message, res.success?'success':'error');
+    if(res.success){
+      _pmCurrentVehicle = null; _pmItemState = {};
+      document.getElementById('pmFormBox').innerHTML = '';
+      document.getElementById('pmVehSearch').value = '';
+    }
+  });
+}
+
 function migratePartsToSheet(){
   if(typeof PARTS_DB === 'undefined' || !PARTS_DB.length){
     console.error('❌ ไม่พบ PARTS_DB — ตรวจสอบว่า parts_data.js โหลดแล้วหรือยัง');
@@ -3940,10 +4201,11 @@ function renderMasterVehicles(){
   var shown = rows.slice(0, 200);
   el.innerHTML = '<div class="tw"><table class="it" style="font-size:13px"><thead><tr>'
     +'<th>Serial No.</th><th>เลขรถ</th><th>รุ่น</th><th>ลูกค้า</th>'
-    +'<th>สถานที่</th><th>สถานะ</th><th></th></tr></thead><tbody>'
+    +'<th>สถานที่</th><th>สถานะ</th><th>PM ทุกเดือน</th><th></th></tr></thead><tbody>'
     + shown.map(function(v){
       var inactive = String(v.Status||'Active').toLowerCase()==='inactive';
       var snEsc = encodeURIComponent(v.SerialNo);
+      var requirePM = String(v.RequirePM||'').toUpperCase()==='TRUE';
       return '<tr'+(inactive?' style="opacity:0.5;background:#fafafa"':'')+'>'
         +'<td style="font-size:12px;font-weight:600;color:var(--gd)">'+(v.SerialNo||'-')+'</td>'
         +'<td style="font-size:12px">'+(v.CarNo||'-')+'</td>'
@@ -3953,6 +4215,9 @@ function renderMasterVehicles(){
         +'<td>'+(inactive
             ? '<span style="color:#b71c1c;font-size:12px;font-weight:700">🚫 ปิดใช้งาน</span>'
             : '<span style="color:#2d6a4f;font-size:12px;font-weight:700">✓ ใช้งาน</span>')+'</td>'
+        +'<td><label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px">'
+          +'<input type="checkbox" '+(requirePM?'checked':'')+' onchange="toggleVehicleRequirePM(\''+snEsc+'\',this.checked)"> '+(requirePM?'✅':'—')
+        +'</label></td>'
         +'<td style="white-space:nowrap">'
           +'<button class="btn bo bsm m-veh-edit" data-sn="'+snEsc+'">✏️</button> '
           +(inactive
@@ -3971,6 +4236,16 @@ function renderMasterVehicles(){
   });
   el.querySelectorAll('.m-veh-on').forEach(function(b){
     b.onclick = function(){ toggleVehicleStatus(decodeURIComponent(this.dataset.sn), 'Active'); };
+  });
+}
+function toggleVehicleRequirePM(snEsc, checked){
+  var sn = decodeURIComponent(snEsc);
+  callAPI('setVehicleRequirePM',{serialNo:sn, requirePM:checked}).then(function(res){
+    toast(res.message, res.success?'success':'error');
+    if(res.success){
+      var v = _mVehicles.find(function(x){ return x.SerialNo===sn; });
+      if(v) v.RequirePM = checked ? 'TRUE' : 'FALSE';
+    }
   });
 }
 
@@ -14306,7 +14581,7 @@ function deleteCurrentReq(){
     if(!u || !u.email || !u.role) return;
     CU = u;
     var _validPg = ['dashboard','create','list','approval','stock','pickup','close','print',
-      'profile','jobs','stockcard','stockcount','changereq','vehiclehistory','sales','inventory','specialreq','master'];
+      'profile','jobs','stockcard','stockcount','changereq','vehiclehistory','pmcheck','sales','inventory','specialreq','master'];
     var restorePage = function(){
       if(typeof initApp !== 'function') return;
       initApp();
