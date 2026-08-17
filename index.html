@@ -331,7 +331,7 @@ textarea.fc{min-height:70px;resize:vertical;}
       <div style="height:1px;background:rgba(255,255,255,.15);margin:8px 12px"></div>
       <div class="ni" data-pg="stockcard" onclick="go('stockcard')"><span class="ic">🗂️</span> Stock Card</div>
       <div class="ni" data-pg="vehiclehistory" onclick="go('vehiclehistory')"><span class="ic">🚗</span> ประวัติรถ</div>
-      <div class="ni" data-pg="pmcheck" onclick="go('pmcheck')"><span class="ic">🔧</span> ตรวจเช็ครถ PM (ใบแช็ง)</div>
+      <div class="ni" data-pg="pmcheck" onclick="go('pmcheck')" id="nPMCheck"><span class="ic">🔧</span> ตรวจเช็ครถ PM (ใบแช็ง)<span class="badge hidden" id="pmBadge">0</span></div>
       <div class="ni" data-pg="inspection" onclick="go('inspection')"><span class="ic">📋</span> ใบตรวจสภาพรถ <span id="insBadge" class="bdg hidden"></span></div>
       <div class="ni" data-pg="stockcount" onclick="go('stockcount')" id="nStockCount"><span class="ic">🔢</span> นับสต็อก</div>
       <div class="ni hidden" id="nChangeReq" data-pg="changereq" onclick="go('changereq')"><span class="ic">🔑</span> คำขอแก้ไข<span class="badge" id="crBadge">0</span></div>
@@ -1433,7 +1433,7 @@ textarea.fc{min-height:70px;resize:vertical;}
   <div class="msi" onclick="go('list');closeMore()"><span>📋</span> รายการใบเบิก</div>
   <div class="msi" onclick="go('stockcard');closeMore()"><span>🗂️</span> Stock Card</div>
   <div class="msi" onclick="go('vehiclehistory');closeMore()"><span>🚗</span> ประวัติรถ</div>
-  <div class="msi" onclick="go('pmcheck');closeMore()"><span>🔧</span> ตรวจเช็ครถ PM (ใบแช็ง)</div>
+  <div class="msi" onclick="go('pmcheck');closeMore()"><span>🔧</span> ตรวจเช็ครถ PM (ใบแช็ง) <span id="pmBadge2" class="bdg hidden"></span></div>
   <div class="msi" onclick="go('inspection');closeMore()"><span>📋</span> ใบตรวจสภาพรถ <span id="insBadge2" class="bdg hidden"></span></div>
   <div class="msi" onclick="go('stockcount');closeMore()"><span>🔢</span> นับสต็อก</div>
   <div class="msi" onclick="go('inventory');closeMore()"><span>📦</span> ยอดคงเหลือ</div>
@@ -2841,6 +2841,25 @@ function _doRefreshBadges(){
   // เมนู "ของนอกคลัง" — ทุก role เห็นได้ (ช่างขอนำของสำรอง/รถ Service ไปติดตั้งบนรถได้เอง รอ Stock/ผจก.ยืนยัน)
   var ehMenu=document.getElementById('nExtHold');
   if(ehMenu) ehMenu.classList.remove('hidden');
+  // Badge เมนู "ตรวจเช็ครถ PM" — นับรถที่ครบ/เลยกำหนดตรวจ (>=30 วันจากตรวจล่าสุด หรือยังไม่เคยตรวจเลย) — cache 5 นาที
+  if(CU && (CU.role==='TECHNICIAN'||CU.role==='SUPERVISOR'||CU.role==='MANAGER'||CU.role==='ADMIN')){
+    var now4 = Date.now();
+    if(!window._pmBadgeCache || (now4 - (window._pmBadgeCacheTime||0)) > 5*60*1000){
+      callAPI('getVehiclesRequiringPM',{}).then(function(res){
+        window._pmBadgeCache = (res && res.success) ? (res.data||[]) : [];
+        window._pmBadgeCacheTime = Date.now();
+        var dueCount = window._pmBadgeCache.filter(function(v){
+          if(!v.lastCheckDate) return true;
+          var days = Math.round((new Date()-new Date(v.lastCheckDate))/86400000);
+          return days >= 30;
+        }).length;
+        ['pmBadge','pmBadge2'].forEach(function(id){
+          var b=document.getElementById(id);
+          if(b){ b.textContent=dueCount; b.className = id==='pmBadge' ? (dueCount>0?'badge':'badge hidden') : (dueCount>0?'bdg':'bdg hidden'); }
+        });
+      });
+    }
+  }
   // Manager/Admin: badge = จำนวนที่รออนุมัติทั้งหมด | ช่าง/Stock: badge = จำนวนคำขอของตัวเองที่ยังรออยู่
   callAPI('getChangeRequests', CU&&(CU.role==='MANAGER'||CU.role==='ADMIN') ? {status:'PENDING'} : {}).then(function(res){
     var list = res.data||[];
@@ -3311,6 +3330,7 @@ function printCboReport(){
     return '<tr>'
       +'<td>'+(i+1)+'</td>'
       +'<td>'+(r.PONo||'-')+'</td>'
+      +'<td>'+(r.QuoteNo||'-')+'</td>'
       +'<td>'+(r.CustomerName||'-')+'</td>'
       +'<td>'+(r.PartNo||'-')+'</td>'
       +'<td>'+(r.PartName||'-')+'</td>'
@@ -3336,7 +3356,7 @@ function printCboReport(){
     +'</style></head><body>'
     +'<h2>📦 รายงานสินค้าค้างส่งลูกค้า</h2>'
     +'<div class="sub">พิมพ์เมื่อ '+new Date().toLocaleString('th-TH')+' — ทั้งหมด '+rows.length+' รายการ</div>'
-    +'<table><thead><tr><th>#</th><th>PO</th><th>ลูกค้า</th><th>รหัสอะไหล่</th><th>ชื่ออะไหล่</th><th>จำนวน</th><th>สถานะ</th><th>แจ้งลูกค้าแล้ว</th><th>คาดว่าของเข้า</th><th>บันทึกโดย</th></tr></thead>'
+    +'<table><thead><tr><th>#</th><th>PO</th><th>ใบเสนอราคา</th><th>ลูกค้า</th><th>รหัสอะไหล่</th><th>ชื่ออะไหล่</th><th>จำนวน</th><th>สถานะ</th><th>แจ้งลูกค้าแล้ว</th><th>คาดว่าของเข้า</th><th>บันทึกโดย</th></tr></thead>'
     +'<tbody>'+rowsHtml+'</tbody></table>'
     +'</body></html>'
   );
@@ -4082,6 +4102,96 @@ function _pmOnPhoto(event, key){
     if(!b64) return;
     _pmItemState[key].photos.push(b64);
     renderPMCheckForm();
+  });
+}
+
+// ── พิมพ์ใบตรวจเช็ค PM ให้ใกล้เคียงฟอร์มกระดาษ ISO FM-BR-004 ──
+function printPMCheckReport(checkId){
+  toast('กำลังเตรียมเอกสาร...','info');
+  callAPI('getPMCheckHistory',{checkId:checkId}).then(function(res){
+    var visit = (res && res.success && res.data && res.data[0]) ? res.data[0] : null;
+    if(!visit){ toast('ไม่พบข้อมูลรอบตรวจนี้ค่ะ','error'); return; }
+
+    var itemsByKey = {};
+    visit.items.forEach(function(it){ itemsByKey[it.ItemKey] = it; });
+
+    var contractLabels = {Warranty:'งานในระยะประกัน (Warranty)', Rental:'งานเช่า (Rental)', Concession:'งานสัมปทาน (CONCESSION)', ServiceContract:'งานสัญญาบริการ (Service Contract)', Other:'อื่นๆ (Other)'};
+
+    function markCell(mark){
+      var color = mark==='X' ? '#b71c1c' : (mark==='O' ? '#e65100' : '#222');
+      return '<td style="border:1px solid #999;text-align:center;font-weight:700;color:'+color+';padding:3px">'+(mark||'')+'</td>';
+    }
+
+    var sectionsHtml = PM_CHECKLIST_ITEMS.map(function(sec){
+      var rows = sec.items.map(function(it){
+        var rec = itemsByKey[it.key];
+        var mark = rec ? rec.Status : '';
+        return '<tr><td style="border:1px solid #999;padding:3px 6px;font-size:10px">'+it.label+'</td>'+markCell(mark)+'</tr>';
+      }).join('');
+      return '<tr><td colspan="2" style="background:#ffe08a;border:1px solid #999;padding:3px 6px;font-weight:700;font-size:10.5px">'+sec.sectionLabel+'</td></tr>' + rows;
+    }).join('');
+
+    var defectItems = visit.items.filter(function(it){ return it.Status==='X'; });
+    var defectHtml = defectItems.length
+      ? '<div style="margin-top:14px"><div style="font-weight:700;font-size:11px;margin-bottom:4px">รายละเอียดปัญหาที่พบ (ชำรุด/Damaged)</div>'
+        +'<table style="width:100%;border-collapse:collapse;font-size:10px">'
+        +'<thead><tr>'+['หัวข้อ','ปัญหา','แก้ไขเบื้องต้น','เปลี่ยนอะไหล่','วันนัดแก้ไข'].map(function(h){ return '<th style="border:1px solid #999;background:#f0f0f0;padding:3px">'+h+'</th>'; }).join('')+'</tr></thead>'
+        +'<tbody>' + defectItems.map(function(it){
+            return '<tr>'
+              +'<td style="border:1px solid #999;padding:3px">'+it.ItemLabel+'</td>'
+              +'<td style="border:1px solid #999;padding:3px">'+(it.ProblemDesc||'-')+'</td>'
+              +'<td style="border:1px solid #999;padding:3px">'+(it.InitialFix||'-')+'</td>'
+              +'<td style="border:1px solid #999;padding:3px">'+(String(it.NeedsPartReplace).toUpperCase()==='TRUE' ? (it.PartNo||'-')+' x'+(it.PartQty||'-') : '-')+'</td>'
+              +'<td style="border:1px solid #999;padding:3px">'+(it.FollowUpDate||'-')+'</td>'
+            +'</tr>';
+          }).join('') + '</tbody></table></div>'
+      : '<div style="margin-top:14px;font-size:11px;color:#2d6a4f;font-weight:700">✅ ไม่พบปัญหาในรอบตรวจนี้</div>';
+
+    var sigHtml = function(url, name){
+      if(url) return '<img src="'+url+'" style="max-height:50px;max-width:150px;object-fit:contain">';
+      if(name) return '<div style="font-size:11px;color:#666">'+name+'</div>';
+      return '<div style="height:50px"></div>';
+    };
+
+    var win = window.open('', '_blank');
+    win.document.write(
+      '<html><head><meta charset="utf-8"><title>ใบตรวจเช็ครถ '+visit.vehicleSerial+'</title>'
+      +'<style>body{font-family:Sarabun,sans-serif;padding:16px;color:#222;font-size:11px}'
+      +'h2{margin:0;font-size:15px;text-align:center}'
+      +'table{border-collapse:collapse}'
+      +'.hdr-tbl td{padding:2px 6px;font-size:10.5px;vertical-align:top}'
+      +'@media print{body{padding:0}}'
+      +'</style></head><body>'
+      +'<div style="text-align:center;margin-bottom:6px">'
+        +'<div style="font-weight:700;font-size:13px">บริษัท บียอนด์ กรีน จำกัด</div>'
+        +'<div style="font-size:9.5px">63/15-18 หมู่ 5 ถนนเทพกระษัตรี ตำบลศรีสุนทร อำเภอถลาง จังหวัดภูเก็ต 83110 โทร:076-617-593</div>'
+        +'<h2 style="margin-top:6px">แบบฟอร์มตรวจเช็ครถ (Inspection Form)</h2>'
+        +'<div style="font-size:9.5px;color:#666">'+(visit.formNo||'FM-BR-004-07/66')+'</div>'
+      +'</div>'
+      +'<table class="hdr-tbl" style="width:100%">'
+        +'<tr><td style="width:50%"><b>ชื่อลูกค้า/Customer:</b> '+(visit.customerName||'-')+'</td><td><b>รุ่นรถ/Model:</b> '+(visit.vehicleModel||'-')+'</td></tr>'
+        +'<tr><td><b>ที่อยู่/Address:</b> '+(visit.address||'-')+'</td><td><b>Serial Number:</b> '+visit.vehicleSerial+'</td></tr>'
+        +'<tr><td><b>โทร/Tel:</b> '+(visit.phone||'-')+'</td><td><b>สีรถ/Color:</b> '+(visit.color||'-')+' &nbsp; <b>เบอร์รถ:</b> '+(visit.cartNo||'-')+' &nbsp; <b>หมายเลขรถ:</b> '+(visit.carNo||'-')+'</td></tr>'
+        +'<tr><td><b>ประเภทงาน:</b> '+(contractLabels[visit.contractType]||'-')+'</td><td><b>สัญญา:</b> '+(visit.contractStart||'-')+' — '+(visit.contractEnd||'ไปเรื่อยๆ')+'</td></tr>'
+      +'</table>'
+      +'<div style="margin-top:10px;font-weight:700">วันที่ตรวจเช็ค: '+visit.checkDate+'</div>'
+      +'<table style="width:100%;margin-top:6px">'
+        +'<tr><th style="border:1px solid #999;background:#f0f0f0;padding:3px;width:80%">รายละเอียดการตรวจเช็ค (Item for Check List)</th><th style="border:1px solid #999;background:#f0f0f0;padding:3px">ผล</th></tr>'
+        + sectionsHtml
+      +'</table>'
+      +'<div style="font-size:9px;margin-top:4px">✓ = ปกติ/Normal &nbsp;&nbsp; O = แก้ไข/Corrective &nbsp;&nbsp; X = ชำรุด/Damaged</div>'
+      + defectHtml
+      +'<table class="hdr-tbl" style="width:100%;margin-top:14px">'
+        +'<tr><td style="width:50%"><b>รุ่นแบตเตอรี่:</b> '+(visit.batteryModel||'-')+'</td><td><b>ปี/ซีรี่แบตเตอรี่:</b> '+(visit.batteryYearSeries||'-')+'</td></tr>'
+      +'</table>'
+      +'<table style="width:100%;margin-top:20px"><tr>'
+        +'<td style="width:50%;text-align:center">'+sigHtml(visit.techSignatureUrl, visit.techName)+'<div style="border-top:1px solid #999;margin-top:4px;padding-top:2px">ชื่อช่างผู้ตรวจเช็ค/Technician: '+(visit.techName||'-')+'</div></td>'
+        +'<td style="width:50%;text-align:center">'+sigHtml(visit.customerSignatureUrl, visit.customerNameSigned)+'<div style="border-top:1px solid #999;margin-top:4px;padding-top:2px">ชื่อลูกค้า/Customer: '+(visit.customerNameSigned||'-')+'</div></td>'
+      +'</tr></table>'
+      +'</body></html>'
+    );
+    win.document.close();
+    setTimeout(function(){ win.print(); }, 400);
   });
 }
 
@@ -10809,6 +10919,49 @@ function _fmtVHDate(v){
   return s; // อ่านไม่ออกก็แสดงดิบ (ดีกว่า Invalid Date)
 }
 
+// ── สรุปประวัติตรวจเช็ค PM ของรถคันนี้ (โชว์คู่กับประวัติเปลี่ยนอะไหล่) ──
+function renderVHPMSummary(pmVisits, serial){
+  if(!pmVisits.length){
+    return '<div class="card" style="padding:10px 14px;margin-bottom:8px;background:#fff8e1;font-size:13px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+      +'<span>🔧 ยังไม่มีประวัติตรวจเช็ค PM ของรถคันนี้ค่ะ</span>'
+      +'<button class="btn bp bsm" onclick="go(\'pmcheck\');setTimeout(function(){selectPMVehicle(\''+serial+'\')},400)">🔧 ตรวจเช็ค PM เลย</button>'
+    +'</div>';
+  }
+  var latest = pmVisits[0];
+  var damagedInLatest = latest.items.filter(function(it){ return it.Status==='X'; }).length;
+  return '<div class="card" style="padding:10px 14px;margin-bottom:8px;background:#fff8e1">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+      +'<div style="font-size:13px">🔧 ประวัติตรวจเช็ค PM <strong>'+pmVisits.length+' รอบ</strong> — ล่าสุด <strong>'+(latest.checkDate||'-')+'</strong>'
+        +(damagedInLatest>0 ? ' <span style="color:#b71c1c;font-weight:700">⚠️ พบปัญหา '+damagedInLatest+' จุด</span>' : ' <span style="color:#2d6a4f">✅ ปกติ</span>')
+      +'</div>'
+      +'<div style="display:flex;gap:6px">'
+        +'<button class="btn bo bsm" onclick="toggleVHPMHistoryDetail(\''+serial+'\')" id="vhPmToggleBtn">ดูทุกรอบ ▾</button>'
+        +'<button class="btn bp bsm" onclick="go(\'pmcheck\');setTimeout(function(){selectPMVehicle(\''+serial+'\')},400)">🔧 ตรวจเช็คใหม่</button>'
+      +'</div>'
+    +'</div>'
+    +'<div id="vhPmHistoryDetail" class="hidden" style="margin-top:10px">'
+      + pmVisits.map(function(v){
+          var damaged = v.items.filter(function(it){ return it.Status==='X'; });
+          return '<div style="border-top:1px solid #f0e6c8;padding:8px 0;font-size:12px">'
+            +'<div><strong>'+v.checkDate+'</strong> — ตรวจโดย '+(v.techName||v.techEmail||'-')+' ('+v.items.length+' หัวข้อ)'
+              +' <a href="#" onclick="printPMCheckReport(\''+v.checkId+'\');return false;" style="margin-left:8px">🖨️ พิมพ์</a></div>'
+            + (damaged.length
+              ? '<div style="color:#b71c1c;margin-top:2px">⚠️ '+damaged.map(function(d){ return d.ItemLabel; }).join(', ')+'</div>'
+              : '<div style="color:#2d6a4f;margin-top:2px">✅ ไม่พบปัญหา</div>')
+          +'</div>';
+        }).join('')
+    +'</div>'
+  +'</div>';
+}
+function toggleVHPMHistoryDetail(serial){
+  var el = document.getElementById('vhPmHistoryDetail');
+  var btn = document.getElementById('vhPmToggleBtn');
+  if(!el) return;
+  var showing = !el.classList.contains('hidden');
+  el.classList.toggle('hidden', showing);
+  if(btn) btn.textContent = showing ? 'ดูทุกรอบ ▾' : 'ซ่อน ▴';
+}
+
 function loadVehicleHistory(){
   var typed = (document.getElementById('vhSearch').value||'').trim();
   var serial = typed || _vhCurrentSerial;
@@ -10818,15 +10971,25 @@ function loadVehicleHistory(){
   if(!box) return;
   box.innerHTML = '<div class="card tc tm" style="padding:24px">⏳ กำลังโหลดประวัติรถ...</div>';
 
-  callAPI('getVehicleHistory',{serialNo:serial}).then(function(res){
+  Promise.all([
+    callAPI('getVehicleHistory',{serialNo:serial}),
+    callAPI('getPMCheckHistory',{vehicleSerial:serial}),
+  ]).then(function(results){
+    var res = results[0];
+    var pmRes = results[1];
+    var pmVisits = (pmRes && pmRes.success) ? (pmRes.data||[]) : [];
     var rows = res.data||[];
+
+    var pmSummaryHtml = renderVHPMSummary(pmVisits, serial);
+
     if(!rows.length){
-      box.innerHTML='<div class="card tc tm" style="padding:40px;color:var(--g400)"><div style="font-size:28px">📋</div><div style="margin-top:8px">ยังไม่มีประวัติการซ่อม/เปลี่ยนอะไหล่ของรถคันนี้ค่ะ</div></div>';
+      box.innerHTML = pmSummaryHtml + '<div class="card tc tm" style="padding:40px;color:var(--g400)"><div style="font-size:28px">📋</div><div style="margin-top:8px">ยังไม่มีประวัติการซ่อม/เปลี่ยนอะไหล่ของรถคันนี้ค่ะ</div></div>';
       return;
     }
 
-    var html='<div class="card" style="padding:10px 14px;margin-bottom:8px;background:#e8eaf6;font-size:13px">'
-      +'🔧 ประวัติทั้งหมด <strong>'+rows.length+' รายการ</strong> | Serial: <strong>'+serial+'</strong></div>'
+    var html= pmSummaryHtml
+      +'<div class="card" style="padding:10px 14px;margin-bottom:8px;background:#e8eaf6;font-size:13px">'
+      +'🔧 ประวัติเปลี่ยนอะไหล่ทั้งหมด <strong>'+rows.length+' รายการ</strong> | Serial: <strong>'+serial+'</strong></div>'
       +'<div id="vhCurrentPartsBox"></div>'
       +'<div class="card" style="padding:0;overflow:hidden"><div class="tw"><table class="it" style="font-size:13px"><thead><tr>'
       +'<th>วันที่</th><th>ใบเบิก</th><th>Job No.</th><th>Part No.</th><th>ชื่ออะไหล่</th>'
