@@ -1393,10 +1393,10 @@ textarea.fc{min-height:70px;resize:vertical;}
         </div>
 
         <div id="pmCheckTabContent">
+          <div id="pmDashboardBox"></div>
           <div class="card" style="padding:14px 16px;margin-bottom:12px">
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
               <input class="fc" id="pmVehSearch" placeholder="🔍 พิมพ์ Serial No. รถที่จะตรวจเช็ค..." style="flex:1;min-width:200px" oninput="onPMVehSearch()" autocomplete="off">
-              <button class="btn bp" onclick="loadPMDueList()">📋 ดูรายชื่อรถที่ต้องตรวจ PM</button>
             </div>
             <div id="pmVehDrop" style="display:none;max-height:220px;overflow-y:auto;border:1px solid var(--g200);border-radius:8px;margin-bottom:10px"></div>
             <div id="pmDueListBox"></div>
@@ -3799,6 +3799,108 @@ function initPMCheckPage(){
   if(cfgBtn) cfgBtn.style.display = (CU && (CU.role==='ADMIN'||CU.role==='MANAGER')) ? 'inline-block' : 'none';
   if(!window._vehiclesDB || !window._vehiclesDB.length) loadVehiclesDB();
   switchPMMainTab(_pmMainTab||'check');
+  loadPMDashboard();
+}
+
+// ── แดชบอร์ดสรุปภาพรวม PM: ตัวเลขรวม + จัดกลุ่มตามลูกค้า/สถานที่ + ปัญหาที่พบ (Active Issues) ──
+var _pmDashData = null;
+var _pmDashSubTab = 'groups';
+function loadPMDashboard(){
+  var box = document.getElementById('pmDashboardBox');
+  if(!box) return;
+  box.innerHTML = '<div class="card tc tm" style="padding:20px">⏳ กำลังโหลดภาพรวม...</div>';
+  callAPI('getPMDashboardSummary',{}).then(function(res){
+    _pmDashData = (res && res.success) ? res.data : null;
+    renderPMDashboard();
+  });
+}
+function renderPMDashboard(){
+  var box = document.getElementById('pmDashboardBox');
+  if(!box || !_pmDashData) return;
+  var d = _pmDashData;
+
+  var cards = [
+    {label:'รถที่ต้องตรวจทั้งหมด', val:d.totalVehicles, color:'#1a2e22', icon:'🚙'},
+    {label:'ตรวจแล้ว (30 วันล่าสุด)', val:d.upToDate, color:'#2d6a4f', icon:'✅'},
+    {label:'ครบกำหนดแล้ว', val:d.overdue, color:'#e65100', icon:'⏰'},
+    {label:'ยังไม่เคยตรวจเลย', val:d.neverChecked, color:'#b71c1c', icon:'🚫'},
+    {label:'⚠️ ปัญหาที่พบ (60 วันล่าสุด)', val:d.issues.length, color:'#b71c1c', icon:'🔴'},
+  ];
+
+  var html = '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px">'
+    + cards.map(function(c,i){
+        return '<div class="card" style="text-align:center;padding:14px;cursor:pointer" onclick="'+(i===4?'switchPMDashSubTab(\'issues\')':'switchPMDashSubTab(\'groups\')')+'">'
+          +'<div style="font-size:18px">'+c.icon+'</div>'
+          +'<div style="font-size:24px;font-weight:700;color:'+c.color+'">'+c.val+'</div>'
+          +'<div style="font-size:11px;color:var(--g400);margin-top:2px">'+c.label+'</div></div>';
+      }).join('')
+    +'</div>'
+    +'<div class="card" style="padding:14px 16px">'
+      +'<div style="display:flex;gap:8px;margin-bottom:10px">'
+        +'<button class="btn bsm" id="pmDashTabGroups" onclick="switchPMDashSubTab(\'groups\')">📍 แยกตามลูกค้า/สถานที่</button>'
+        +'<button class="btn bsm" id="pmDashTabIssues" onclick="switchPMDashSubTab(\'issues\')">🔴 ปัญหาที่พบ (Active Issues)</button>'
+      +'</div>'
+      +'<div id="pmDashSubContent"></div>'
+    +'</div>';
+  box.innerHTML = html;
+  switchPMDashSubTab(_pmDashSubTab);
+}
+function switchPMDashSubTab(tab){
+  _pmDashSubTab = tab;
+  var gBtn = document.getElementById('pmDashTabGroups'), iBtn = document.getElementById('pmDashTabIssues');
+  if(gBtn) gBtn.className = tab==='groups' ? 'btn bgd bsm' : 'btn bo bsm';
+  if(iBtn) iBtn.className = tab==='issues' ? 'btn bgd bsm' : 'btn bo bsm';
+  var content = document.getElementById('pmDashSubContent');
+  if(!content || !_pmDashData) return;
+
+  if(tab==='groups'){
+    var careLabel = {Rental:'เช่า', Concession:'สัมปทาน'};
+    content.innerHTML = !_pmDashData.groups.length
+      ? '<div class="tc tm" style="padding:16px">ยังไม่มีรถที่ตั้งประเภท เช่า/สัมปทาน ไว้ค่ะ</div>'
+      : '<div class="tw"><table class="it" style="font-size:12px"><thead><tr><th>ลูกค้า</th><th>สถานที่</th><th>ประเภท</th><th style="text-align:center">ทั้งหมด</th><th style="text-align:center">ตรวจแล้ว</th><th style="text-align:center">ครบกำหนด</th><th style="text-align:center">ยังไม่เคยตรวจ</th><th></th></tr></thead><tbody>'
+        + _pmDashData.groups.map(function(g){
+            return '<tr>'
+              +'<td>'+g.customer+'</td><td style="color:var(--g400)">'+g.location+'</td>'
+              +'<td>'+(careLabel[g.careType]||g.careType||'-')+'</td>'
+              +'<td style="text-align:center;font-weight:700">'+g.total+'</td>'
+              +'<td style="text-align:center;color:#2d6a4f">'+g.ok+'</td>'
+              +'<td style="text-align:center;color:'+(g.overdue>0?'#e65100;font-weight:700':'var(--g400)')+'">'+g.overdue+'</td>'
+              +'<td style="text-align:center;color:'+(g.never>0?'#b71c1c;font-weight:700':'var(--g400)')+'">'+g.never+'</td>'
+              +'<td><button class="btn bo bsm" onclick="drillPMGroup(\''+encodeURIComponent(g.customer)+'\',\''+encodeURIComponent(g.location)+'\')">ดูรายชื่อรถ</button></td>'
+            +'</tr>';
+          }).join('')
+        +'</tbody></table></div>';
+  } else {
+    content.innerHTML = !_pmDashData.issues.length
+      ? '<div class="tc tm" style="padding:16px">✅ ไม่พบปัญหาในช่วง 60 วันล่าสุดค่ะ</div>'
+      : '<div class="tw"><table class="it" style="font-size:12px"><thead><tr><th>วันที่พบ</th><th>รถ</th><th>หัวข้อ</th><th>ปัญหา</th><th>เปลี่ยนอะไหล่</th><th>นัดแก้ไข</th><th>ช่าง</th><th></th></tr></thead><tbody>'
+        + _pmDashData.issues.map(function(it){
+            return '<tr>'
+              +'<td style="white-space:nowrap">'+(it.checkDate||'-')+'</td>'
+              +'<td style="font-weight:700;color:var(--gd)">'+it.vehicleSerial+'</td>'
+              +'<td>'+it.itemLabel+'</td>'
+              +'<td>'+(it.problemDesc||'-')+'</td>'
+              +'<td>'+(String(it.needsPartReplace).toUpperCase()==='TRUE'?'✅ ต้องเปลี่ยน':'-')+'</td>'
+              +'<td>'+(it.followUpDate||'-')+'</td>'
+              +'<td style="color:var(--g400)">'+(it.techName||'-')+'</td>'
+              +'<td><button class="btn bo bsm" onclick="printPMCheckReport(\''+it.checkId+'\')">🖨️</button></td>'
+            +'</tr>';
+          }).join('')
+        +'</tbody></table></div>';
+  }
+}
+function drillPMGroup(customerEnc, locationEnc){
+  var customer = decodeURIComponent(customerEnc), location = decodeURIComponent(locationEnc);
+  callAPI('getVehiclesRequiringPM',{}).then(function(res){
+    var list = ((res && res.success) ? (res.data||[]) : []).filter(function(v){
+      return (v.customer||'ไม่ระบุลูกค้า')===customer && (v.location||'ไม่ระบุสถานที่')===location;
+    });
+    _pmDueListFull = list;
+    _pmDueListShown = 100;
+    renderPMDueList();
+    var el = document.getElementById('pmDueListBox');
+    if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+  });
 }
 
 // ── แผนตาราง Warranty — แอดมิน/ผจก.กำหนดวันนัดเองทีละคัน, ช่างดูได้อย่างเดียว ──
@@ -3901,26 +4003,50 @@ function onPMVehSearch(){
   dd.style.display = 'block';
 }
 
+var _pmDueListFull = [];
+var _pmDueListShown = 50;
 function loadPMDueList(){
   var box = document.getElementById('pmDueListBox');
   box.innerHTML = '<div class="tc tm" style="padding:16px">⏳ กำลังโหลด...</div>';
   callAPI('getVehiclesRequiringPM',{}).then(function(res){
     var list = (res && res.success) ? (res.data||[]) : [];
     if(!list.length){ box.innerHTML = '<div class="tc tm" style="padding:16px">ยังไม่มีรถที่ตั้งค่า "ต้องตรวจ PM ทุกเดือน" ไว้ในระบบค่ะ (ไปตั้งค่าได้ที่หน้า "จัดการอะไหล่/รถ")</div>'; return; }
-    box.innerHTML = '<div style="font-size:12px;font-weight:600;color:var(--gd);margin:10px 0 6px">🚙 รถที่ต้องตรวจ PM ทุกเดือน ('+list.length+' คัน)</div>'
-      + list.map(function(v){
-          var overdue = !v.lastCheckDate;
-          var daysSince = v.lastCheckDate ? Math.round((new Date()-new Date(v.lastCheckDate))/86400000) : null;
-          var badge = !v.lastCheckDate ? '<span style="background:#b71c1c;color:#fff;border-radius:10px;padding:2px 8px;font-size:11px">ยังไม่เคยตรวจ</span>'
-            : (daysSince>=30 ? '<span style="background:#e65100;color:#fff;border-radius:10px;padding:2px 8px;font-size:11px">ตรวจล่าสุด '+daysSince+' วันก่อน — ครบกำหนดแล้ว</span>'
-            : '<span style="background:#2d6a4f;color:#fff;border-radius:10px;padding:2px 8px;font-size:11px">ตรวจล่าสุด '+daysSince+' วันก่อน</span>');
-          return '<div class="card" style="padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
-            +'<div style="flex:1;min-width:180px"><strong>'+v.serialNo+'</strong> — '+(v.vehicleType||'')+'<div style="font-size:11px;color:var(--g400)">'+(v.customer||'')+'</div></div>'
-            + badge
-            +'<button class="btn bp bsm" onclick="selectPMVehicle(\''+v.serialNo+'\')">🔧 ตรวจเช็คเลย</button>'
-          +'</div>';
-        }).join('');
+    // เรียงให้ "ยังไม่เคยตรวจ/ค้างนานสุด" ขึ้นก่อน จะได้เห็นตัวสำคัญโดยไม่ต้องเลื่อนหา
+    list.sort(function(a,b){
+      if(!a.lastCheckDate && !b.lastCheckDate) return 0;
+      if(!a.lastCheckDate) return -1;
+      if(!b.lastCheckDate) return 1;
+      return new Date(a.lastCheckDate) - new Date(b.lastCheckDate);
+    });
+    _pmDueListFull = list;
+    _pmDueListShown = 50;
+    renderPMDueList();
   });
+}
+function renderPMDueList(){
+  var box = document.getElementById('pmDueListBox');
+  var list = _pmDueListFull;
+  var shown = list.slice(0, _pmDueListShown);
+  // ⚡ ใช้ตารางแทนการ์ด — เบากว่ามากตอนมีรถหลักร้อยคัน กันหน้าค้าง/กดไม่ติด
+  box.innerHTML = '<div style="font-size:12px;font-weight:600;color:var(--gd);margin:10px 0 6px">🚙 รถที่ต้องตรวจ PM ทุกเดือน ('+list.length+' คัน — แสดง '+shown.length+' คัน)</div>'
+    +'<div class="tw"><table class="it" style="font-size:12px"><thead><tr><th>Serial No.</th><th>รุ่น</th><th>ลูกค้า</th><th>สถานะ</th><th></th></tr></thead><tbody>'
+    + shown.map(function(v){
+        var daysSince = v.lastCheckDate ? Math.round((new Date()-new Date(v.lastCheckDate))/86400000) : null;
+        var badge = !v.lastCheckDate ? '<span style="background:#b71c1c;color:#fff;border-radius:10px;padding:2px 8px;font-size:11px;white-space:nowrap">ยังไม่เคยตรวจ</span>'
+          : (daysSince>=30 ? '<span style="background:#e65100;color:#fff;border-radius:10px;padding:2px 8px;font-size:11px;white-space:nowrap">ค้าง '+daysSince+' วัน</span>'
+          : '<span style="background:#2d6a4f;color:#fff;border-radius:10px;padding:2px 8px;font-size:11px;white-space:nowrap">'+daysSince+' วันก่อน</span>');
+        return '<tr>'
+          +'<td style="font-weight:600;color:var(--gd)">'+v.serialNo+'</td>'
+          +'<td style="color:var(--g400)">'+(v.vehicleType||'-')+'</td>'
+          +'<td style="color:var(--g400)">'+(v.customer||'-')+'</td>'
+          +'<td>'+badge+'</td>'
+          +'<td><button class="btn bp bsm" onclick="selectPMVehicle(\''+v.serialNo+'\')">🔧 ตรวจเช็ค</button></td>'
+        +'</tr>';
+      }).join('')
+    +'</tbody></table></div>'
+    + (list.length > _pmDueListShown
+        ? '<div class="tc" style="padding:10px"><button class="btn bo bsm" onclick="_pmDueListShown+=100;renderPMDueList()">⬇️ แสดงเพิ่มอีก (เหลือ '+(list.length-_pmDueListShown)+' คัน)</button></div>'
+        : '');
 }
 
 var _pmPhotoConfig = {};
@@ -4646,8 +4772,19 @@ function renderMasterVehicles(){
     return;
   }
   var shown = rows.slice(0, 200);
-  el.innerHTML = '<div class="tw"><table class="it" style="font-size:13px"><thead><tr>'
-    +'<th>Serial No.</th><th>เลขรถ</th><th>รุ่น</th><th>ลูกค้า</th>'
+  var bulkBar = '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;padding:8px 10px;background:#f5f5f5;border-radius:8px">'
+    +'<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" id="mVehSelectAll" onchange="toggleSelectAllVeh(this.checked)"> เลือกทั้งหมดที่กำลังแสดง ('+shown.length+' คัน)</label>'
+    +'<span style="font-size:12px;color:var(--g400)" id="mVehSelCount">เลือกไว้ 0 คัน</span>'
+    +'<select class="fc" id="mVehBulkCareType" style="font-size:12px;width:auto;margin-left:auto">'
+      +'<option value="">— เลือกประเภทที่จะตั้งให้ทุกแถวที่เลือก —</option>'
+      +'<option value="">ไม่มี</option><option value="Rental">เช่า (PM ทุกเดือน)</option>'
+      +'<option value="Concession">สัมปทาน (PM ทุกเดือน)</option><option value="Warranty">Warranty (ตารางเฉพาะ)</option>'
+      +'<option value="Other">อื่นๆ</option>'
+    +'</select>'
+    +'<button class="btn bp bsm" onclick="applyBulkCareType()">✅ ตั้งค่าให้ที่เลือกไว้</button>'
+  +'</div>';
+  el.innerHTML = bulkBar + '<div class="tw"><table class="it" style="font-size:13px"><thead><tr>'
+    +'<th></th><th>Serial No.</th><th>เลขรถ</th><th>รุ่น</th><th>ลูกค้า</th>'
     +'<th>สถานที่</th><th>สถานะ</th><th>ประเภทการดูแล</th><th></th></tr></thead><tbody>'
     + shown.map(function(v){
       var inactive = String(v.Status||'Active').toLowerCase()==='inactive';
@@ -4655,6 +4792,7 @@ function renderMasterVehicles(){
       var careType = v.CareType||'';
       var opts = [['','ไม่มี'],['Rental','เช่า (PM ทุกเดือน)'],['Concession','สัมปทาน (PM ทุกเดือน)'],['Warranty','Warranty (ตารางเฉพาะ)'],['Other','อื่นๆ']];
       return '<tr'+(inactive?' style="opacity:0.5;background:#fafafa"':'')+'>'
+        +'<td><input type="checkbox" class="mVehChk" value="'+snEsc+'" onchange="updateVehSelCount()"></td>'
         +'<td style="font-size:12px;font-weight:600;color:var(--gd)">'+(v.SerialNo||'-')+'</td>'
         +'<td style="font-size:12px">'+(v.CarNo||'-')+'</td>'
         +'<td style="font-size:12px">'+(v.Model||'-')+'</td>'
@@ -4684,6 +4822,34 @@ function renderMasterVehicles(){
   });
   el.querySelectorAll('.m-veh-on').forEach(function(b){
     b.onclick = function(){ toggleVehicleStatus(decodeURIComponent(this.dataset.sn), 'Active'); };
+  });
+}
+function toggleSelectAllVeh(checked){
+  document.querySelectorAll('.mVehChk').forEach(function(cb){ cb.checked = checked; });
+  updateVehSelCount();
+}
+function updateVehSelCount(){
+  var n = document.querySelectorAll('.mVehChk:checked').length;
+  var el = document.getElementById('mVehSelCount');
+  if(el) el.textContent = 'เลือกไว้ '+n+' คัน';
+}
+function applyBulkCareType(){
+  var checked = Array.prototype.slice.call(document.querySelectorAll('.mVehChk:checked'));
+  if(!checked.length) return toast('กรุณาเลือกรถอย่างน้อย 1 คันก่อนค่ะ','error');
+  var careType = document.getElementById('mVehBulkCareType').value;
+  var serials = checked.map(function(cb){ return decodeURIComponent(cb.value); });
+  var careLabel = {'':'ไม่มี', Rental:'เช่า', Concession:'สัมปทาน', Warranty:'Warranty', Other:'อื่นๆ'};
+  if(!confirm('ยืนยันตั้งประเภทการดูแลเป็น "'+(careLabel[careType]||careType)+'" ให้รถ '+serials.length+' คันที่เลือกไว้?')) return;
+  toast('กำลังบันทึก...','info');
+  callAPI('bulkSetVehicleCareType',{serials:serials, careType:careType}).then(function(res){
+    toast(res.message, res.success?'success':'error');
+    if(res.success){
+      serials.forEach(function(sn){
+        var v = _mVehicles.find(function(x){ return x.SerialNo===sn; });
+        if(v) v.CareType = careType;
+      });
+      renderMasterVehicles();
+    }
   });
 }
 function setVehicleCareType(snEsc, careType){
