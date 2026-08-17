@@ -1186,7 +1186,7 @@ textarea.fc{min-height:70px;resize:vertical;}
         <div id="mTabVehicles" class="hidden">
           <div class="card" style="padding:14px 16px;margin-bottom:12px">
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-              <input class="fc" id="mVehSearch" placeholder="🔍 ค้นหา Serial / เลขรถ / ลูกค้า / สถานที่..." style="flex:1;min-width:200px" oninput="renderMasterVehicles()">
+              <input class="fc" id="mVehSearch" placeholder="🔍 ค้นหา Serial / เลขรถ / ลูกค้า / สถานที่..." style="flex:1;min-width:200px" oninput="_mVehSelectAllFilteredMode=false;renderMasterVehicles()">
               <button class="btn bp bsm" onclick="openAddCustomerModal()">➕ เพิ่มรถ/ลูกค้า</button>
             </div>
             <div id="mVehCount" style="font-size:12px;color:var(--g400);margin-top:8px"></div>
@@ -1399,7 +1399,7 @@ textarea.fc{min-height:70px;resize:vertical;}
               <input class="fc" id="pmVehSearch" placeholder="🔍 พิมพ์ Serial No. รถที่จะตรวจเช็ค..." style="flex:1;min-width:200px" oninput="onPMVehSearch()" autocomplete="off">
             </div>
             <div id="pmVehDrop" style="display:none;max-height:220px;overflow-y:auto;border:1px solid var(--g200);border-radius:8px;margin-bottom:10px"></div>
-            <div id="pmDueListBox"></div>
+            <div id="pmDueListBox" style="max-height:60vh;overflow-y:auto"></div>
           </div>
           <div id="pmFormBox"></div>
           <div id="pmLogBox"></div>
@@ -3827,7 +3827,17 @@ function renderPMDashboard(){
     {label:'⚠️ ปัญหาที่พบ (60 วันล่าสุด)', val:d.issues.length, color:'#b71c1c', icon:'🔴'},
   ];
 
-  var html = '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px">'
+  // ── แถบความโปร่งใส: รถในระบบทั้งหมดหายไปไหนบ้าง (แก้ข้อสงสัยเรื่อง "จำนวนไม่ครบ") ──
+  var cb = d.careTypeBreakdown||{};
+  var transparencyHtml = '<div class="card" style="padding:10px 14px;margin-bottom:12px;background:#f5f5f5;font-size:11px;color:var(--g400)">'
+    +'📊 รถทั้งหมดในระบบ <strong>'+d.totalAllVehiclesInSystem+'</strong> คัน แยกเป็น: '
+    +'เช่า <strong>'+(cb.Rental||0)+'</strong> | สัมปทาน <strong>'+(cb.Concession||0)+'</strong> | Warranty <strong>'+(cb.Warranty||0)+'</strong> | อื่นๆ <strong>'+(cb.Other||0)+'</strong> | '
+    +'<span style="color:'+(cb.Unclassified>0?'#b71c1c':'inherit')+';font-weight:'+(cb.Unclassified>0?'700':'400')+'">ยังไม่ตั้งประเภท '+(cb.Unclassified||0)+'</span> | '
+    +'ปิดใช้งาน (ไม่นับ) '+(cb.Inactive||0)
+    +(cb.Unclassified>0 ? '<br>⚠️ มีรถ '+cb.Unclassified+' คันที่ยังไม่ได้ตั้งประเภทการดูแล เลยไม่ขึ้นในแดชบอร์ดนี้ — ไปตั้งค่าเพิ่มได้ที่หน้า "จัดการอะไหล่/รถ"' : '')
+  +'</div>';
+
+  var html = transparencyHtml + '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px">'
     + cards.map(function(c,i){
         return '<div class="card" style="text-align:center;padding:14px;cursor:pointer" onclick="'+(i===4?'switchPMDashSubTab(\'issues\')':'switchPMDashSubTab(\'groups\')')+'">'
           +'<div style="font-size:18px">'+c.icon+'</div>'
@@ -3840,7 +3850,7 @@ function renderPMDashboard(){
         +'<button class="btn bsm" id="pmDashTabGroups" onclick="switchPMDashSubTab(\'groups\')">📍 แยกตามลูกค้า/สถานที่</button>'
         +'<button class="btn bsm" id="pmDashTabIssues" onclick="switchPMDashSubTab(\'issues\')">🔴 ปัญหาที่พบ (Active Issues)</button>'
       +'</div>'
-      +'<div id="pmDashSubContent"></div>'
+      +'<div id="pmDashSubContent" style="max-height:60vh;overflow-y:auto"></div>'
     +'</div>';
   box.innerHTML = html;
   switchPMDashSubTab(_pmDashSubTab);
@@ -3857,7 +3867,7 @@ function switchPMDashSubTab(tab){
     var careLabel = {Rental:'เช่า', Concession:'สัมปทาน'};
     content.innerHTML = !_pmDashData.groups.length
       ? '<div class="tc tm" style="padding:16px">ยังไม่มีรถที่ตั้งประเภท เช่า/สัมปทาน ไว้ค่ะ</div>'
-      : '<div class="tw"><table class="it" style="font-size:12px"><thead><tr><th>ลูกค้า</th><th>สถานที่</th><th>ประเภท</th><th style="text-align:center">ทั้งหมด</th><th style="text-align:center">ตรวจแล้ว</th><th style="text-align:center">ครบกำหนด</th><th style="text-align:center">ยังไม่เคยตรวจ</th><th></th></tr></thead><tbody>'
+      : '<div class="tw"><table class="it" style="font-size:12px"><thead style="position:sticky;top:0;z-index:2"><tr><th>ลูกค้า</th><th>สถานที่</th><th>ประเภท</th><th style="text-align:center">ทั้งหมด</th><th style="text-align:center">ตรวจแล้ว</th><th style="text-align:center">ครบกำหนด</th><th style="text-align:center">ยังไม่เคยตรวจ</th><th></th></tr></thead><tbody>'
         + _pmDashData.groups.map(function(g){
             return '<tr>'
               +'<td>'+g.customer+'</td><td style="color:var(--g400)">'+g.location+'</td>'
@@ -3873,7 +3883,7 @@ function switchPMDashSubTab(tab){
   } else {
     content.innerHTML = !_pmDashData.issues.length
       ? '<div class="tc tm" style="padding:16px">✅ ไม่พบปัญหาในช่วง 60 วันล่าสุดค่ะ</div>'
-      : '<div class="tw"><table class="it" style="font-size:12px"><thead><tr><th>วันที่พบ</th><th>รถ</th><th>หัวข้อ</th><th>ปัญหา</th><th>เปลี่ยนอะไหล่</th><th>นัดแก้ไข</th><th>ช่าง</th><th></th></tr></thead><tbody>'
+      : '<div class="tw"><table class="it" style="font-size:12px"><thead style="position:sticky;top:0;z-index:2"><tr><th>วันที่พบ</th><th>รถ</th><th>หัวข้อ</th><th>ปัญหา</th><th>เปลี่ยนอะไหล่</th><th>นัดแก้ไข</th><th>ช่าง</th><th></th></tr></thead><tbody>'
         + _pmDashData.issues.map(function(it){
             return '<tr>'
               +'<td style="white-space:nowrap">'+(it.checkDate||'-')+'</td>'
@@ -4131,18 +4141,24 @@ function renderPMDueList(){
   var box = document.getElementById('pmDueListBox');
   var list = _pmDueListFull;
   var shown = list.slice(0, _pmDueListShown);
+  var today = new Date().toISOString().slice(0,10);
   // ⚡ ใช้ตารางแทนการ์ด — เบากว่ามากตอนมีรถหลักร้อยคัน กันหน้าค้าง/กดไม่ติด
   box.innerHTML = '<div style="font-size:12px;font-weight:600;color:var(--gd);margin:10px 0 6px">🚙 รถที่ต้องตรวจ PM ทุกเดือน ('+list.length+' คัน — แสดง '+shown.length+' คัน)</div>'
-    +'<div class="tw"><table class="it" style="font-size:12px"><thead><tr><th>Serial No.</th><th>รุ่น</th><th>ลูกค้า</th><th>สถานะ</th><th></th></tr></thead><tbody>'
+    +'<div class="tw"><table class="it" style="font-size:12px"><thead><tr><th>Serial No.</th><th>รุ่น</th><th>ลูกค้า</th><th>✅ Actual (ตรวจล่าสุด)</th><th>📅 แผน (ครั้งถัดไป)</th><th>สถานะ</th><th></th></tr></thead><tbody>'
     + shown.map(function(v){
         var daysSince = v.lastCheckDate ? Math.round((new Date()-new Date(v.lastCheckDate))/86400000) : null;
         var badge = !v.lastCheckDate ? '<span style="background:#b71c1c;color:#fff;border-radius:10px;padding:2px 8px;font-size:11px;white-space:nowrap">ยังไม่เคยตรวจ</span>'
           : (daysSince>=30 ? '<span style="background:#e65100;color:#fff;border-radius:10px;padding:2px 8px;font-size:11px;white-space:nowrap">ค้าง '+daysSince+' วัน</span>'
           : '<span style="background:#2d6a4f;color:#fff;border-radius:10px;padding:2px 8px;font-size:11px;white-space:nowrap">'+daysSince+' วันก่อน</span>');
+        var planCell = v.nextDueDate
+          ? '<span style="color:'+(v.nextDueDate<today?'#b71c1c':'inherit')+';font-weight:'+(v.nextDueDate<today?'700':'400')+'">'+v.nextDueDate+(v.nextDueDate<today?' (เลยแผนแล้ว)':'')+'</span>'
+          : '<span style="color:var(--g400)">— (ยังไม่มี Actual ให้คำนวณแผน)</span>';
         return '<tr>'
           +'<td style="font-weight:600;color:var(--gd)">'+v.serialNo+'</td>'
           +'<td style="color:var(--g400)">'+(v.vehicleType||'-')+'</td>'
           +'<td style="color:var(--g400)">'+(v.customer||'-')+'</td>'
+          +'<td>'+(v.lastCheckDate||'<span style="color:var(--g400)">—</span>')+'</td>'
+          +'<td>'+planCell+'</td>'
           +'<td>'+badge+'</td>'
           +'<td><button class="btn bp bsm" onclick="selectPMVehicle(\''+v.serialNo+'\')">🔧 ตรวจเช็ค</button></td>'
         +'</tr>';
@@ -4876,8 +4892,15 @@ function renderMasterVehicles(){
     return;
   }
   var shown = rows.slice(0, 200);
-  var bulkBar = '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;padding:8px 10px;background:#f5f5f5;border-radius:8px">'
+  window._mVehFilteredAll = rows; // เก็บผลค้นหาทั้งหมดไว้ (ไม่ใช่แค่ 200 ที่แสดง) ไว้ใช้กับปุ่ม "เลือกทั้งหมดที่ค้นเจอ"
+  var truncateWarning = rows.length > 200
+    ? '<div style="font-size:11px;color:#b71c1c;margin-bottom:6px">⚠️ ผลค้นหามี '+rows.length+' คัน แต่แสดงบนหน้าจอแค่ 200 คันแรก — ถ้ากด "เลือกทั้งหมดที่กำลังแสดง" จะเลือกได้แค่ 200 คันนี้เท่านั้น ตกหล่นอีก '+(rows.length-200)+' คัน! ให้กด <b>"เลือกทั้งหมดที่ค้นเจอ ('+rows.length+' คัน)"</b> แทนถ้าต้องการตั้งค่าให้ครบทุกคันที่ค้นเจอ</div>'
+    : '';
+  var bulkBar = truncateWarning + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;padding:8px 10px;background:#f5f5f5;border-radius:8px">'
     +'<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" id="mVehSelectAll" onchange="toggleSelectAllVeh(this.checked)"> เลือกทั้งหมดที่กำลังแสดง ('+shown.length+' คัน)</label>'
+    + (rows.length > shown.length
+        ? '<button class="btn bd bsm" onclick="selectAllFilteredVeh()">🎯 เลือกทั้งหมดที่ค้นเจอ ('+rows.length+' คัน)</button>'
+        : '')
     +'<span style="font-size:12px;color:var(--g400)" id="mVehSelCount">เลือกไว้ 0 คัน</span>'
     +'<select class="fc" id="mVehBulkCareType" style="font-size:12px;width:auto;margin-left:auto">'
       +'<option value="">— เลือกประเภทที่จะตั้งให้ทุกแถวที่เลือก —</option>'
@@ -4937,14 +4960,26 @@ function updateVehSelCount(){
   var el = document.getElementById('mVehSelCount');
   if(el) el.textContent = 'เลือกไว้ '+n+' คัน';
 }
+var _mVehSelectAllFilteredMode = false;
+function selectAllFilteredVeh(){
+  _mVehSelectAllFilteredMode = true;
+  document.querySelectorAll('.mVehChk').forEach(function(cb){ cb.checked = true; });
+  var el = document.getElementById('mVehSelCount');
+  if(el) el.textContent = 'เลือกไว้ '+(window._mVehFilteredAll||[]).length+' คัน (รวมที่ไม่ได้แสดงบนหน้าจอด้วย)';
+}
 function applyBulkCareType(){
-  var checked = Array.prototype.slice.call(document.querySelectorAll('.mVehChk:checked'));
-  if(!checked.length) return toast('กรุณาเลือกรถอย่างน้อย 1 คันก่อนค่ะ','error');
+  var serials;
+  if(_mVehSelectAllFilteredMode && window._mVehFilteredAll && window._mVehFilteredAll.length){
+    serials = window._mVehFilteredAll.map(function(v){ return v.SerialNo; });
+  } else {
+    var checked = Array.prototype.slice.call(document.querySelectorAll('.mVehChk:checked'));
+    if(!checked.length) return toast('กรุณาเลือกรถอย่างน้อย 1 คันก่อนค่ะ','error');
+    serials = checked.map(function(cb){ return decodeURIComponent(cb.value); });
+  }
   var careType = document.getElementById('mVehBulkCareType').value;
-  var serials = checked.map(function(cb){ return decodeURIComponent(cb.value); });
   var careLabel = {'':'ไม่มี', Rental:'เช่า', Concession:'สัมปทาน', Warranty:'Warranty', Other:'อื่นๆ'};
   if(!confirm('ยืนยันตั้งประเภทการดูแลเป็น "'+(careLabel[careType]||careType)+'" ให้รถ '+serials.length+' คันที่เลือกไว้?')) return;
-  toast('กำลังบันทึก...','info');
+  toast('กำลังบันทึก '+serials.length+' คัน...','info');
   callAPI('bulkSetVehicleCareType',{serials:serials, careType:careType}).then(function(res){
     toast(res.message, res.success?'success':'error');
     if(res.success){
@@ -4952,6 +4987,7 @@ function applyBulkCareType(){
         var v = _mVehicles.find(function(x){ return x.SerialNo===sn; });
         if(v) v.CareType = careType;
       });
+      _mVehSelectAllFilteredMode = false;
       renderMasterVehicles();
     }
   });
