@@ -3904,26 +3904,76 @@ function drillPMGroup(customerEnc, locationEnc){
 }
 
 // ── แผนตาราง Warranty — แอดมิน/ผจก.กำหนดวันนัดเองทีละคัน, ช่างดูได้อย่างเดียว ──
+var _wpFullList = [];
+var _wpSearchQ = '';
 function loadWarrantyPlanPage(){
   var box = document.getElementById('pmWarrantyBox');
   if(!box) return;
   box.innerHTML = '<div class="card tc tm" style="padding:24px">⏳ กำลังโหลด...</div>';
   callAPI('getWarrantyPlan',{}).then(function(res){
-    var list = (res && res.success) ? (res.data||[]) : [];
-    renderWarrantyPlanPage(list);
+    _wpFullList = (res && res.success) ? (res.data||[]) : [];
+    renderWarrantyPlanPage();
   });
 }
-function renderWarrantyPlanPage(list){
+function onWarrantyPlanSearch(){
+  _wpSearchQ = (document.getElementById('wpSearchInput')||{}).value||'';
+  renderWarrantyPlanPage();
+}
+function renderWarrantyPlanPage(){
   var box = document.getElementById('pmWarrantyBox');
   if(!box) return;
   var isAdmin = CU && (CU.role==='ADMIN'||CU.role==='MANAGER');
+  var list = _wpFullList;
+
+  // ── แดชบอร์ดสรุป ──
+  var totalVeh = list.length, totalPlans=0, pending=0, overdue=0, doneOnTime=0, doneLate=0;
+  list.forEach(function(v){
+    v.plans.forEach(function(p){
+      totalPlans++;
+      if(p.Status==='PENDING') pending++;
+      else if(p.Status==='OVERDUE') overdue++;
+      else if(p.Status==='DONE'){
+        if(p.ActualCheckDate && p.ActualCheckDate > p.PlannedDate) doneLate++; else doneOnTime++;
+      }
+    });
+  });
+  var dashHtml = '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px">'
+    + [
+        {label:'รถ Warranty ทั้งหมด', val:totalVeh, color:'#1a2e22', icon:'🚙'},
+        {label:'นัดทั้งหมด', val:totalPlans, color:'#1565c0', icon:'📅'},
+        {label:'รอถึงกำหนด', val:pending, color:'#1565c0', icon:'⏳'},
+        {label:'⚠️ เลยกำหนดแล้ว', val:overdue, color:'#b71c1c', icon:'🔴'},
+        {label:'ตรวจแล้ว (ตรงนัด/ล่าช้า)', val:doneOnTime+'/'+doneLate, color:'#2d6a4f', icon:'✅'},
+      ].map(function(c){
+        return '<div class="card" style="text-align:center;padding:14px">'
+          +'<div style="font-size:18px">'+c.icon+'</div>'
+          +'<div style="font-size:22px;font-weight:700;color:'+c.color+'">'+c.val+'</div>'
+          +'<div style="font-size:11px;color:var(--g400);margin-top:2px">'+c.label+'</div></div>';
+      }).join('')
+    +'</div>';
+
+  // ── ค้นหา + ปุ่มเพิ่มรถใหม่เข้าแผน ──
+  var searchHtml = '<div class="card" style="padding:14px 16px;margin-bottom:12px">'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      +'<input class="fc" id="wpSearchInput" placeholder="🔍 ค้นหารถ Warranty (Serial/ลูกค้า/สถานที่)..." style="flex:1;min-width:200px" value="'+_wpSearchQ.replace(/"/g,'&quot;')+'" oninput="onWarrantyPlanSearch()">'
+      + (isAdmin ? '<button class="btn bp" onclick="openAddWarrantyVehicleModal()">➕ เพิ่มรถเข้าแผน Warranty</button>' : '')
+    +'</div></div>';
+
+  var q = _wpSearchQ.trim().toLowerCase();
+  var filtered = q ? list.filter(function(v){
+    return (v.serialNo||'').toLowerCase().indexOf(q)>=0 || (v.customer||'').toLowerCase().indexOf(q)>=0 || (v.location||'').toLowerCase().indexOf(q)>=0;
+  }) : list;
 
   if(!list.length){
-    box.innerHTML = '<div class="card tc tm" style="padding:24px">ยังไม่มีรถที่ตั้งประเภทการดูแลเป็น "Warranty" ค่ะ — ไปตั้งค่าได้ที่หน้า "จัดการอะไหล่/รถ"</div>';
+    box.innerHTML = dashHtml + searchHtml + '<div class="card tc tm" style="padding:24px">ยังไม่มีรถที่ตั้งประเภทการดูแลเป็น "Warranty" ค่ะ — ไปตั้งค่าได้ที่หน้า "จัดการอะไหล่/รถ" หรือกด "➕ เพิ่มรถเข้าแผน Warranty" ด้านบน</div>';
+    return;
+  }
+  if(!filtered.length){
+    box.innerHTML = dashHtml + searchHtml + '<div class="card tc tm" style="padding:24px">ไม่พบรถที่ตรงกับคำค้นหาค่ะ</div>';
     return;
   }
 
-  box.innerHTML = list.map(function(v){
+  box.innerHTML = dashHtml + searchHtml + filtered.map(function(v){
     var today = new Date().toISOString().slice(0,10);
     var nextPending = v.plans.find(function(p){ return p.Status!=='DONE'; });
     var headerColor = nextPending ? (nextPending.Status==='OVERDUE' ? '#b71c1c' : '#e65100') : '#2d6a4f';
@@ -3935,12 +3985,22 @@ function renderWarrantyPlanPage(list){
       +'<div style="margin-top:10px">'
       + (v.plans.length
         ? '<table style="width:100%;font-size:12px;border-collapse:collapse">'
-          +'<thead><tr style="text-align:left;color:var(--g400)"><th style="padding:4px">วันนัด</th><th>รายการ</th><th>สถานะ</th><th>หมายเหตุ</th>'+(isAdmin?'<th></th>':'')+'</tr></thead>'
+          +'<thead><tr style="text-align:left;color:var(--g400)"><th style="padding:4px">📅 แผน (นัด)</th><th>✅ Actual (ตรวจจริง)</th><th>รายการ</th><th>สถานะ</th><th>หมายเหตุ</th>'+(isAdmin?'<th></th>':'')+'</tr></thead>'
           +'<tbody>' + v.plans.map(function(p){
               var stMap = {PENDING:['รอถึงกำหนด','#1565c0'], OVERDUE:['⚠️ เลยกำหนดแล้ว','#b71c1c'], DONE:['✅ ตรวจแล้ว','#2d6a4f']};
               var st = stMap[p.Status]||['-','#888'];
+              var actualCell;
+              if(p.ActualCheckDate){
+                var late = p.ActualCheckDate > p.PlannedDate;
+                actualCell = '<span style="color:'+(late?'#e65100':'#2d6a4f')+';font-weight:700">'+p.ActualCheckDate+(late?' (ล่าช้า)':' (ตรงนัด)')+'</span>';
+              } else if(p.matchedActualDate){
+                actualCell = '<span style="color:#1565c0">พบรอบตรวจ '+p.matchedActualDate+' — <a href="#" onclick="confirmWarrantyActual(\''+p.PlanID+'\',\''+p.matchedActualDate+'\');return false;">ยืนยันคู่นัดนี้</a></span>';
+              } else {
+                actualCell = '<span style="color:var(--g400)">—</span>';
+              }
               return '<tr style="border-top:1px solid var(--g100)">'
                 +'<td style="padding:5px 4px;font-weight:600">'+p.PlannedDate+'</td>'
+                +'<td style="padding:5px 4px">'+actualCell+'</td>'
                 +'<td style="padding:5px 4px">'+(p.Label||'-')+'</td>'
                 +'<td style="padding:5px 4px;color:'+st[1]+';font-weight:700">'+st[0]+'</td>'
                 +'<td style="padding:5px 4px;color:var(--g400)">'+(p.Note||'-')+'</td>'
@@ -3963,6 +4023,48 @@ function renderWarrantyPlanPage(list){
     +'</div>';
   }).join('');
 }
+function confirmWarrantyActual(planId, actualDate){
+  callAPI('markWarrantyPlanDone',{planId:planId, actualDate:actualDate}).then(function(res){
+    toast(res.message, res.success?'success':'error');
+    if(res.success) loadWarrantyPlanPage();
+  });
+}
+// ── เพิ่มรถที่ยังไม่ได้ตั้งเป็น Warranty เข้าแผนโดยตรง (ตั้ง CareType ให้อัตโนมัติ) ──
+function openAddWarrantyVehicleModal(){
+  var existing = document.getElementById('addWpVehModal'); if(existing) existing.remove();
+  var modal = document.createElement('div');
+  modal.id = 'addWpVehModal'; modal.className='mo'; modal.style.zIndex='3400';
+  modal.innerHTML = '<div class="mow" style="max-width:400px">'
+    +'<div class="moh"><div class="mot">➕ เพิ่มรถเข้าแผน Warranty</div>'
+      +'<button class="mcl" onclick="document.getElementById(\'addWpVehModal\').remove()">✕</button></div>'
+    +'<div class="mob">'
+      +'<div class="fg"><label class="fl">พิมพ์ค้นหา Serial No. รถ</label>'
+        +'<input class="fc" id="addWpVehInput" oninput="_addWpVehSearch(this.value)" autocomplete="off">'
+        +'<div id="addWpVehDrop" style="max-height:200px;overflow-y:auto"></div>'
+      +'</div>'
+    +'</div></div>';
+  document.body.appendChild(modal); modal.style.display='flex';
+}
+function _addWpVehSearch(q){
+  var dd = document.getElementById('addWpVehDrop');
+  q = (q||'').trim().toLowerCase();
+  if(!q || !window._vehiclesDB){ dd.innerHTML=''; return; }
+  var res = window._vehiclesDB.filter(function(v){
+    return (v.SerialNo||'').toLowerCase().indexOf(q)>=0 || (v.Customer||'').toLowerCase().indexOf(q)>=0;
+  }).slice(0,10);
+  dd.innerHTML = res.map(function(v){
+    return '<div onclick="_pickAddWpVeh(\''+v.SerialNo+'\')" style="padding:8px;border-bottom:1px solid #f0f0f0;cursor:pointer"><strong>'+v.SerialNo+'</strong> — '+(v.Customer||'')+'</div>';
+  }).join('');
+}
+function _pickAddWpVeh(serialNo){
+  callAPI('setVehicleCareType',{serialNo:serialNo, careType:'Warranty'}).then(function(res){
+    toast(res.message, res.success?'success':'error');
+    if(res.success){
+      var m = document.getElementById('addWpVehModal'); if(m) m.remove();
+      loadWarrantyPlanPage();
+    }
+  });
+}
 function doAddWarrantyPlan(serialNo){
   var date = document.getElementById('wpDate_'+serialNo).value;
   var label = document.getElementById('wpLabel_'+serialNo).value.trim();
@@ -3974,7 +4076,9 @@ function doAddWarrantyPlan(serialNo){
   });
 }
 function doMarkWarrantyDone(planId){
-  callAPI('markWarrantyPlanDone',{planId:planId}).then(function(res){
+  var actualDate = prompt('วันที่ตรวจจริง (YYYY-MM-DD) — เว้นว่างจะใช้วันนี้:','');
+  if(actualDate===null) return;
+  callAPI('markWarrantyPlanDone',{planId:planId, actualDate:actualDate}).then(function(res){
     toast(res.message, res.success?'success':'error');
     if(res.success) loadWarrantyPlanPage();
   });
