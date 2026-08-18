@@ -3914,10 +3914,10 @@ function switchPMDashSubTab(tab){
   }
 }
 function drillPMGroup(customerEnc, locationEnc){
-  var customer = decodeURIComponent(customerEnc), location = decodeURIComponent(locationEnc);
+  var customer = decodeURIComponent(customerEnc).trim(), location = decodeURIComponent(locationEnc).trim();
   callAPI('getVehiclesRequiringPM',{}).then(function(res){
     var list = ((res && res.success) ? (res.data||[]) : []).filter(function(v){
-      return (v.customer||'ไม่ระบุลูกค้า')===customer && (v.location||'ไม่ระบุสถานที่')===location;
+      return String(v.customer||'ไม่ระบุลูกค้า').trim()===customer && String(v.location||'ไม่ระบุสถานที่').trim()===location;
     });
     _pmDueListFull = list;
     _pmDueListShown = 100;
