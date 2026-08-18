@@ -8936,6 +8936,9 @@ function extractSAP(note){
 function loadStockCard(){
   var el = document.getElementById('scContent');
   if(!el) return;
+  // ⛔ ถ้ากำลังจะโหลดอะไหล่ตัวที่สแกน QR มา ข้ามการโหลดรายการทั่วไปนี้ไปเลย
+  // (กันบั๊ก race condition: ถ้ารายการทั่วไปโหลดช้ากว่า จะไปทับตารางของอะไหล่ที่สแกนทิ้ง)
+  if(window._scSkipGenericLoad){ window._scSkipGenericLoad = false; return; }
   el.innerHTML = '<div class="card tc" style="padding:32px">⏳ กำลังโหลด...</div>';
   callAPI('getStockCardEntries',{filter:_scTab}).then(function(res){
     var entries = res.data || [];
@@ -9315,6 +9318,7 @@ function onQRDetected(rawData){
     }
   } else if(_qrScanTarget === 'stockcard'){
     // ไปหน้า Stock Card แล้วโหลด part นั้น
+    window._scSkipGenericLoad = true; // ⛔ กันรายการทั่วไปแย่งโหลดทับตารางของอะไหล่ที่สแกน (race condition)
     go('stockcard');
     setTimeout(function(){
       var part = (typeof PARTS_DB!=='undefined'?PARTS_DB:[]).find(function(p){ return p.partNo===partNo; });
