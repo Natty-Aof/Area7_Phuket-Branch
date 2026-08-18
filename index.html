@@ -308,6 +308,23 @@ textarea.fc{min-height:70px;resize:vertical;}
   </div>
 </div>
 
+<!-- ═══ มุมมองสาธารณะ: ดู Stock Card จากสแกน QR ได้โดยไม่ต้อง Login (อ่านอย่างเดียว) ═══ -->
+<div id="publicQRView" class="hidden" style="min-height:100vh;background:#f5f5f5;padding:16px;font-family:'Sarabun',sans-serif">
+  <div style="max-width:480px;margin:0 auto">
+    <div style="text-align:center;padding:16px 0 8px">
+      <span style="font-size:28px">🌿</span>
+      <div style="font-size:14px;font-weight:700;color:#1a4a2e;margin-top:4px">Beyond Green — ระบบใบเบิกอะไหล่</div>
+    </div>
+    <div id="publicQRContent" style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 10px rgba(0,0,0,.06)">
+      <div style="text-align:center;padding:24px;color:#888">⏳ กำลังโหลด...</div>
+    </div>
+    <div style="text-align:center;margin-top:16px;padding:14px;background:#fff3e0;border-radius:10px">
+      <div style="font-size:12px;color:#666;margin-bottom:8px">ดูข้อมูลได้อย่างเดียว — เข้าสู่ระบบเพื่อแก้ไข/จัดการอะไหล่ตัวนี้ได้เต็มรูปแบบ</div>
+      <button class="btn bp bsm" onclick="document.getElementById('publicQRView').classList.add('hidden');document.getElementById('ls').classList.remove('hidden');history.replaceState({},'','#stockcard')">🔐 เข้าสู่ระบบ</button>
+    </div>
+  </div>
+</div>
+
 <!-- APP -->
 <div id="app" class="hidden">
   <aside class="sidebar">
@@ -2137,9 +2154,76 @@ function manualGoogleLogin(){
 
 
 
+// ── มุมมองสาธารณะ: ดู Stock Card จากสแกน QR ได้โดยไม่ต้อง Login (อ่านอย่างเดียว) ──
+// คืนค่า true ถ้าเจอลิงก์สแกน QR และแสดงมุมมองสาธารณะแล้ว (ผู้เรียกจะได้ไม่ต้องแสดงหน้า login)
+function _tryShowPublicQRView(){
+  try {
+    var hash = window.location.hash || '';
+    var m = hash.match(/^#stockcard\?scanPart=([^&]+)/);
+    if(!m) return false;
+    var partNo = decodeURIComponent(m[1]);
+
+    var lsBox = document.getElementById('ls');
+    var pubBox = document.getElementById('publicQRView');
+    if(lsBox) lsBox.classList.add('hidden');
+    if(pubBox) pubBox.classList.remove('hidden');
+
+    fetch(SCRIPT_URL, {
+      method:'POST',
+      body: JSON.stringify({action:'getStockCardEntries', data:{partNo:partNo}, userEmail:''})
+    }).then(function(r){ return r.json(); }).then(function(res){
+      renderPublicQRContent(partNo, res);
+    }).catch(function(){
+      renderPublicQRContent(partNo, {success:false});
+    });
+    return true;
+  } catch(e){ return false; }
+}
+
+function renderPublicQRContent(partNo, res){
+  var box = document.getElementById('publicQRContent');
+  if(!box) return;
+  var entries = (res && res.data) || [];
+  if(!entries.length){
+    box.innerHTML = '<div style="text-align:center;padding:16px">'
+      +'<div style="font-size:15px;font-weight:700;color:#1a4a2e">'+partNo+'</div>'
+      +'<div style="font-size:12px;color:#999;margin-top:12px">ยังไม่มีข้อมูลความเคลื่อนไหวของอะไหล่ตัวนี้ในระบบค่ะ</div>'
+    +'</div>';
+    return;
+  }
+  // เรียงใหม่สุดก่อน แล้วเอายอดคงเหลือล่าสุด + 10 รายการล่าสุดมาโชว์
+  entries.sort(function(a,b){ return (b.CreatedAt||'') > (a.CreatedAt||'') ? 1 : -1; });
+  var latest = entries[0];
+  var recent = entries.slice(0, 10);
+  var typeLabel = {IN:'📥 รับเข้า', OUT_SALE:'🛒 ขาย', OUT_RENTAL:'🚗 รถเช่า', OUT_CONTRACT:'🚌 รถสัมปทาน',
+    OUT_WARRANTY:'🔧 Warranty', OUT_BRANCH:'🏢 ส่งสาขา', ADJUST:'⚖️ ปรับยอด', OUT_REQ:'📤 จ่ายตามใบเบิก',
+    RETURN_GOOD:'↩️ คืนของดี', DEFECT_RETURN:'⚠️ ของเสีย(SCR)'};
+
+  box.innerHTML = '<div style="text-align:center;margin-bottom:16px">'
+      +'<div style="font-size:11px;color:#999">Part No.</div>'
+      +'<div style="font-size:16px;font-weight:700;color:#1a4a2e">'+partNo+'</div>'
+      +(latest.NameEN?'<div style="font-size:13px;color:#555;margin-top:2px">'+latest.NameEN+'</div>':'')
+    +'</div>'
+    +'<div style="display:flex;justify-content:center;margin-bottom:16px">'
+      +'<div style="background:#e8f5e9;border-radius:10px;padding:12px 24px;text-align:center">'
+        +'<div style="font-size:24px;font-weight:700;color:#2d6a4f">'+(latest.Balance||0)+'</div>'
+        +'<div style="font-size:11px;color:#666">คงเหลือปัจจุบัน ('+(latest.Unit||'ชิ้น')+')</div>'
+      +'</div>'
+    +'</div>'
+    +'<div style="font-size:12px;font-weight:700;color:#555;margin-bottom:6px">ความเคลื่อนไหวล่าสุด</div>'
+    + recent.map(function(e){
+        return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid #f0f0f0;font-size:12px">'
+          +'<span>'+(e.Date||'-')+' '+(typeLabel[e.Type]||e.Type||'-')+'</span>'
+          +'<span style="font-weight:700">'+(e.QtyIn>0?'+'+e.QtyIn:(e.QtyOut>0?'-'+e.QtyOut:'-'))+'</span>'
+        +'</div>';
+      }).join('');
+}
+
 window._gsiReady = initGSI;
 window.onload = function(){
   if(CU && CU.email){ return; }
+  // ⚡ ยังไม่ได้ login และเปิดมาจากการสแกน QR อะไหล่ (ลิงก์ตรง) → โชว์มุมมองอ่านอย่างเดียว ไม่บังคับ login ก่อน
+  if(_tryShowPublicQRView()) return;
   if(typeof google !== 'undefined' && google.accounts) initGSI();
   // รอนานขึ้น 5 วิ กัน network ช้า
   setTimeout(function(){
@@ -2561,7 +2645,45 @@ function initApp(){
   loadMinStockData();
   // โหลดอะไหล่จากชีท (ฐานเดียว) — มี cache ให้เร็ว, syncStockBalance ถูกเรียกข้างในแล้ว
   loadPartsMaster();
-  go('dashboard');
+
+  // ⚡ เช็คว่าเปิดแอปมาจากการสแกน QR อะไหล่ (ลิงก์ตรง) ไหม — ถ้าใช่ พาไปหน้า Stock Card ของอะไหล่นั้นเลย แทนที่จะไป dashboard เฉยๆ
+  if(!_checkPendingQRDeepLink()){
+    go('dashboard');
+  }
+}
+
+// ── เช็ค URL ว่ามี #stockcard?scanPart=XXX ติดมาไหม (จากการสแกน QR อะไหล่ด้วยกล้องมือถือทั่วไป) ──
+// คืนค่า true ถ้าเจอและจัดการนำทางให้แล้ว (ผู้เรียกจะได้ไม่ต้อง go('dashboard') ทับ)
+function _checkPendingQRDeepLink(){
+  try {
+    var hash = window.location.hash || '';
+    var m = hash.match(/^#stockcard\?scanPart=([^&]+)/);
+    if(!m) return false;
+    var partNo = decodeURIComponent(m[1]);
+    // เคลียร์ query ออกจาก URL กันสแกนซ้ำถ้า refresh
+    history.replaceState({page:'stockcard'}, '', '#stockcard');
+    go('stockcard');
+    setTimeout(function(){
+      var part = (typeof PARTS_DB!=='undefined'?PARTS_DB:[]).find(function(p){ return p.partNo===partNo; });
+      if(part){
+        toast('สแกนได้: '+partNo+(part.location?' 📍 '+part.location:''), 'success');
+        loadSCForPart(part);
+        var inp = document.getElementById('scSearch');
+        if(inp) inp.value = partNo+' — '+(part.nameEN||part.nameTH||'');
+      } else {
+        callAPI('getStockCardEntries',{partNo:partNo}).then(function(r){
+          if((r.data||[]).length){
+            var e = r.data[0];
+            var vp = {partNo:partNo,nameEN:e.NameEN||'',nameTH:'',inStock:0,unit:e.Unit||'ชิ้น',_fromSheet:true,_baseStock:0};
+            loadSCForPart(vp);
+          } else {
+            toast('ไม่พบ '+partNo+' ในระบบค่ะ','error');
+          }
+        });
+      }
+    }, 500);
+    return true;
+  } catch(e){ return false; }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -9295,11 +9417,18 @@ function onQRDetected(rawData){
   stopQRCamera();
   closeQRScanner();
 
-  // Format: "PartNo|NameEN|Unit" หรือแค่ Part No.
-  var parts = rawData.split('|');
-  var partNo = parts[0].trim();
-  var nameEN = parts[1] ? parts[1].trim() : '';
-  var unit   = parts[2] ? parts[2].trim() : 'ชิ้น';
+  var partNo, nameEN='', unit='ชิ้น';
+  // ⚡ รองรับ QR แบบใหม่ (ลิงก์เต็ม เช่น .../#stockcard?scanPart=XXX) เผื่อสแกนสติกเกอร์ใหม่ผ่านตัวสแกนในแอปเอง
+  var linkMatch = rawData.match(/[?&]scanPart=([^&]+)/);
+  if(linkMatch){
+    partNo = decodeURIComponent(linkMatch[1]);
+  } else {
+    // Format เดิม: "PartNo|NameEN|Unit" หรือแค่ Part No. (สติกเกอร์เก่าที่เคยพิมพ์ไว้ก่อนหน้านี้)
+    var parts = rawData.split('|');
+    partNo = parts[0].trim();
+    nameEN = parts[1] ? parts[1].trim() : '';
+    unit   = parts[2] ? parts[2].trim() : 'ชิ้น';
+  }
 
   // เสียง/vibrate feedback
   if(navigator.vibrate) navigator.vibrate(100);
@@ -14986,8 +15115,9 @@ function generateSCPartQR(partNo, nameEN, location){
   // ถ้า cleanName ว่าง (เช่น ชื่อเป็นภาษาไทยล้วน) ใช้ Part No. แทน
   if(!cleanName) cleanName = cleanPart;
 
-  // QR data: PartNo|NameEN|Location (ASCII เท่านั้น ทุก scanner อ่านได้)
-  var qrData = cleanPart + '|' + cleanName + '|' + cleanLoc;
+  // ⚡ QR เป็นลิงก์จริงตรงเข้าแอป — สแกนด้วยกล้องมือถือทั่วไปก็เปิดตรงไปหน้า Stock Card ของอะไหล่นี้ได้เลย
+  // (ไม่ต้องเปิดแอปแล้วกด "Scan QR" ในตัวแอปก่อนเหมือนเดิม)
+  var qrData = 'https://natty-aof.github.io/Area7_Phuket-Branch/#stockcard?scanPart=' + encodeURIComponent(cleanPart);
   window._scQRData   = qrData;
   window._scQRPartNo = partNo;
   window._scQRName   = nameEN||'';
@@ -15000,11 +15130,17 @@ function generateSCPartQR(partNo, nameEN, location){
   function drawQR(){
     if(typeof qrcode === 'undefined'){ setTimeout(drawQR, 250); return; }
     try {
-      // หา type number ที่พอดีกับข้อมูล (auto-detect)
-      var typeNum = 5; // type 5 รองรับ ~64 chars M level
-      var qr = qrcode(typeNum, 'M');
-      qr.addData(qrData);
-      qr.make();
+      // หา type number ที่พอดีกับข้อมูล (ลิงก์ยาวกว่าข้อความเดิม ต้องใช้ type สูงขึ้น — ลองไล่ขึ้นถ้าเกินความจุ)
+      var qr = null;
+      for(var tryType = 8; tryType <= 15; tryType++){
+        try {
+          qr = qrcode(tryType, 'M');
+          qr.addData(qrData);
+          qr.make();
+          break;
+        } catch(eSize){ qr = null; }
+      }
+      if(!qr) throw new Error('QR data too long');
 
       // วาดลง canvas
       var n  = qr.getModuleCount();
