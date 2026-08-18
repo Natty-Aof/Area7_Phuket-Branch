@@ -350,6 +350,7 @@ textarea.fc{min-height:70px;resize:vertical;}
 
   <div class="main">
     <div class="topbar">
+      <button id="pgBackBtn" onclick="goAppBack()" class="hidden" style="background:none;border:none;cursor:pointer;font-size:20px;padding:4px 8px 4px 0;color:var(--gd);line-height:1" title="ย้อนกลับ">←</button>
       <span style="font-size:20px">🌿</span>
       <h1 id="pgTitle">Dashboard</h1>
       <span class="sub" id="uEmail">-</span>
@@ -2011,6 +2012,7 @@ var DEMO_LOCS = {'05-16U291':'A-01-02','07-16290250':'A-01-05','01BPB000010396':
 // ── _goWithoutPush: เปลี่ยนหน้าโดยไม่ push history (ใช้ตอน popstate) ──
 function _goWithoutPush(page){
   curPage = page;
+  _updateBackBtn(page);
   refreshBadges();
   document.querySelectorAll('.ni,.bib').forEach(function(el){
     if(el) el.classList.toggle('active', el.dataset.pg===page);
@@ -2459,7 +2461,7 @@ document.addEventListener('click', function(e){
 // (แก้บั๊ก: เดิมไม่มีทางออกจากระบบเลย พอสลับเครื่อง/บัญชีบนเบราว์เซอร์เดียวกัน จะเห็นสิทธิ์ของคนก่อนหน้าค้างอยู่)
 function doLogout(){
   if(!confirm('ยืนยันออกจากระบบ?')) return;
-  try { sessionStorage.removeItem('_bgCU'); } catch(e){}
+  try { localStorage.removeItem('_bgCU'); } catch(e){}
   try {
     if(window.google && google.accounts && google.accounts.id){
       google.accounts.id.disableAutoSelect(); // กัน Google One Tap ล็อกอินซ้ำบัญชีเดิมอัตโนมัติ
@@ -2470,9 +2472,9 @@ function doLogout(){
 }
 
 function initApp(){
-  // ── Session Persistence: เก็บ CU ไว้ใน sessionStorage กันกด Back แล้ว logout ──
+  // ── Session Persistence: เก็บ CU ไว้ใน localStorage (อยู่ถาวรจนกว่าจะออกจากระบบเอง กันเด้งออกตอนเปิดแอปค้างไว้นาน/สลับแอปบนมือถือ) ──
   try {
-    sessionStorage.setItem('_bgCU', JSON.stringify({
+    localStorage.setItem('_bgCU', JSON.stringify({
       email: CU.email, name: CU.name, role: CU.role
     }));
   } catch(e){}
@@ -2696,6 +2698,17 @@ function roleLabel(r){
 // ── NAVIGATE ─────────────────────────────────────────────────
 var pgTitles={dashboard:'Dashboard',create:'เปิดใบเบิกอะไหล่',list:'รายการใบเบิกอะไหล่',approval:'รายการรออนุมัติ',stock:'จัดอะไหล่ / รับคืน',pickup:'รับอะไหล่',close:'เคลียร์ใบเบิก',print:'พิมพ์ใบเบิก',profile:'ลายเซ็นของฉัน',jobs:'จัดการ Job No.',stockcard:'Stock Card',stockcount:'นับสต็อก',changereq:'คำขออนุมัติแก้ไข',vehiclehistory:'ประวัติรถ',pmcheck:'ตรวจเช็ครถ PM (ใบแช็ง)',sales:'เปิดรายการขาย',inventory:'ยอดคงเหลือ',specialreq:'สั่งซื้อพิเศษ / ค้างส่งลูกค้า',master:'จัดการอะไหล่ / รถ'};
 
+function goAppBack(){
+  // ⚡ ใช้ history.back() — จะไปเข้ากลไก popstate/_goWithoutPush ที่มีอยู่แล้ว (ไม่ push ซ้ำ ไม่ทำให้ค้าง)
+  if(window.history.length > 1){ window.history.back(); }
+  else { go('dashboard'); } // ไม่มีประวัติให้ย้อนแล้ว (เช่น เพิ่งเปิดแอปมา) → กลับหน้าแรกแทน
+}
+function _updateBackBtn(page){
+  var b = document.getElementById('pgBackBtn');
+  if(!b) return;
+  b.classList.toggle('hidden', page==='dashboard');
+}
+
 function go(page){
   curPage = page;
   // ── History API: กันปุ่ม Back กลับไป login ──
@@ -2707,6 +2720,7 @@ function go(page){
       history.pushState(state, '', '#'+page);
     }
   } catch(e){}
+  _updateBackBtn(page);
   refreshBadges();  // อัปเดต badge ทุกครั้งที่เปลี่ยนหน้า
   document.querySelectorAll('.ni,.bib').forEach(function(el){
     if(el) el.classList.toggle('active', el.dataset.pg===page);
@@ -15378,11 +15392,11 @@ function deleteCurrentReq(){
 
 // แก้ deleteStockEntry ให้ใช้ renderSCForPart แทน loadStockCard
 
-// ── SESSION RESTORE: กด Back แล้วไม่ต้อง Login ใหม่ ──────────
+// ── SESSION RESTORE: เปิดแอปใหม่/สลับแอปบนมือถือแล้วไม่ต้อง Login ใหม่ ──────────
 // วางไว้ท้ายสุด เพื่อให้ทุก function ถูก declare ก่อน
 (function(){
   try {
-    var saved = sessionStorage.getItem('_bgCU');
+    var saved = localStorage.getItem('_bgCU');
     if(!saved) return;
     var u = JSON.parse(saved);
     if(!u || !u.email || !u.role) return;
