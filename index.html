@@ -1394,16 +1394,22 @@ textarea.fc{min-height:70px;resize:vertical;}
         </div>
 
         <div id="pmCheckTabContent">
-          <div id="pmDashboardBox"></div>
-          <div class="card" style="padding:14px 16px;margin-bottom:12px">
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-              <input class="fc" id="pmVehSearch" placeholder="🔍 พิมพ์ Serial No. รถที่จะตรวจเช็ค..." style="flex:1;min-width:200px" oninput="onPMVehSearch()" autocomplete="off">
+          <div id="pmListViewBox">
+            <div id="pmDashboardBox"></div>
+            <div class="card" style="padding:14px 16px;margin-bottom:12px">
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+                <input class="fc" id="pmVehSearch" placeholder="🔍 พิมพ์ Serial No. รถที่จะตรวจเช็ค..." style="flex:1;min-width:200px" oninput="onPMVehSearch()" autocomplete="off">
+              </div>
+              <div id="pmVehDrop" style="display:none;max-height:220px;overflow-y:auto;border:1px solid var(--g200);border-radius:8px;margin-bottom:10px"></div>
+              <div id="pmDueListBox" style="max-height:60vh;overflow-y:auto"></div>
             </div>
-            <div id="pmVehDrop" style="display:none;max-height:220px;overflow-y:auto;border:1px solid var(--g200);border-radius:8px;margin-bottom:10px"></div>
-            <div id="pmDueListBox" style="max-height:60vh;overflow-y:auto"></div>
           </div>
-          <div id="pmFormBox"></div>
-          <div id="pmLogBox"></div>
+          <div id="pmCheckFormView" class="hidden">
+            <button class="btn bo bsm" style="margin-bottom:10px" onclick="closePMCheckForm()">← กลับไปหน้ารายการ</button>
+            <div id="pmVehHistoryBox"></div>
+            <div id="pmFormBox"></div>
+            <div id="pmLogBox"></div>
+          </div>
         </div>
 
         <div id="pmWarrantyTabContent" class="hidden">
@@ -4191,13 +4197,54 @@ function selectPMVehicle(serialNo){
   _pmCurrentVehicle = v;
   _pmItemState = {};
   PM_CHECKLIST_ITEMS.forEach(function(sec){
-    sec.items.forEach(function(it){ _pmItemState[it.key] = {status:'', problemDesc:'', initialFix:'', needsPartReplace:false, partNo:'', partQty:1, followUpDate:'', photos:[]}; });
+    sec.items.forEach(function(it){ _pmItemState[it.key] = {status:'', problemDesc:'', initialFix:'', needsPartReplace:false, partNo:'', partQty:1, partSerial:'', followUpDate:'', photos:[]}; });
   });
+
+  // ⚡ สลับไปมุมมองฟอร์มเต็มจอแยกจากรายการ — กันปัญหาต้องเลื่อนหน้าจอนานๆ ตอนมีรถในรายการเยอะ
+  var listBox = document.getElementById('pmListViewBox'), formView = document.getElementById('pmCheckFormView');
+  if(listBox) listBox.classList.add('hidden');
+  if(formView) formView.classList.remove('hidden');
+  window.scrollTo({top:0, behavior:'smooth'});
+
   callAPI('getPMPhotoConfig',{}).then(function(res){
     _pmPhotoConfig = (res && res.success) ? (res.data||{}) : {};
     renderPMCheckForm();
   });
   loadPMMaintenanceLog(serialNo);
+  loadPMVehicleHistorySummary(serialNo);
+}
+
+function closePMCheckForm(){
+  var listBox = document.getElementById('pmListViewBox'), formView = document.getElementById('pmCheckFormView');
+  if(formView) formView.classList.add('hidden');
+  if(listBox) listBox.classList.remove('hidden');
+  _pmCurrentVehicle = null;
+}
+
+// ── ดึงประวัติเปลี่ยนอะไหล่ล่าสุดของรถคันนี้มาโชว์ให้ช่างดูอ้างอิง (กันต้องถามซ้ำ/พิมพ์ซ้ำเรื่องเดิม) ──
+function loadPMVehicleHistorySummary(serialNo){
+  var box = document.getElementById('pmVehHistoryBox');
+  if(!box) return;
+  box.innerHTML = '<div class="card tc tm" style="padding:12px;font-size:12px">⏳ กำลังโหลดประวัติรถ...</div>';
+  callAPI('getVehicleHistory',{serialNo:serialNo}).then(function(res){
+    var rows = (res && res.success) ? (res.data||[]) : [];
+    if(!rows.length){
+      box.innerHTML = '<div class="card" style="padding:10px 14px;margin-bottom:12px;background:#f5f5f5;font-size:12px;color:var(--g400)">📋 รถคันนี้ยังไม่มีประวัติเปลี่ยนอะไหล่ในระบบค่ะ</div>';
+      return;
+    }
+    var recent = rows.slice(0, 5); // เอาแค่ 5 รายการล่าสุดพอ ไม่ให้รกเกินไป
+    box.innerHTML = '<div class="card" style="padding:12px 14px;margin-bottom:12px;background:#fff8e1;border-left:4px solid #e65100">'
+      +'<div style="font-size:12px;font-weight:700;color:#e65100;margin-bottom:6px">📋 ประวัติเปลี่ยนอะไหล่ล่าสุด (ไว้อ้างอิง ไม่ต้องถามซ้ำ)</div>'
+      + recent.map(function(r){
+          var serialTxt = r.OldPartSerial ? ' — Serial เดิม: <b>'+r.OldPartSerial+'</b>' : '';
+          return '<div style="font-size:12px;padding:4px 0;border-top:1px solid #f0e6c8">'
+            +'<b>'+(r.Date||'-')+'</b> — '+(r.PartName||r.PartNo||'-')+' x'+(r.Qty||1)+serialTxt
+            +'<span style="color:var(--g400)"> (ช่าง: '+(r.TechName||'-')+')</span>'
+          +'</div>';
+        }).join('')
+      + (rows.length>5 ? '<div style="font-size:11px;color:var(--g400);margin-top:4px">...และอีก '+(rows.length-5)+' รายการ ดูทั้งหมดได้ที่เมนู "ประวัติรถ"</div>' : '')
+    +'</div>';
+  });
 }
 
 // ── ส่วนที่ 6: บันทึกข้อมูลการตรวจเช็คและซ่อมบำรุง (Check and Maintenance Data) — หน้า 2 ของฟอร์มกระดาษ ──
@@ -4343,7 +4390,7 @@ function renderPMCheckForm(){
               }).join('')
           +'</div>'
         +'</div>'
-        +(st.status==='X' ? renderPMDefectDetail(it.key) : (photoRequired && st.status ? renderPMPhotoOnly(it.key) : ''))
+        +((st.status==='X'||st.status==='O') ? renderPMDefectDetail(it.key, st.status) : (photoRequired && st.status ? renderPMPhotoOnly(it.key) : ''))
       +'</div>';
     });
     html += '</div>';
@@ -4438,25 +4485,30 @@ function setPMItemStatus(key, status){
   renderPMCheckForm();
 }
 
-function renderPMDefectDetail(key){
+function renderPMDefectDetail(key, status){
   var st = _pmItemState[key];
-  return '<div style="background:#ffebee;border:1px solid #ffcdd2;border-radius:8px;padding:10px;margin-top:8px">'
-    +'<div class="fg"><label class="fl" style="font-size:11px">รายละเอียดปัญหา *</label>'
+  var isFixed = status==='O'; // แก้ไขให้เสร็จวันนั้น — ไม่ใช่ชำรุดค้าง (X)
+  var bg = isFixed ? '#fff3e0' : '#ffebee', border = isFixed ? '#ffcc80' : '#ffcdd2';
+  return '<div style="background:'+bg+';border:1px solid '+border+';border-radius:8px;padding:10px;margin-top:8px">'
+    +'<div class="fg"><label class="fl" style="font-size:11px">'+(isFixed?'พบปัญหาอะไร (ก่อนแก้)':'รายละเอียดปัญหา *')+'</label>'
       +'<input class="fc" value="'+(st.problemDesc||'').replace(/"/g,'&quot;')+'" oninput="_pmItemState[\''+key+'\'].problemDesc=this.value" style="font-size:12px"></div>'
-    +'<div class="fg"><label class="fl" style="font-size:11px">การแก้ไขเบื้องต้น</label>'
-      +'<input class="fc" value="'+(st.initialFix||'').replace(/"/g,'&quot;')+'" oninput="_pmItemState[\''+key+'\'].initialFix=this.value" style="font-size:12px"></div>'
+    +'<div class="fg"><label class="fl" style="font-size:11px">'+(isFixed?'แก้ไขอะไรไปบ้าง *':'การแก้ไขเบื้องต้น')+'</label>'
+      +'<input class="fc" value="'+(st.initialFix||'').replace(/"/g,'&quot;')+'" oninput="_pmItemState[\''+key+'\'].initialFix=this.value" style="font-size:12px" placeholder="'+(isFixed?'เช่น เปลี่ยนแบตเตอรี่ / ขันน็อตให้แน่น / เติมน้ำมัน':'')+'"></div>'
     +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;margin:6px 0;cursor:pointer">'
-      +'<input type="checkbox" '+(st.needsPartReplace?'checked':'')+' onchange="_pmItemState[\''+key+'\'].needsPartReplace=this.checked;renderPMCheckForm()"> ต้องเปลี่ยนอะไหล่'
+      +'<input type="checkbox" '+(st.needsPartReplace?'checked':'')+' onchange="_pmItemState[\''+key+'\'].needsPartReplace=this.checked;renderPMCheckForm()"> '+(isFixed?'มีการเปลี่ยนอะไหล่ (แล้วเสร็จ)':'ต้องเปลี่ยนอะไหล่')
     +'</label>'
     + (st.needsPartReplace
-      ? '<div style="display:grid;grid-template-columns:2fr 1fr;gap:8px">'
+      ? '<div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;margin-bottom:6px">'
           +'<input class="fc" placeholder="Part No." value="'+(st.partNo||'').replace(/"/g,'&quot;')+'" oninput="_pmItemState[\''+key+'\'].partNo=this.value" style="font-size:12px">'
           +'<input class="fc" type="number" min="1" placeholder="จำนวน" value="'+(st.partQty||1)+'" oninput="_pmItemState[\''+key+'\'].partQty=this.value" style="font-size:12px">'
         +'</div>'
+        +'<input class="fc" placeholder="🔒 Serial อะไหล่ใหม่ที่ใส่ (สำคัญสำหรับอะไหล่แพง/ชิ้นสำคัญ — ถ้ามี)" value="'+(st.partSerial||'').replace(/"/g,'&quot;')+'" oninput="_pmItemState[\''+key+'\'].partSerial=this.value" style="font-size:12px;margin-bottom:6px">'
       : '')
-    +'<div class="fg" style="margin-top:6px"><label class="fl" style="font-size:11px">วันนัดแก้ไข</label>'
-      +'<input class="fc" type="date" value="'+(st.followUpDate||'')+'" oninput="_pmItemState[\''+key+'\'].followUpDate=this.value" style="font-size:12px"></div>'
-    +'<div class="fg"><label class="fl" style="font-size:11px">📷 ถ่ายรูปปัญหา</label>'
+    + (!isFixed
+      ? '<div class="fg" style="margin-top:6px"><label class="fl" style="font-size:11px">วันนัดแก้ไข</label>'
+        +'<input class="fc" type="date" value="'+(st.followUpDate||'')+'" oninput="_pmItemState[\''+key+'\'].followUpDate=this.value" style="font-size:12px"></div>'
+      : '')
+    +'<div class="fg"><label class="fl" style="font-size:11px">📷 ถ่ายรูป'+(isFixed?'หลังแก้ไข':'ปัญหา')+'</label>'
       +'<input type="file" accept="image/*" onchange="_pmOnPhoto(event,\''+key+'\')" style="font-size:12px">'
       +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">'
         + (st.photos||[]).map(function(p,pi){ return '<img src="'+p+'" style="width:50px;height:50px;object-fit:cover;border-radius:6px;cursor:pointer" onclick="openImgLightbox(\''+encodeURIComponent(p)+'\')">'; }).join('')
@@ -4510,7 +4562,7 @@ function printPMCheckReport(checkId){
               +'<td style="border:1px solid #999;padding:3px">'+it.ItemLabel+'</td>'
               +'<td style="border:1px solid #999;padding:3px">'+(it.ProblemDesc||'-')+'</td>'
               +'<td style="border:1px solid #999;padding:3px">'+(it.InitialFix||'-')+'</td>'
-              +'<td style="border:1px solid #999;padding:3px">'+(String(it.NeedsPartReplace).toUpperCase()==='TRUE' ? (it.PartNo||'-')+' x'+(it.PartQty||'-') : '-')+'</td>'
+              +'<td style="border:1px solid #999;padding:3px">'+(String(it.NeedsPartReplace).toUpperCase()==='TRUE' ? (it.PartNo||'-')+' x'+(it.PartQty||'-')+(it.PartSerial?' (S/N: '+it.PartSerial+')':'') : '-')+'</td>'
               +'<td style="border:1px solid #999;padding:3px">'+(it.FollowUpDate||'-')+'</td>'
             +'</tr>';
           }).join('') + '</tbody></table></div>'
@@ -4573,13 +4625,14 @@ function submitPMCheckForm(){
     sec.items.forEach(function(it){
       var st = _pmItemState[it.key];
       if(!st.status) return; // ยังไม่ได้ตรวจหัวข้อนี้ ข้ามไป (ไม่บังคับตรวจครบทุกหัวข้อในครั้งเดียว)
-      if(st.status==='X' && !st.problemDesc) missingProblem.push(it.label);
+      if(st.status==='X' && !st.problemDesc) missingProblem.push(it.label+' (รายละเอียดปัญหา)');
+      if(st.status==='O' && !st.initialFix) missingProblem.push(it.label+' (แก้ไขอะไรไปบ้าง)');
       if(_pmPhotoConfig[it.key] && (!st.photos || !st.photos.length)) missingPhoto.push(it.label);
       items.push({
         sectionKey: sec.sectionKey, sectionLabel: sec.sectionLabel,
         itemKey: it.key, itemLabel: it.label, status: st.status,
         problemDesc: st.problemDesc||'', initialFix: st.initialFix||'',
-        needsPartReplace: !!st.needsPartReplace, partNo: st.partNo||'', partQty: st.partQty||'',
+        needsPartReplace: !!st.needsPartReplace, partNo: st.partNo||'', partQty: st.partQty||'', partSerial: st.partSerial||'',
         followUpDate: st.followUpDate||'', photoBase64Arr: st.photos||[],
       });
     });
