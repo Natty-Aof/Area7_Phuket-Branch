@@ -310,14 +310,23 @@ textarea.fc{min-height:70px;resize:vertical;}
 
 <!-- ═══ มุมมองสาธารณะ: ดู Stock Card จากสแกน QR ได้โดยไม่ต้อง Login (อ่านอย่างเดียว) ═══ -->
 <div id="publicQRView" class="hidden" style="min-height:100vh;background:#f5f5f5;padding:16px;font-family:'Sarabun',sans-serif">
-  <div style="max-width:480px;margin:0 auto">
+  <div style="max-width:900px;margin:0 auto">
     <div style="text-align:center;padding:16px 0 8px">
       <span style="font-size:28px">🌿</span>
       <div style="font-size:14px;font-weight:700;color:#1a4a2e;margin-top:4px">Beyond Green — ระบบใบเบิกอะไหล่</div>
     </div>
-    <div id="publicQRContent" style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 10px rgba(0,0,0,.06)">
+    <div id="publicQRHeader" style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.06);margin-bottom:12px">
       <div style="text-align:center;padding:24px;color:#888">⏳ กำลังโหลด...</div>
     </div>
+    <div id="publicQRFilterBar" class="hidden" style="background:#fff;border-radius:12px;padding:12px 16px;box-shadow:0 2px 10px rgba(0,0,0,.06);margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <span style="font-size:12px;color:#666">📅 ช่วงเวลา:</span>
+      <input class="fc" type="date" id="pubQRFromDate" style="width:140px;font-size:12px">
+      <span style="font-size:12px;color:#666">ถึง</span>
+      <input class="fc" type="date" id="pubQRToDate" style="width:140px;font-size:12px">
+      <button class="btn bp bsm" onclick="applyPublicQRDateFilter()">กรอง</button>
+      <button class="btn bo bsm" onclick="clearPublicQRDateFilter()">ล้าง (ดูทั้งหมด)</button>
+    </div>
+    <div id="publicQRContent" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.06)"></div>
     <div style="text-align:center;margin-top:16px;padding:14px;background:#fff3e0;border-radius:10px">
       <div style="font-size:12px;color:#666;margin-bottom:8px">ดูข้อมูลได้อย่างเดียว — เข้าสู่ระบบเพื่อแก้ไข/จัดการอะไหล่ตัวนี้ได้เต็มรูปแบบ</div>
       <button class="btn bp bsm" onclick="document.getElementById('publicQRView').classList.add('hidden');document.getElementById('ls').classList.remove('hidden');history.replaceState({},'','#stockcard')">🔐 เข้าสู่ระบบ</button>
@@ -2156,6 +2165,8 @@ function manualGoogleLogin(){
 
 // ── มุมมองสาธารณะ: ดู Stock Card จากสแกน QR ได้โดยไม่ต้อง Login (อ่านอย่างเดียว) ──
 // คืนค่า true ถ้าเจอลิงก์สแกน QR และแสดงมุมมองสาธารณะแล้ว (ผู้เรียกจะได้ไม่ต้องแสดงหน้า login)
+var _pubQREntries = [];   // เก็บทุกรายการไว้ (ดึงครั้งเดียว) ใช้กรองช่วงเวลาซ้ำได้โดยไม่ต้องยิง API ใหม่
+var _pubQRPart = null;
 function _tryShowPublicQRView(){
   try {
     var hash = window.location.hash || '';
@@ -2168,55 +2179,133 @@ function _tryShowPublicQRView(){
     if(lsBox) lsBox.classList.add('hidden');
     if(pubBox) pubBox.classList.remove('hidden');
 
-    fetch(SCRIPT_URL, {
-      method:'POST',
-      body: JSON.stringify({action:'getStockCardEntries', data:{partNo:partNo}, userEmail:''})
-    }).then(function(r){ return r.json(); }).then(function(res){
-      renderPublicQRContent(partNo, res);
+    // ⚡ ดึงข้อมูล "อะไหล่ตัวเดียว" (เบา เร็ว) + ประวัติ พร้อมกันในคราวเดียว (ไม่ต้องรอทีละอย่าง)
+    Promise.all([
+      fetch(SCRIPT_URL, {method:'POST', body: JSON.stringify({action:'getSinglePartInfo', data:{partNo:partNo}, userEmail:''})}).then(function(r){return r.json();}),
+      fetch(SCRIPT_URL, {method:'POST', body: JSON.stringify({action:'getStockCardEntries', data:{partNo:partNo}, userEmail:''})}).then(function(r){return r.json();}),
+    ]).then(function(results){
+      renderPublicQRHeader(partNo, results[0]);
+      _pubQREntries = (results[1] && results[1].data) || [];
+      renderPublicQRTable();
     }).catch(function(){
-      renderPublicQRContent(partNo, {success:false});
+      renderPublicQRHeader(partNo, {success:false});
     });
     return true;
   } catch(e){ return false; }
 }
 
-function renderPublicQRContent(partNo, res){
+function renderPublicQRHeader(partNo, res){
+  var box = document.getElementById('publicQRHeader');
+  if(!box) return;
+  var p = (res && res.success) ? res.data : null;
+  _pubQRPart = p || {partNo:partNo};
+  var img = p && p.imageUrl
+    ? '<img src="'+p.imageUrl+'" style="width:90px;height:90px;object-fit:cover;border-radius:10px">'
+    : '<div style="width:90px;height:90px;border-radius:10px;background:#f0faf5;border:2px dashed #ddd;display:flex;align-items:center;justify-content:center;font-size:28px;color:#ccc">📦</div>';
+  box.innerHTML = '<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">'
+    + img
+    +'<div style="flex:1;min-width:180px">'
+      +'<div style="font-size:11px;color:#999">Part No.</div>'
+      +'<div style="font-size:18px;font-weight:700;color:#1a4a2e">'+partNo+'</div>'
+      +(p && p.nameEN ? '<div style="font-size:13px;color:#333;font-weight:600">'+p.nameEN+'</div>' : '')
+      +(p && p.group ? '<div style="font-size:11px;color:#999">'+p.group+'</div>' : '')
+    +'</div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      +'<div style="background:#f0faf5;border-radius:8px;padding:8px 14px;text-align:center;min-width:70px">'
+        +'<div style="font-size:10px;color:#999">ที่เก็บ</div><div style="font-size:14px;font-weight:700;color:#1a4a2e">'+(p&&p.location?p.location:'—')+'</div></div>'
+      +'<div style="background:#f0faf5;border-radius:8px;padding:8px 14px;text-align:center;min-width:80px">'
+        +'<div style="font-size:10px;color:#999">คงเหลือ</div><div style="font-size:18px;font-weight:700;color:#2d6a4f">'+(p?p.inStock:'—')+'</div></div>'
+      +'<div style="background:#fff3e0;border-radius:8px;padding:8px 14px;text-align:center;min-width:70px">'
+        +'<div style="font-size:10px;color:#999">Min Stock</div><div style="font-size:14px;font-weight:700;color:#e65100">'+(p&&p.minStock?p.minStock:'—')+'</div></div>'
+    +'</div>'
+  +'</div>';
+  var filterBar = document.getElementById('publicQRFilterBar');
+  if(filterBar && p) filterBar.classList.remove('hidden');
+}
+
+function applyPublicQRDateFilter(){ renderPublicQRTable(); }
+function clearPublicQRDateFilter(){
+  document.getElementById('pubQRFromDate').value = '';
+  document.getElementById('pubQRToDate').value = '';
+  renderPublicQRTable();
+}
+
+// ── ตารางประวัติเต็มรูปแบบ (ทุกรายการ) กรองตามช่วงเวลาได้ — เหมือนหน้า Stock Card จริง แต่ไม่มีปุ่มแก้ไข/ลบ ──
+function renderPublicQRTable(){
   var box = document.getElementById('publicQRContent');
   if(!box) return;
-  var entries = (res && res.data) || [];
+  var entries = _pubQREntries.slice();
+  var partNo = _pubQRPart ? _pubQRPart.partNo : '';
+  var unit = (_pubQRPart && _pubQRPart.unit) || 'ชิ้น';
+  var baseStock = 0; // ยอดยกมาไม่ทราบแน่ชัดจากตรงนี้ เริ่มนับจาก 0 แล้วไล่ตามประวัติจริง
+
   if(!entries.length){
-    box.innerHTML = '<div style="text-align:center;padding:16px">'
-      +'<div style="font-size:15px;font-weight:700;color:#1a4a2e">'+partNo+'</div>'
-      +'<div style="font-size:12px;color:#999;margin-top:12px">ยังไม่มีข้อมูลความเคลื่อนไหวของอะไหล่ตัวนี้ในระบบค่ะ</div>'
-    +'</div>';
+    box.innerHTML = '<div style="padding:32px;text-align:center;color:#999">ยังไม่มีความเคลื่อนไหวของอะไหล่ตัวนี้ในระบบค่ะ</div>';
     return;
   }
-  // เรียงใหม่สุดก่อน แล้วเอายอดคงเหลือล่าสุด + 10 รายการล่าสุดมาโชว์
-  entries.sort(function(a,b){ return (b.CreatedAt||'') > (a.CreatedAt||'') ? 1 : -1; });
-  var latest = entries[0];
-  var recent = entries.slice(0, 10);
-  var typeLabel = {IN:'📥 รับเข้า', OUT_SALE:'🛒 ขาย', OUT_RENTAL:'🚗 รถเช่า', OUT_CONTRACT:'🚌 รถสัมปทาน',
-    OUT_WARRANTY:'🔧 Warranty', OUT_BRANCH:'🏢 ส่งสาขา', ADJUST:'⚖️ ปรับยอด', OUT_REQ:'📤 จ่ายตามใบเบิก',
-    RETURN_GOOD:'↩️ คืนของดี', DEFECT_RETURN:'⚠️ ของเสีย(SCR)'};
 
-  box.innerHTML = '<div style="text-align:center;margin-bottom:16px">'
-      +'<div style="font-size:11px;color:#999">Part No.</div>'
-      +'<div style="font-size:16px;font-weight:700;color:#1a4a2e">'+partNo+'</div>'
-      +(latest.NameEN?'<div style="font-size:13px;color:#555;margin-top:2px">'+latest.NameEN+'</div>':'')
-    +'</div>'
-    +'<div style="display:flex;justify-content:center;margin-bottom:16px">'
-      +'<div style="background:#e8f5e9;border-radius:10px;padding:12px 24px;text-align:center">'
-        +'<div style="font-size:24px;font-weight:700;color:#2d6a4f">'+(latest.Balance||0)+'</div>'
-        +'<div style="font-size:11px;color:#666">คงเหลือปัจจุบัน ('+(latest.Unit||'ชิ้น')+')</div>'
-      +'</div>'
-    +'</div>'
-    +'<div style="font-size:12px;font-weight:700;color:#555;margin-bottom:6px">ความเคลื่อนไหวล่าสุด</div>'
-    + recent.map(function(e){
-        return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid #f0f0f0;font-size:12px">'
-          +'<span>'+(e.Date||'-')+' '+(typeLabel[e.Type]||e.Type||'-')+'</span>'
-          +'<span style="font-weight:700">'+(e.QtyIn>0?'+'+e.QtyIn:(e.QtyOut>0?'-'+e.QtyOut:'-'))+'</span>'
-        +'</div>';
-      }).join('');
+  entries.sort(function(a,b){ return (a.CreatedAt||'') > (b.CreatedAt||'') ? 1 : -1; });
+  var runBalance = baseStock, totalIn=0, totalOut=0, totalDef=0;
+  var rows = entries.map(function(e){
+    var qIn=parseFloat(e.QtyIn)||0, qOut=parseFloat(e.QtyOut)||0, qDef=parseFloat(e.QtyDefect)||0;
+    var isSCR = String(e.PartNo||'').indexOf('SCR')===0;
+    var noEffect = String(e.NoBalanceEffect||'').toLowerCase()==='true' || isSCR;
+    if(!noEffect){ runBalance += qIn - qOut; totalIn+=qIn; totalOut+=qOut; }
+    if(e.QtyDefect) totalDef += qDef;
+    return {
+      Date:e.Date||(e.CreatedAt?new Date(e.CreatedAt).toLocaleDateString('th-TH'):'—'),
+      _sortDate: e.CreatedAt || e.Date || '',
+      Type:e.Type, DocNo:e.DocNo||'—', Requester:e.Requester||e.CreatedBy||'—',
+      Customer:e.Customer||'—', QtyIn:qIn, QtyOut:qOut, QtyDefect:qDef,
+      Balance: isSCR ? qDef : Math.max(0,runBalance), Note:e.Note||'',
+    };
+  });
+
+  // ── กรองตามช่วงเวลาที่เลือก (ถ้ามี) — แสดงผลเฉพาะแถวในช่วง แต่ยอดรวมด้านบนยังคำนวณจากทั้งหมดเพื่อความถูกต้อง ──
+  var fromD = (document.getElementById('pubQRFromDate')||{}).value;
+  var toD = (document.getElementById('pubQRToDate')||{}).value;
+  var displayRows = rows;
+  if(fromD || toD){
+    displayRows = rows.filter(function(r){
+      var d = r._sortDate ? new Date(r._sortDate) : null;
+      if(!d || isNaN(d.getTime())) return true; // เผื่อพาร์สวันที่ไม่ได้ ไม่ซ่อนทิ้ง
+      if(fromD && d < new Date(fromD)) return false;
+      if(toD && d > new Date(toD+'T23:59:59')) return false;
+      return true;
+    });
+  }
+  displayRows = displayRows.slice().reverse(); // ใหม่สุดขึ้นก่อน
+
+  var typeLabel = {IN:'📥 รับเข้า', OUT_SALE:'🛒 ขาย', OUT_RENTAL:'🚗 รถเช่า', OUT_CONTRACT:'🚌 รถสัมปทาน',
+    OUT_WARRANTY:'🔧 Warranty', OUT_BRANCH:'🏢 ส่งสาขา', OUT_REQ:'📋 ใบเบิก', ADJUST:'⚖️ ปรับยอด',
+    RETURN_GOOD:'↩️ รับคืน(ของดี)', DEFECT_RETURN:'🔴 ของเสีย(SCR)', INIT:'🏁 ยอดยกมา', DEFECT:'🔴 ของเสีย'};
+
+  box.innerHTML = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px;border-bottom:1px solid #eee">'
+    +'<div style="background:#f8f9fa;border-radius:8px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:700;color:'+(runBalance<=0?'#b71c1c':'#1b5e20')+'">'+runBalance+'</div><div style="font-size:11px;color:#999">คงเหลือ</div></div>'
+    +'<div style="background:#f0fff4;border-radius:8px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:700;color:#1b5e20">+'+totalIn+'</div><div style="font-size:11px;color:#999">รับเข้าทั้งหมด</div></div>'
+    +'<div style="background:#fff8f0;border-radius:8px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:700;color:#e65100">-'+totalOut+'</div><div style="font-size:11px;color:#999">จ่ายออกทั้งหมด</div></div>'
+    +'<div style="background:#fff5f5;border-radius:8px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:700;color:#b71c1c">'+totalDef+'</div><div style="font-size:11px;color:#999">ของเสีย (SCR)</div></div>'
+  +'</div>'
+  +'<div style="overflow-x:auto"><table class="it" style="font-size:12px;width:100%"><thead><tr>'
+    +'<th>วันที่</th><th>ประเภท</th><th>เอกสารอ้างอิง</th><th>ผู้เบิก/บันทึก</th><th>ลูกค้า</th>'
+    +'<th style="text-align:right">เข้า</th><th style="text-align:right">ออก</th><th style="text-align:right">เสีย</th><th style="text-align:right">คงเหลือ</th><th>หมายเหตุ</th>'
+  +'</tr></thead><tbody>'
+  + (displayRows.length ? displayRows.map(function(r){
+      return '<tr>'
+        +'<td style="white-space:nowrap">'+r.Date+'</td>'
+        +'<td>'+(typeLabel[r.Type]||r.Type||'-')+'</td>'
+        +'<td>'+r.DocNo+'</td>'
+        +'<td>'+r.Requester+'</td>'
+        +'<td>'+r.Customer+'</td>'
+        +'<td style="text-align:right;color:#1b5e20">'+(r.QtyIn>0?'+'+r.QtyIn:'—')+'</td>'
+        +'<td style="text-align:right;color:#e65100">'+(r.QtyOut>0?'-'+r.QtyOut:'—')+'</td>'
+        +'<td style="text-align:right;color:#b71c1c">'+(r.QtyDefect>0?r.QtyDefect:'—')+'</td>'
+        +'<td style="text-align:right;font-weight:700">'+r.Balance+'</td>'
+        +'<td style="color:#999">'+(r.Note||'—')+'</td>'
+      +'</tr>';
+    }).join('') : '<tr><td colspan="10" style="text-align:center;padding:20px;color:#999">ไม่มีรายการในช่วงเวลาที่เลือกค่ะ</td></tr>')
+  +'</tbody></table></div>'
+  +'<div style="padding:10px 16px;font-size:11px;color:#999;border-top:1px solid #eee">รวม '+displayRows.length+' รายการ'+((fromD||toD)?' (กรองจากทั้งหมด '+rows.length+' รายการ)':'')+'</div>';
 }
 
 window._gsiReady = initGSI;
