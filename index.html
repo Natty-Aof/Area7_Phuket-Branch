@@ -15618,12 +15618,11 @@ function exportSelectedReport(){
   toast('Export '+filename+'.csv แล้วค่ะ','success');
 }
 
-// ── เรียก renderMovementReport ตอน loadFullReport ────────────
-var _origLoadReportMovement = loadFullReport;
-loadFullReport = function(){
-  _origLoadReportMovement();
-  setTimeout(renderMovementReport, 600);
-};
+// ── หมายเหตุ: renderMovementReport() ถูกเรียกอยู่แล้วโดยตรงภายใน loadFullReport()
+// (หลัง window._fullReqs ถูกตั้งค่าใหม่) — เดิมมี wrapper ที่ setTimeout(600ms) ซ้ำอีกชั้น
+// ซึ่งทำให้เกิด race condition: ถ้า Apps Script backend ตอบช้ากว่า 600ms (พบบ่อยเวลาข้อมูลเยอะ/
+// สลับสาขา) กราฟจะถูกวาดทับด้วยข้อมูลสาขาเก่าที่ค้างอยู่ในเบราว์เซอร์ ลบ wrapper นี้ทิ้งแล้ว
+// เพื่อไม่ให้มีการเรียกซ้ำแบบตั้งเวลาตายตัวอีก
 
 
 // ── Stock Card: Part Image (ใช้ระบบรูปจริงร่วมกับหน้า "จัดการอะไหล่/รถ") ──
