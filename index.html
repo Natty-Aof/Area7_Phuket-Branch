@@ -14358,7 +14358,16 @@ function _renderFullReport(){
   });
   var techList=Object.values(techMap).sort(function(a,b){return (b.inProgress+b.waitClear)-(a.inProgress+a.waitClear);});
   var techChartCanvas = document.getElementById('rptTechChart');
-  if(techChartCanvas && techList.length) drawTechRaceChart(techChartCanvas, techList);
+  if(techChartCanvas && techList.length){
+    techChartCanvas.style.display='';
+    drawTechRaceChart(techChartCanvas, techList);
+  } else if(techChartCanvas){
+    // ── กันบั๊ก: ถ้าไม่มีข้อมูล (เช่นสลับไปสาขาที่ยังไม่มีใบเบิก) ต้องซ่อน/เคลียร์กราฟเก่าทิ้ง ──
+    // ไม่งั้น canvas จะค้างโชว์รูปเดิมจากการ render ครั้งก่อนหน้า (ของสาขาอื่น) ทำให้ดูเหมือนข้อมูลไม่กรอง
+    techChartCanvas.style.display='none';
+    var oldCtx = techChartCanvas.getContext('2d');
+    if(oldCtx) oldCtx.clearRect(0,0,techChartCanvas.width,techChartCanvas.height);
+  }
   var techEl=document.getElementById('rptTechTable');
   if(techEl&&techList.length){
     var h2='<div class="tw"><table class="it" style="font-size:13px"><thead><tr style="font-size:13px;font-weight:700">'
@@ -14386,6 +14395,9 @@ function _renderFullReport(){
     });
     h2+='</tbody></table></div>';
     techEl.innerHTML=h2;
+  } else if(techEl){
+    // ── กันบั๊ก: เคลียร์ตารางเก่าทิ้งเมื่อไม่มีข้อมูล (กันตารางค้างจากสาขาก่อนหน้า) ──
+    techEl.innerHTML='<div class="tc tm" style="padding:20px">ยังไม่มีข้อมูลค่ะ</div>';
   }
 
   // ── 6. TOP 10 อะไหล่ที่จ่ายออกจริง (Issued Qty ONLY) ───
