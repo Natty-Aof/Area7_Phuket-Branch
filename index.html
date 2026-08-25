@@ -2474,7 +2474,7 @@ function demoLogin(role){
 // ── API ──────────────────────────────────────────────────────
 // รายการ action ที่ผลลัพธ์ขึ้นกับสาขา — แนบ activeBranch (ตัวกรองสาขาที่ ผจก.เขต เลือกดูอยู่) ให้อัตโนมัติ
 // ผู้ใช้ทั่วไป (ไม่ใช่ ผจก.เขต) ไม่ได้รับผลจากตรงนี้ — backend กรองเป็นสาขาตัวเองอยู่แล้วเสมอ
-var BRANCH_SCOPED_ACTIONS = ['getRequisitions','getStockCardEntries','getVehicles','getInventoryBalance','getStockTransfers','getDashboard'];
+var BRANCH_SCOPED_ACTIONS = ['getRequisitions','getStockCardEntries','getVehicles','getInventoryBalance','getStockTransfers','getDashboard','getReport'];
 function callAPI(action, data, userEmail){
   var email = userEmail || (CU && CU.email) || '';
   var payload = data || {};
