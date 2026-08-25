@@ -351,6 +351,7 @@ textarea.fc{min-height:70px;resize:vertical;}
       <div class="ni" data-pg="list" onclick="go('list')"><span class="ic">📋</span> รายการใบเบิก</div>
       <div class="ni hidden" id="nApproval" data-pg="approval" onclick="go('approval')"><span class="ic">✅</span> รออนุมัติ<span class="badge" id="apBadge">0</span></div>
       <div class="ni hidden" id="nStock" data-pg="stock" onclick="go('stock')"><span class="ic">📦</span> จัดอะไหล่<span class="badge" id="stBadge">0</span></div>
+      <div class="ni hidden" id="nTransfer" data-pg="transfer" onclick="go('transfer')"><span class="ic">🚚</span> เบิกข้ามสาขา<span class="badge hidden" id="trBadge">0</span></div>
       <div class="ni" data-pg="pickup" onclick="go('pickup')"><span class="ic">📥</span> รับอะไหล่</div>
       <div class="ni" data-pg="close" onclick="go('close')"><span class="ic">🔄</span> เคลียร์ใบเบิก</div>
       <div class="ni" data-pg="print" onclick="go('print')"><span class="ic">🖨️</span> พิมพ์ใบเบิก</div>
@@ -379,6 +380,10 @@ textarea.fc{min-height:70px;resize:vertical;}
       <button id="pgBackBtn" onclick="goAppBack()" class="hidden" style="background:none;border:none;cursor:pointer;font-size:20px;padding:4px 8px 4px 0;color:var(--gd);line-height:1" title="ย้อนกลับ">←</button>
       <span style="font-size:20px">🌿</span>
       <h1 id="pgTitle">Dashboard</h1>
+      <select id="branchSwitcher" class="hidden" onchange="onBranchSwitch(this.value)"
+        style="margin-left:10px;font-size:12px;font-weight:700;border:1.5px solid var(--gm);border-radius:8px;padding:5px 8px;color:var(--gd);background:#fff" title="ดูข้อมูลรายสาขา — เฉพาะ ผจก.เขต">
+        <option value="">🌐 ทุกสาขา</option>
+      </select>
       <span class="sub" id="uEmail">-</span>
     </div>
     <div class="content">
@@ -1444,6 +1449,26 @@ textarea.fc{min-height:70px;resize:vertical;}
       </div>
 
       <!-- ═══════════════════════════════════════════════════ -->
+
+      <!-- TRANSFER: เบิกอะไหล่ข้ามสาขา -->
+      <div id="pg-transfer" class="hidden">
+        <div class="card" style="padding:12px 16px;margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <div style="font-size:12px;color:var(--g400);flex:1;min-width:200px">
+            🚚 คำขอเบิก/โอนอะไหล่ระหว่างสาขาของเขต 7 — ภูเก็ตเป็นคลังหลัก (Hub)
+          </div>
+          <button class="btn bgd bsm" onclick="openTransferForm()">➕ ขอเบิกจากภูเก็ต</button>
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+          <button class="btn bp bsm trTabBtn" data-tr="" onclick="switchTransferTab('')">ทั้งหมด</button>
+          <button class="btn bo bsm trTabBtn" data-tr="PENDING_APPROVAL" onclick="switchTransferTab('PENDING_APPROVAL')">รออนุมัติ</button>
+          <button class="btn bo bsm trTabBtn" data-tr="APPROVED" onclick="switchTransferTab('APPROVED')">รอจัดของ (ภูเก็ต)</button>
+          <button class="btn bo bsm trTabBtn" data-tr="SHIPPED" onclick="switchTransferTab('SHIPPED')">รอสาขายืนยันรับ</button>
+          <button class="btn bo bsm trTabBtn" data-tr="RECEIVED" onclick="switchTransferTab('RECEIVED')">รับแล้ว</button>
+        </div>
+        <div id="transferListBox"></div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════ -->
     </div><!-- /content -->
   </div><!-- /main -->
 </div><!-- /app -->
@@ -1789,6 +1814,38 @@ textarea.fc{min-height:70px;resize:vertical;}
 
 
 
+<!-- ── TRANSFER FORM MODAL: ขอเบิกอะไหล่ข้ามสาขา ──────────────── -->
+<div id="transferFormModal" class="mo hidden">
+  <div class="mow" style="max-width:640px">
+    <div class="moh">
+      <div class="mot">🚚 ขอเบิกอะไหล่จากภูเก็ต (Hub)</div>
+      <button class="mcl" onclick="closeModal('transferFormModal')">✕</button>
+    </div>
+    <div class="mob">
+      <div style="background:#e8f5e9;padding:8px 12px;border-radius:8px;font-size:12px;color:#1b5e20;margin-bottom:12px">
+        📋 คำขอนี้จะส่งให้ <strong>ผจก.สาขา (ถ้ามี) และ ผจก.เขต</strong> อนุมัติก่อน แล้ว Stock ภูเก็ตจะจัดของส่งมาให้ค่ะ
+      </div>
+      <div class="fg">
+        <label class="fl">สาขาปลายทาง <span class="rq">*</span></label>
+        <select class="fc" id="trToBranch"></select>
+      </div>
+      <div class="fg">
+        <label class="fl">เหตุผล / หมายเหตุ</label>
+        <input class="fc" id="trReason" placeholder="เช่น อะไหล่ใกล้หมด เตรียมงานซ่อมประจำเดือน">
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:12px 0 8px">
+        <div class="ct" style="margin:0">รายการอะไหล่ที่ขอเบิก</div>
+        <button class="btn bo bsm" onclick="addTransferRow()">+ เพิ่มรายการ</button>
+      </div>
+      <div id="trItemsBody" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+    <div class="mof" style="justify-content:space-between">
+      <button class="btn bd" onclick="closeModal('transferFormModal')">ยกเลิก</button>
+      <button class="btn bgd" onclick="submitTransferForm()">📤 ส่งคำขอ</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── QR SCANNER MODAL ──────────────────────────── -->
 <div id="qrScanModal" class="mo hidden">
   <div class="mow" style="max-width:420px">
@@ -2079,6 +2136,7 @@ function _goWithoutPush(page){
     renderSCNTManual();
   }
   if(page==='jobs') loadJobs();
+  if(page==='transfer'){ switchTransferTab(_trTab||''); }
 }
 
 // ── SESSION RESTORE moved to bottom of script (after all functions defined) ──
@@ -2355,7 +2413,8 @@ function onGSI(resp){
     if(res && res.success && res.role && res.role !== 'DENIED'){
       // ── แก้บั๊ก: Role ในชีทเขียนไม่สม่ำเสมอ ("Admin" vs "ADMIN") ทำให้เช็ค CU.role==='ADMIN' พลาด ──
       // normalize เป็นตัวใหญ่ทั้งหมดตรงนี้ที่เดียว แก้ปัญหาทุกจุดที่เช็ค CU.role ทั่วทั้งแอปพร้อมกัน
-      CU = {email:p.email, name:res.name||p.name||p.email.split('@')[0], role:String(res.role||'').toUpperCase()};
+      CU = {email:p.email, name:res.name||p.name||p.email.split('@')[0], role:String(res.role||'').toUpperCase(),
+            branch: res.branch || 'PHUKET'};
       initApp();
       return;
     }
@@ -2404,7 +2463,7 @@ var DEMO_USERS = {
 };
 
 function demoLogin(role){
-  CU = Object.assign({}, DEMO_USERS[role], {isDemo:true});
+  CU = Object.assign({}, DEMO_USERS[role], {isDemo:true, branch:'PHUKET'});
   window._demo = true;
   initApp();
   jobs = DEMO_JOBS;
@@ -2413,11 +2472,18 @@ function demoLogin(role){
 }
 
 // ── API ──────────────────────────────────────────────────────
+// รายการ action ที่ผลลัพธ์ขึ้นกับสาขา — แนบ activeBranch (ตัวกรองสาขาที่ ผจก.เขต เลือกดูอยู่) ให้อัตโนมัติ
+// ผู้ใช้ทั่วไป (ไม่ใช่ ผจก.เขต) ไม่ได้รับผลจากตรงนี้ — backend กรองเป็นสาขาตัวเองอยู่แล้วเสมอ
+var BRANCH_SCOPED_ACTIONS = ['getRequisitions','getStockCardEntries','getVehicles','getInventoryBalance','getStockTransfers'];
 function callAPI(action, data, userEmail){
   var email = userEmail || (CU && CU.email) || '';
+  var payload = data || {};
+  if(typeof activeBranch!=='undefined' && activeBranch && BRANCH_SCOPED_ACTIONS.indexOf(action)>=0 && payload.branch===undefined){
+    payload = Object.assign({}, payload, {branch: activeBranch});
+  }
   return fetch(SCRIPT_URL, {
     method:'POST',
-    body:JSON.stringify({action:action, data:data||{}, userEmail:email})
+    body:JSON.stringify({action:action, data:payload, userEmail:email})
   }).then(function(r){ return r.json(); }).catch(function(e){
     toast('Server error: '+e.message,'error');
     return {success:false};
@@ -2654,7 +2720,7 @@ function initApp(){
   // ── Session Persistence: เก็บ CU ไว้ใน localStorage (อยู่ถาวรจนกว่าจะออกจากระบบเอง กันเด้งออกตอนเปิดแอปค้างไว้นาน/สลับแอปบนมือถือ) ──
   try {
     localStorage.setItem('_bgCU', JSON.stringify({
-      email: CU.email, name: CU.name, role: CU.role
+      email: CU.email, name: CU.name, role: CU.role, branch: CU.branch
     }));
   } catch(e){}
 
@@ -2724,6 +2790,15 @@ function initApp(){
     if(ns) ns.classList.remove('hidden');
     if(bs) bs.classList.remove('hidden');
   }
+
+  // ── เบิกข้ามสาขา (Stock Transfer): เห็นเมนูได้ทุก role ยกเว้นช่าง ──
+  if(['STOCK','SUPERVISOR','MANAGER','ADMIN'].indexOf(CU.role)>=0){
+    var nTr = document.getElementById('nTransfer');
+    if(nTr) nTr.classList.remove('hidden');
+  }
+
+  // ── ตัวเลือกสาขา: เฉพาะ ผจก.เขต/ADMIN เท่านั้น (ผจก.สาขา/พนักงานอื่นเห็นแค่สาขาตัวเองอัตโนมัติ) ──
+  initBranchSwitcher();
   // เมนูจัดการข้อมูลหลัก — ทุก role เข้าดูได้ (ช่างดูรูปอะไหล่ได้) แต่แก้ไขได้เฉพาะ Stock/Manager/Admin
   var nm=document.getElementById('nMaster');
   if(nm) nm.classList.remove('hidden');
@@ -2912,8 +2987,289 @@ function roleLabel(r){
   return m[r]||r;
 }
 
+var BRANCH_LABELS = {PHUKET:'ภูเก็ต (Hub)', SAMUI:'สมุย', HATYAI:'หาดใหญ่', KRABI:'กระบี่'};
+function branchLabel(code){ return BRANCH_LABELS[code] || code || '-'; }
+
+// ── ผจก.เขต (MANAGER ไม่ผูก BranchCode เจาะจง หรือ ADMIN) มองเห็น/สลับดูได้ทุกสาขา ──
+// ผจก.สาขา/พนักงานอื่น เห็นเฉพาะสาขาตัวเองเสมอ (ฝั่ง backend กรองให้อัตโนมัติอยู่แล้ว)
+function isRegionalMgr(){
+  if(!CU) return false;
+  if(CU.role==='ADMIN') return true;
+  if(CU.role!=='MANAGER') return false;
+  var bc = String(CU.branch||'').trim().toUpperCase();
+  return !bc || bc==='ALL' || bc==='AREA7' || bc==='PHUKET'; // ผจก.ภูเก็ต = ผจก.เขต ตามโครงสร้างปัจจุบัน
+}
+
+// activeBranch: null = ดูรวมทุกสาขา (เฉพาะผจก.เขต), หรือรหัสสาขาที่กำลังกรองดูอยู่
+var activeBranch = null;
+function initBranchSwitcher(){
+  var sel = document.getElementById('branchSwitcher');
+  if(!sel) return;
+  if(!isRegionalMgr()){ sel.classList.add('hidden'); activeBranch = CU.branch||'PHUKET'; return; }
+  sel.classList.remove('hidden');
+  callAPI('getBranches', {}).then(function(res){
+    if(!res || !res.success) return;
+    var opts = ['<option value="">🌐 ทุกสาขา (ผจก.เขต)</option>'];
+    (res.data||[]).forEach(function(b){
+      if(String(b.Active).toLowerCase()==='false') return;
+      opts.push('<option value="'+b.BranchCode+'">'+(b.BranchName||branchLabel(b.BranchCode))+'</option>');
+    });
+    sel.innerHTML = opts.join('');
+    sel.value = activeBranch || '';
+  });
+}
+function onBranchSwitch(val){
+  activeBranch = val || null;
+  toast(val ? ('กำลังดูข้อมูลสาขา: '+branchLabel(val)) : 'กำลังดูข้อมูลรวมทุกสาขา', 'success');
+  go(curPage||'dashboard'); // โหลดข้อมูลหน้าปัจจุบันซ้ำด้วยตัวกรองสาขาใหม่
+}
+// รหัสสาขาที่จะส่งแนบไปกับ API call ปัจจุบัน (undefined = ไม่กรอง ให้ backend ตัดสินเอง)
+function branchParam(){ return activeBranch || undefined; }
+
+// ════════════════════════════════════════════════════════════════
+// STOCK TRANSFER — เบิกอะไหล่ข้ามสาขา (ภูเก็ต Hub → สาขาอื่น)
+// ════════════════════════════════════════════════════════════════
+var _trTab = '';
+var _trList = [];
+
+function switchTransferTab(status){
+  _trTab = status;
+  document.querySelectorAll('.trTabBtn').forEach(function(b){
+    b.classList.toggle('bp', b.dataset.tr===status);
+    b.classList.toggle('bo', b.dataset.tr!==status);
+  });
+  loadTransferPage();
+}
+
+function loadTransferPage(){
+  var box = document.getElementById('transferListBox');
+  if(box) box.innerHTML = '<div style="text-align:center;padding:30px;color:var(--g400)">⏳ กำลังโหลด...</div>';
+  var params = {};
+  if(_trTab) params.status = _trTab;
+  callAPI('getStockTransfers', params).then(function(res){
+    _trList = (res && res.success) ? (res.data||[]) : [];
+    renderTransferList();
+  });
+}
+
+var TR_STATUS_LABEL = {
+  PENDING_APPROVAL:{t:'⏳ รออนุมัติ', c:'#e65100', bg:'#fff3e0'},
+  APPROVED:{t:'✅ อนุมัติแล้ว — รอภูเก็ตจัดของ', c:'#1565c0', bg:'#e3f2fd'},
+  SHIPPED:{t:'🚚 ส่งของแล้ว — รอสาขายืนยันรับ', c:'#6a1599', bg:'#f3e5f5'},
+  RECEIVED:{t:'📦 รับของแล้ว', c:'#1b5e20', bg:'#e8f5e9'},
+  REJECTED:{t:'❌ ถูกปฏิเสธ', c:'#b71c1c', bg:'#ffebee'},
+  CANCELLED:{t:'🚫 ยกเลิกแล้ว', c:'#616161', bg:'#f5f5f5'},
+};
+
+function renderTransferList(){
+  var box = document.getElementById('transferListBox');
+  if(!box) return;
+  if(!_trList.length){ box.innerHTML = '<div class="card" style="padding:24px;text-align:center;color:var(--g400)">ไม่มีรายการค่ะ</div>'; return; }
+  box.innerHTML = _trList.map(function(tr){
+    var st = TR_STATUS_LABEL[tr.Status] || {t:tr.Status, c:'#666', bg:'#f5f5f5'};
+    var items = (tr.Items||[]).map(function(it){
+      return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px dashed #eee">'
+        +'<span>'+it.PartNo+' — '+(it.NameEN||'')+'</span><span style="font-weight:700">'+it.Qty+' '+(it.Unit||'ชิ้น')+'</span></div>';
+    }).join('');
+    var actions = _transferActionButtons(tr);
+    return '<div class="card" style="padding:14px 16px;margin-bottom:10px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:8px">'
+        +'<div>'
+          +'<div style="font-weight:700;color:var(--gd);font-size:14px">'+tr.TransferID+'</div>'
+          +'<div style="font-size:12px;color:#555">'+branchLabel(tr.FromBranch)+' → '+branchLabel(tr.ToBranch)+' | ขอโดย '+(tr.RequestedByName||tr.RequestedBy||'-')+'</div>'
+          +(tr.Reason?'<div style="font-size:11px;color:#888;margin-top:2px">📝 '+tr.Reason+'</div>':'')
+        +'</div>'
+        +'<span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;color:'+st.c+';background:'+st.bg+'">'+st.t+'</span>'
+      +'</div>'
+      +'<div style="background:#f8faf9;border-radius:8px;padding:8px 10px;margin-bottom:10px">'+items+'</div>'
+      +(actions?'<div style="display:flex;gap:8px;flex-wrap:wrap">'+actions+'</div>':'')
+    +'</div>';
+  }).join('');
+}
+
+// ปุ่มที่แสดงขึ้นกับสถานะ + สิทธิ์ของผู้ใช้ปัจจุบัน (ฝั่ง backend ยังคงเช็คสิทธิ์ซ้ำอีกชั้นเสมอ)
+function _transferActionButtons(tr){
+  var role = CU ? CU.role : '';
+  var canApprove = isRegionalMgr() || (role==='MANAGER' && CU.branch===tr.ToBranch);
+  var canShip    = ['STOCK','MANAGER','ADMIN'].indexOf(role)>=0;
+  var canReceive = ['STOCK','SUPERVISOR','MANAGER','ADMIN'].indexOf(role)>=0;
+  var btns = '';
+  if(tr.Status==='PENDING_APPROVAL' && canApprove){
+    btns += '<button class="btn bgd bsm" onclick="transferApprove(\''+tr.TransferID+'\')">✅ อนุมัติ</button>';
+    btns += '<button class="btn bd bsm" onclick="transferReject(\''+tr.TransferID+'\')">❌ ปฏิเสธ</button>';
+  }
+  if(tr.Status==='APPROVED' && canShip){
+    btns += '<button class="btn bgd bsm" onclick="transferShip(\''+tr.TransferID+'\')">🚚 ส่งของแล้ว (ตัดสต็อกภูเก็ต)</button>';
+  }
+  if(tr.Status==='SHIPPED' && canReceive){
+    btns += '<button class="btn bgd bsm" onclick="transferReceive(\''+tr.TransferID+'\')">📦 ยืนยันรับของ</button>';
+  }
+  if(tr.Status==='PENDING_APPROVAL' && (tr.RequestedBy===(CU&&CU.email) || isRegionalMgr())){
+    btns += '<button class="btn bo bsm" onclick="transferCancel(\''+tr.TransferID+'\')">🚫 ยกเลิกคำขอ</button>';
+  }
+  return btns;
+}
+
+function transferApprove(id){
+  if(!confirm('ยืนยันอนุมัติคำขอโอน '+id+' ?')) return;
+  callAPI('approveStockTransfer',{transferId:id}).then(function(res){
+    toast(res.message||'', res.success?'success':'error');
+    if(res.success) loadTransferPage();
+  });
+}
+function transferReject(id){
+  var note = prompt('เหตุผลที่ปฏิเสธ (ถ้ามี):','') || '';
+  callAPI('rejectStockTransfer',{transferId:id, note:note}).then(function(res){
+    toast(res.message||'', res.success?'success':'error');
+    if(res.success) loadTransferPage();
+  });
+}
+function transferShip(id){
+  if(!confirm('ยืนยันว่าจัดของและส่งออกแล้ว? ระบบจะตัดสต็อกภูเก็ตทันที')) return;
+  callAPI('shipStockTransfer',{transferId:id}).then(function(res){
+    toast(res.message||'', res.success?'success':'error');
+    if(res.success) loadTransferPage();
+  });
+}
+function transferReceive(id){
+  if(!confirm('ยืนยันรับของครบตามที่ส่งมา? ระบบจะเพิ่มเข้าสต็อกสาขาปลายทางทันที\n(ถ้ารับไม่ครบ กรุณาแจ้งอ๊อฟ/แอดมินให้ปรับยอดภายหลัง)')) return;
+  callAPI('receiveStockTransfer',{transferId:id}).then(function(res){
+    toast(res.message||'', res.success?'success':'error');
+    if(res.success) loadTransferPage();
+  });
+}
+function transferCancel(id){
+  if(!confirm('ยืนยันยกเลิกคำขอ '+id+' ?')) return;
+  callAPI('cancelStockTransfer',{transferId:id}).then(function(res){
+    toast(res.message||'', res.success?'success':'error');
+    if(res.success) loadTransferPage();
+  });
+}
+
+// ── ฟอร์มเปิดคำขอเบิกใหม่ ──────────────────────────────────────
+function openTransferForm(){
+  var sel = document.getElementById('trToBranch');
+  callAPI('getBranches', {}).then(function(res){
+    var branches = (res && res.success) ? (res.data||[]) : [];
+    var myBranch = CU ? CU.branch : '';
+    sel.innerHTML = branches
+      .filter(function(b){ return String(b.Active).toLowerCase()!=='false' && b.BranchCode!=='PHUKET'; })
+      .map(function(b){ return '<option value="'+b.BranchCode+'">'+(b.BranchName||branchLabel(b.BranchCode))+'</option>'; })
+      .join('');
+    // ผจก.เขต/ADMIN เลือกสาขาปลายทางเองได้ — พนักงานสาขาอื่น (ไม่ใช่ภูเก็ต) ตั้งเป็นสาขาตัวเองอัตโนมัติ
+    if(!isRegionalMgr() && myBranch && myBranch!=='PHUKET') sel.value = myBranch;
+  });
+  document.getElementById('trReason').value = '';
+  document.getElementById('trItemsBody').innerHTML = '';
+  addTransferRow();
+  document.getElementById('transferFormModal').classList.remove('hidden');
+  document.getElementById('transferFormModal').classList.add('open');
+}
+
+function addTransferRow(){
+  var wrap = document.getElementById('trItemsBody');
+  if(!wrap) return;
+  var i = wrap.children.length;
+  var div = document.createElement('div');
+  div.className = 'tr-row-item';
+  div.setAttribute('data-idx', i);
+  div.style.cssText = 'background:#f8faf9;border:1px solid var(--g200);border-radius:8px;padding:10px;position:relative;margin-bottom:6px';
+  div.innerHTML =
+    '<button onclick="this.closest(\'.tr-row-item\').remove()" style="position:absolute;top:6px;right:6px;background:none;border:none;cursor:pointer;color:var(--red);font-size:18px" title="ลบรายการ">✕</button>'
+    +'<div style="margin-bottom:8px;position:relative">'
+    +'<label style="font-size:11px;color:var(--g400)">🔍 ค้นหาอะไหล่ (Part No. หรือ ชื่อ)</label>'
+    +'<input class="fc tr-part-search" placeholder="พิมพ์เพื่อค้นหา..." oninput="trPartSearch(this)" autocomplete="off" style="font-size:13px">'
+    +'<div class="tr-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--g200);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.12);z-index:500;max-height:220px;overflow-y:auto"></div>'
+    +'</div>'
+    +'<div class="tr-part-selected" style="display:none;background:#e8f5e9;border:1px solid #74c69d;border-radius:6px;padding:8px 10px;margin-bottom:8px;font-size:13px">'
+    +'<strong class="tr-sel-pno" style="color:var(--gd)"></strong>'
+    +'<span class="tr-sel-name" style="color:#333;margin-left:8px"></span>'
+    +'<button onclick="trPartClear(this)" style="float:right;background:none;border:none;cursor:pointer;color:var(--g400);font-size:12px">✕ เปลี่ยน</button>'
+    +'</div>'
+    +'<input type="hidden" class="tr-pn">'
+    +'<input type="hidden" class="tr-name">'
+    +'<input type="hidden" class="tr-unit" value="ชิ้น">'
+    +'<div style="display:grid;grid-template-columns:100px 1fr;gap:8px">'
+    +'<div><label style="font-size:11px;color:var(--g400)">จำนวน</label>'
+    +'<input class="fc tr-qty" type="number" value="1" min="1" style="text-align:center;font-weight:700"></div>'
+    +'<div><label style="font-size:11px;color:var(--g400)">หมายเหตุ</label>'
+    +'<input class="fc tr-note" placeholder="หมายเหตุ (ถ้ามี)"></div>'
+    +'</div>';
+  wrap.appendChild(div);
+}
+
+function trPartSearch(input){
+  var q = (input.value||'').trim().toLowerCase();
+  var dropdown = input.nextElementSibling;
+  if(!q || q.length < 1){ dropdown.style.display='none'; return; }
+  var results = (typeof PARTS_DB!=='undefined'?PARTS_DB:[])
+    .filter(function(p){ return p._search && p._search.indexOf(q)>=0; })
+    .slice(0, 12);
+  if(!results.length){ dropdown.style.display='none'; return; }
+  dropdown.innerHTML = results.map(function(p){
+    return '<div class="tr-dd-item" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:12px">'
+      +'<div style="font-weight:700;color:#1a4a2e">'+p.partNo+'</div>'
+      +'<div style="color:#333">'+(p.nameEN||p.nameTH||'-')+'</div>'
+      +'</div>';
+  }).join('');
+  dropdown.querySelectorAll('.tr-dd-item').forEach(function(el, i){
+    var p = results[i];
+    el.addEventListener('click', function(e){
+      e.stopPropagation();
+      trSelectPartDirect(input.closest('.tr-row-item'), p.partNo, p.nameEN||p.nameTH||'', p.unit||'ชิ้น');
+      input.value = p.partNo;
+      dropdown.style.display = 'none';
+    });
+  });
+  dropdown.style.display = 'block';
+}
+function trSelectPartDirect(row, partNo, nameEN, unit){
+  if(!row) return;
+  var search = row.querySelector('.tr-part-search');
+  var selected = row.querySelector('.tr-part-selected');
+  if(search) search.style.display = 'none';
+  if(selected) selected.style.display = '';
+  row.querySelector('.tr-sel-pno').textContent = partNo;
+  row.querySelector('.tr-sel-name').textContent = nameEN;
+  row.querySelector('.tr-pn').value = partNo;
+  row.querySelector('.tr-name').value = nameEN;
+  row.querySelector('.tr-unit').value = unit;
+}
+function trPartClear(btn){
+  var row = btn.closest('.tr-row-item');
+  if(!row) return;
+  row.querySelector('.tr-part-search').style.display = '';
+  row.querySelector('.tr-part-search').value = '';
+  row.querySelector('.tr-part-selected').style.display = 'none';
+  row.querySelector('.tr-pn').value = '';
+  row.querySelector('.tr-name').value = '';
+}
+
+function submitTransferForm(){
+  var toBranch = document.getElementById('trToBranch').value;
+  if(!toBranch){ toast('กรุณาเลือกสาขาปลายทางค่ะ','error'); return; }
+  var rows = document.querySelectorAll('#trItemsBody .tr-row-item');
+  var items = [];
+  rows.forEach(function(row){
+    var pn = row.querySelector('.tr-pn').value;
+    if(!pn) return;
+    items.push({
+      partNo: pn,
+      nameEN: row.querySelector('.tr-name').value,
+      unit: row.querySelector('.tr-unit').value,
+      qty: parseFloat(row.querySelector('.tr-qty').value)||1,
+      note: row.querySelector('.tr-note').value,
+    });
+  });
+  if(!items.length){ toast('กรุณาเลือกอะไหล่อย่างน้อย 1 รายการค่ะ','error'); return; }
+  callAPI('createStockTransfer', {toBranch:toBranch, reason:document.getElementById('trReason').value, items:items}).then(function(res){
+    toast(res.message||'', res.success?'success':'error');
+    if(res.success){ closeModal('transferFormModal'); loadTransferPage(); }
+  });
+}
+
 // ── NAVIGATE ─────────────────────────────────────────────────
-var pgTitles={dashboard:'Dashboard',create:'เปิดใบเบิกอะไหล่',list:'รายการใบเบิกอะไหล่',approval:'รายการรออนุมัติ',stock:'จัดอะไหล่ / รับคืน',pickup:'รับอะไหล่',close:'เคลียร์ใบเบิก',print:'พิมพ์ใบเบิก',profile:'ลายเซ็นของฉัน',jobs:'จัดการ Job No.',stockcard:'Stock Card',stockcount:'นับสต็อก',changereq:'คำขออนุมัติแก้ไข',vehiclehistory:'ประวัติรถ',pmcheck:'ตรวจเช็ครถ PM (ใบแช็ง)',sales:'เปิดรายการขาย',inventory:'ยอดคงเหลือ',specialreq:'สั่งซื้อพิเศษ / ค้างส่งลูกค้า',master:'จัดการอะไหล่ / รถ'};
+var pgTitles={dashboard:'Dashboard',create:'เปิดใบเบิกอะไหล่',list:'รายการใบเบิกอะไหล่',approval:'รายการรออนุมัติ',stock:'จัดอะไหล่ / รับคืน',pickup:'รับอะไหล่',close:'เคลียร์ใบเบิก',print:'พิมพ์ใบเบิก',profile:'ลายเซ็นของฉัน',jobs:'จัดการ Job No.',stockcard:'Stock Card',stockcount:'นับสต็อก',changereq:'คำขออนุมัติแก้ไข',vehiclehistory:'ประวัติรถ',pmcheck:'ตรวจเช็ครถ PM (ใบแช็ง)',sales:'เปิดรายการขาย',inventory:'ยอดคงเหลือ',specialreq:'สั่งซื้อพิเศษ / ค้างส่งลูกค้า',master:'จัดการอะไหล่ / รถ',transfer:'เบิกข้ามสาขา'};
 
 function goAppBack(){
   // ⚡ ใช้ history.back() — จะไปเข้ากลไก popstate/_goWithoutPush ที่มีอยู่แล้ว (ไม่ push ซ้ำ ไม่ทำให้ค้าง)
@@ -2979,6 +3335,7 @@ function go(page){
     renderSCNTManual();
   }
   if(page==='jobs') loadJobs();
+  if(page==='transfer'){ switchTransferTab(_trTab||''); }
 }
 
 // ── DASHBOARD ────────────────────────────────────────────────
