@@ -2988,17 +2988,28 @@ function _refreshInventoryFromParts(){
   });
 }
 
+// ยอดตั้งต้น (Parts.inStock เดิม) เป็นของภูเก็ตล้วนๆ (ตัวเลขก่อนระบบมีหลายสาขา)
+// ใช้ได้แค่ตอนดูภูเก็ตเจาะจง หรือดูรวมทุกสาขา (ผจก.เขต ไม่ได้เลือกกรอง) — สาขาอื่นเริ่มจาก 0 เสมอ
+// จนกว่าจะมีการ import ยอดยกมาเข้า StockCard ของสาขานั้นๆ โดยเฉพาะ
+function _currentEffectiveBranch(){
+  if(!CU) return 'PHUKET';
+  if(typeof isRegionalMgr==='function' && isRegionalMgr()) return (typeof activeBranch!=='undefined' ? activeBranch : null) || null;
+  return CU.branch || 'PHUKET';
+}
+
 // ดึง movement สุทธิจาก StockCard มาปรับ inStock ใน PARTS_DB ให้เป็นยอดจริง
 var _stockSynced = false;
 function syncStockBalance(cb){
   callAPI('getInventoryBalance',{}).then(function(res){
     var movement = res.data || {};
     var locations = res.locations || {};
+    var eb = _currentEffectiveBranch(); // null = ดูรวมทุกสาขา (เฉพาะผจก.เขต)
+    var applyBaseStock = (eb === null || eb === 'PHUKET');
     if(typeof PARTS_DB !== 'undefined' && PARTS_DB.length){
       PARTS_DB.forEach(function(p){
         if(p._baseStock === undefined) p._baseStock = Number(p.inStock)||0;
         var mv = Number(movement[p.partNo])||0;
-        p.inStock = p._baseStock + mv;
+        p.inStock = (applyBaseStock ? p._baseStock : 0) + mv;
         // อัปเดต location จาก Sheet Parts (ถ้ามี)
         if(locations[p.partNo] !== undefined && locations[p.partNo] !== '')
           p.location = locations[p.partNo];
@@ -3065,6 +3076,7 @@ function onBranchSwitch(val){
   activeBranch = val || null;
   toast(val ? ('กำลังดูข้อมูลสาขา: '+branchLabel(val)) : 'กำลังดูข้อมูลรวมทุกสาขา', 'success');
   updateBranchLabels();
+  syncStockBalance(); // คำนวณยอดคงเหลืออะไหล่ใหม่ตามสาขาที่เพิ่งเลือก (ยอดตั้งต้นภูเก็ตต้องไม่ติดไปกับสาขาอื่น)
   go(curPage||'dashboard'); // โหลดข้อมูลหน้าปัจจุบันซ้ำด้วยตัวกรองสาขาใหม่
 }
 // รหัสสาขาที่จะส่งแนบไปกับ API call ปัจจุบัน (undefined = ไม่กรอง ให้ backend ตัดสินเอง)
@@ -15349,6 +15361,9 @@ function _renderMovementReportOLD(){
 
   if(!list.length){
     chartEl.innerHTML='<div class="tc tm" style="padding:20px">ยังไม่มีข้อมูลการเคลื่อนไหวค่ะ</div>';
+    // ⚠️ บั๊กเดิม: ล้างแค่ chartEl (กราฟแท่ง) แต่ลืมล้าง tableEl (ตาราง HTML) ด้วย
+    // ทำให้ตารางค้างโชว์ข้อมูลสาขาก่อนหน้าไปเรื่อยๆ ไม่ถูกเคลียร์เมื่อสลับไปสาขาที่ไม่มีข้อมูล
+    if(tableEl) tableEl.innerHTML = '';
     return;
   }
 
