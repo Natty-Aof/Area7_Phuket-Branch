@@ -2502,7 +2502,8 @@ function demoLogin(role){
 // ผู้ใช้ทั่วไป (ไม่ใช่ ผจก.เขต) ไม่ได้รับผลจากตรงนี้ — backend กรองเป็นสาขาตัวเองอยู่แล้วเสมอ
 var BRANCH_SCOPED_ACTIONS = ['getRequisitions','getStockCardEntries','getVehicles','getInventoryBalance',
   'getStockTransfers','getDashboard','getReport','getSalesOrders','getInspections','getVehicleHistory',
-  'getSpecialPartRequests','getCustomerBackorders','getExternalHoldings','getVehiclesRequiringPM','getPMDashboardSummary','getTechStock','getSlowMovingParts'];
+  'getSpecialPartRequests','getCustomerBackorders','getExternalHoldings','getVehiclesRequiringPM','getPMDashboardSummary',
+  'getTechStock','getSlowMovingParts','getVehiclePartAnalytics','getWarrantyPlan'];
 function callAPI(action, data, userEmail){
   var email = userEmail || (CU && CU.email) || '';
   var payload = data || {};
