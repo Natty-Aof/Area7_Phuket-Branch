@@ -3502,7 +3502,10 @@ function _doRefreshBadges(force){
   if(!CU) return;
   _badgeRefreshing = true;
   var now = Date.now();
-  if((now-_badgeLastFetch) < 5000){ _badgeRefreshing = false; return; }
+  // ── force=true (เช่น ตอนสลับสาขา) ต้องข้าม cooldown 5 วินาทีนี้ไปเลย ──
+  // ไม่งั้นถ้าเพิ่งมีการรีเฟรช badge ไปเมื่อครู่ (เช่น ตอนเปิดหน้าเข้ามาแรก) ฟังก์ชันจะ return ก่อนถึงจุดที่
+  // ดึงข้อมูล badge ใหม่จริงๆ ทำให้ล้าง cache ไปแล้วแต่ตัวเลขบนจอไม่เปลี่ยนอยู่ดี (ค้างจากสาขาก่อนหน้า)
+  if(!force && (now-_badgeLastFetch) < 5000){ _badgeRefreshing = false; return; }
   _badgeLastFetch = now;
   callAPI('getDashboard',{}).then(function(res){
     if(!res.success||!res.summary) return;
@@ -3612,6 +3615,10 @@ function _doRefreshBadges(force){
     var crb=document.getElementById('crBadge');
     if(crb){ crb.textContent=cnt; crb.style.display=cnt>0?'inline':'none'; }
   });
+  // ── รีเซ็ตธงกลับเป็น false ทันทีที่ยิง request ทั้งหมดออกไปแล้ว (ไม่ต้องรอผลตอบกลับ) ──
+  // ⚠️ บั๊กเดิม: ไม่เคยรีเซ็ตค่านี้เลยนอกเส้นทาง cooldown แรก พอรันครั้งแรกสำเร็จ ตัวแปรนี้ค้างเป็น true ตลอดไป
+  // ทำให้ refreshBadges() ถัดๆ ไปทั้งหมดถูกดักไว้ตั้งแต่ต้นฟังก์ชัน ไม่มีทางรีเฟรช badge ได้อีกเลยตลอดทั้ง session
+  _badgeRefreshing = false;
 }
 
 
