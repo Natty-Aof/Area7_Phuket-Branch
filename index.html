@@ -13832,17 +13832,23 @@ function renderSCForPart(){
 function _buildSCTable(p, realEntries, el){
   var allEntries = [];
   var baseStock = (p._baseStock!==undefined ? p._baseStock : p.inStock) || 0;
+  // ── ยอดยกมาเดิม (แถว INIT) เป็นของภูเก็ตล้วนๆ (นับสต็อกจริง ณ วันที่ 6/6/69 ก่อนมีระบบหลายสาขา) ──
+  // ต้องแสดงเฉพาะตอนดูภูเก็ต/รวมทุกสาขาเท่านั้น — สาขาอื่นไม่มีการนับยอดยกมาแบบนี้ ไม่ควรมีแถวนี้ปนเลย
+  var eb = (typeof _currentEffectiveBranch==='function') ? _currentEffectiveBranch() : 'PHUKET';
+  var showInitRow = (eb === null || eb === 'PHUKET');
 
-  allEntries.push({
-    EntryID:'INIT-'+p.partNo, Date:'06/06/2569', Type:'INIT',
-    DocNo:'STOCK-INIT-06-06-69', Requester:'ระบบ (ยอดยกมา)', JobNo:'—',
-    Customer:'—', Purpose:'ยอดยกมาจากการนับ Stock จริง ณ วันที่ 6/6/69',
-    QtyIn:baseStock, QtyOut:0, QtyDefect:0, Balance:baseStock,
-    Unit:p.unit||'ชิ้น', Note:'ยอดเริ่มต้นระบบ', _sortKey:'0000-00-00',
-  });
+  if(showInitRow){
+    allEntries.push({
+      EntryID:'INIT-'+p.partNo, Date:'06/06/2569', Type:'INIT',
+      DocNo:'STOCK-INIT-06-06-69', Requester:'ระบบ (ยอดยกมา)', JobNo:'—',
+      Customer:'—', Purpose:'ยอดยกมาจากการนับ Stock จริง ณ วันที่ 6/6/69',
+      QtyIn:baseStock, QtyOut:0, QtyDefect:0, Balance:baseStock,
+      Unit:p.unit||'ชิ้น', Note:'ยอดเริ่มต้นระบบ', _sortKey:'0000-00-00',
+    });
+  }
 
   realEntries.sort(function(a,b){ return (a.CreatedAt||'') > (b.CreatedAt||'') ? 1 : -1; });
-  var runBalance = baseStock;
+  var runBalance = showInitRow ? baseStock : 0;
   var totalIn=0, totalOut=0, totalDef=0;
 
   realEntries.forEach(function(e){
