@@ -3077,6 +3077,8 @@ function onBranchSwitch(val){
   toast(val ? ('กำลังดูข้อมูลสาขา: '+branchLabel(val)) : 'กำลังดูข้อมูลรวมทุกสาขา', 'success');
   updateBranchLabels();
   syncStockBalance(); // คำนวณยอดคงเหลืออะไหล่ใหม่ตามสาขาที่เพิ่งเลือก (ยอดตั้งต้นภูเก็ตต้องไม่ติดไปกับสาขาอื่น)
+  // ── เคลียร์ cache รายการรถทิ้ง — เดิม cache ไว้ 5 นาที ถ้าไม่ล้างตอนสลับสาขา จะเห็นรถของสาขาก่อนหน้าค้างอยู่ ──
+  if(typeof _vehiclesDB !== 'undefined'){ _vehiclesDB = []; _vhDBLastFetch = 0; }
   go(curPage||'dashboard'); // โหลดข้อมูลหน้าปัจจุบันซ้ำด้วยตัวกรองสาขาใหม่
 }
 // รหัสสาขาที่จะส่งแนบไปกับ API call ปัจจุบัน (undefined = ไม่กรอง ให้ backend ตัดสินเอง)
