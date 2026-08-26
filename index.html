@@ -3080,6 +3080,9 @@ function onBranchSwitch(val){
   syncStockBalance(); // คำนวณยอดคงเหลืออะไหล่ใหม่ตามสาขาที่เพิ่งเลือก (ยอดตั้งต้นภูเก็ตต้องไม่ติดไปกับสาขาอื่น)
   // ── เคลียร์ cache รายการรถทิ้ง — เดิม cache ไว้ 5 นาที ถ้าไม่ล้างตอนสลับสาขา จะเห็นรถของสาขาก่อนหน้าค้างอยู่ ──
   if(typeof _vehiclesDB !== 'undefined'){ _vehiclesDB = []; _vhDBLastFetch = 0; }
+  // ── เคลียร์ cache ตัวเลข badge บนเมนูทั้งหมด (PM/ใบตรวจสภาพ/รออนุมัติปิดงาน ฯลฯ) — กันตัวเลขค้างจากสาขาก่อนหน้า ──
+  if(typeof _badgeCache !== 'undefined'){ _badgeCache = null; _badgeCacheTime = 0; }
+  if(typeof refreshBadges === 'function') refreshBadges(true);
   go(curPage||'dashboard'); // โหลดข้อมูลหน้าปัจจุบันซ้ำด้วยตัวกรองสาขาใหม่
 }
 // รหัสสาขาที่จะส่งแนบไปกับ API call ปัจจุบัน (undefined = ไม่กรอง ให้ backend ตัดสินเอง)
@@ -3495,10 +3498,17 @@ function refreshBadges(force){
   if(_badgeRefreshing) return;
   if(!force && _badgeCache && (Date.now()-_badgeCacheTime)<_badgeCacheTTL) return;
   if(_badgeTimer) clearTimeout(_badgeTimer);
-  _badgeTimer = setTimeout(_doRefreshBadges, force ? 100 : 1000);
+  _badgeTimer = setTimeout(function(){ _doRefreshBadges(force); }, force ? 100 : 1000);
 }
 
-function _doRefreshBadges(){
+function _doRefreshBadges(force){
+  // ── force=true (เช่น หลังสร้าง/อนุมัติ/ปิดใบเบิก หรือสลับสาขา) ต้องเคลียร์ cache ย่อยทั้งหมดด้วย ──
+  // ไม่งั้นแม้เรียก refreshBadges(true) ตัวเลข badge บางตัว (PM/ใบตรวจสภาพ/รออนุมัติปิดงาน) จะยังค้างตาม cache 2-5 นาทีเดิมอยู่ดี
+  if(force){
+    window._pmBadgeCache = null; window._pmBadgeCacheTime = 0;
+    window._insBadgeCache = null; window._insBadgeCacheTime = 0;
+    window._closeApprBadgeCache = null; window._closeApprBadgeCacheTime = 0;
+  }
   if(!CU) return;
   _badgeRefreshing = true;
   var now = Date.now();
