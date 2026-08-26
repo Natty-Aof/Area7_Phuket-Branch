@@ -530,10 +530,7 @@ textarea.fc{min-height:70px;resize:vertical;}
                 <div id="custSuggest" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:500;background:#fff;border:1.5px solid var(--gm);border-top:none;border-radius:0 0 8px 8px;max-height:240px;overflow-y:auto;box-shadow:0 6px 20px rgba(0,0,0,.12)"></div>
               </div>
               <div id="custWarn" style="display:none;margin-top:4px;background:#fff3e0;padding:6px 10px;border-radius:6px;font-size:12px;color:#e65100">
-                ⚠️ กรุณาเลือกชื่อโครงการจากรายการค่ะ
-              </div>
-              <div style="margin-top:4px">
-                <a href="javascript:void(0)" onclick="openAddCustomerModal(function(name){ _pickCust(encodeURIComponent(name),encodeURIComponent(name)); })" style="font-size:11px;color:var(--gm);text-decoration:underline">➕ ไม่พบชื่อลูกค้า? เพิ่มลูกค้าใหม่</a>
+                ⚠️ กรุณาเลือกชื่อโครงการจากรายการค่ะ — ถ้าไม่พบในรายการ ให้แจ้ง Stock/ผจก. เพิ่มลูกค้าใหม่ที่หน้า "จัดการอะไหล่/รถ" ก่อน
               </div>
             </div>
           </div>
@@ -541,8 +538,8 @@ textarea.fc{min-height:70px;resize:vertical;}
             <div class="fg"><label class="fl">ช่างผู้เบิก</label><input class="fc" id="nReq" readonly></div>
             <div class="fg"><label class="fl">ช่างร่วม (ถ้ามี)</label><input class="fc" id="nCo" placeholder="ชื่อช่างที่ 2, ชื่อช่างที่ 3 ..."></div>
           </div>
-          <div class="fr"><div class="fg"><label class="fl">รุ่นรถ / Vehicle Model</label><div style="position:relative"><input class="fc" id="nModel" placeholder="เช่น Club Car Precedent, Tempo" oninput="onModelInput(this)" autocomplete="off"><div id="modelSuggest" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:500;background:#fff;border:1.5px solid var(--gm);border-top:none;border-radius:0 0 var(--rs) var(--rs);max-height:160px;overflow-y:auto;box-shadow:var(--shm)"></div></div></div><div class="fg"><label class="fl">SERIAL NO. รถ <span style="color:var(--red)">*</span></label><div style="position:relative"><input class="fc" id="nSerial" placeholder="พิมพ์เพื่อค้นหาเลขรถจริงในระบบ..." oninput="onSerialInput(this)" onblur="validateSerialOnBlur(this)" autocomplete="off"><div id="serialSuggest" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:500;background:#fff;border:1.5px solid var(--gm);border-top:none;border-radius:0 0 var(--rs) var(--rs);max-height:200px;overflow-y:auto;box-shadow:var(--shm)"></div></div>
-          <div style="font-size:11px;color:var(--g400);margin-top:3px">💡 กรอกให้ตรงกับเลข Serial จริงของรถ (สำคัญมาก ใช้ตรวจสอบประวัติการเปลี่ยนอะไหล่) — ถ้าค้นไม่พบ พิมพ์เองได้ แต่ควรตรงกับที่ลงทะเบียนไว้</div>
+          <div class="fr"><div class="fg"><label class="fl">รุ่นรถ / Vehicle Model</label><div style="position:relative"><input class="fc" id="nModel" placeholder="เช่น Club Car Precedent, Tempo" oninput="onModelInput(this)" autocomplete="off"><div id="modelSuggest" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:500;background:#fff;border:1.5px solid var(--gm);border-top:none;border-radius:0 0 var(--rs) var(--rs);max-height:160px;overflow-y:auto;box-shadow:var(--shm)"></div></div></div><div class="fg"><label class="fl">SERIAL NO. รถ <span style="color:var(--red)">*</span></label><div style="position:relative"><input class="fc" id="nSerial" placeholder="เลือกชื่อลูกค้าก่อน แล้วคลิกที่นี่เพื่อดูรถของลูกค้านั้น..." oninput="onSerialInput(this)" onfocus="onSerialFocus(this)" onblur="validateSerialOnBlur(this)" autocomplete="off"><div id="serialSuggest" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:500;background:#fff;border:1.5px solid var(--gm);border-top:none;border-radius:0 0 var(--rs) var(--rs);max-height:200px;overflow-y:auto;box-shadow:var(--shm)"></div></div>
+          <div style="font-size:11px;color:var(--g400);margin-top:3px">💡 เลือกได้เฉพาะรถของลูกค้าที่เลือกไว้ด้านบน — ถ้าไปหน้างานแล้วเจอว่าต้องเปลี่ยนอะไหล่รถคันอื่น ไม่ต้องแก้ตรงนี้ ไปยืนยันรถจริงตอนเคลียร์ใบเบิกได้เลย</div>
           </div></div>
         </div>
         <div class="card">
@@ -569,7 +566,7 @@ textarea.fc{min-height:70px;resize:vertical;}
           <div class="fb2" style="margin-bottom:12px"><div class="ct" style="margin:0">🔩 รายการอะไหล่<span class="rq">*</span></div><button class="btn bo bsm" onclick="addRow()">+ เพิ่มรายการ</button></div>
           <div style="margin-bottom:8px;display:flex;gap:8px;align-items:center"><input class="fc" id="partSearch" placeholder="🔍 ค้นหาอะไหล่ (Part No. / ชื่อ TH / EN)..." oninput="searchParts()" style="max-width:300px"><button class="btn bo bsm" onclick="openQRScanner('create')" title="สแกน QR Code อะไหล่" style="white-space:nowrap">📷 สแกน QR</button><select class="fc" id="partModelFilter" onchange="searchParts()" style="max-width:180px"><option value="">ทุกรุ่น</option><option value="precedent">Precedent</option><option value="tempo">Tempo</option><option value="villager">Villager</option><option value="transporter">Transporter</option><option value="carryall">Carryall</option><option value="ds">DS</option><option value="minibus">Minibus</option><option value="e-bike">E-Bike</option></select><button class="btn bo bsm" onclick="searchParts(document.getElementById('partSearch').value)">ค้นหา</button></div><div id="searchResults" class="hidden" style="border:1.5px solid var(--gm);border-radius:var(--rs);margin-bottom:8px;max-height:200px;overflow-y:auto;background:#fff"></div><div class="tw"><table class="it"><thead><tr><th style="width:17%">Part No.</th><th style="width:23%">ชื่อ (EN)</th><th style="width:23%">ชื่อภาษาไทย</th><th style="width:9%">จำนวน</th><th style="width:9%">หน่วย</th><th style="width:11%">หมายเหตุ</th><th style="width:32px"></th></tr></thead>
           <tbody id="itemsBody"></tbody></table></div>
-          <button class="btn bo bsm mt8" onclick="addRow()">+ เพิ่มรายการอะไหล่</button><div style="margin-top:8px;padding:10px 12px;background:var(--goldl);border-radius:var(--rs);font-size:13px;color:#5a4000">💡 ไม่พบอะไหล่ที่ต้องการ? <button class="btn bo bsm" style="padding:3px 10px;font-size:12px" id="btnAddNewPart" onclick="showAddPart()">+ เพิ่มอะไหล่ใหม่ในฐานข้อมูล</button><span id="btnAddNewPartLock" style="display:none;font-size:11px;color:#b71c1c">🔒 เฉพาะ Stock และ Manager เท่านั้นค่ะ</span></div>
+          <button class="btn bo bsm mt8" onclick="addRow()">+ เพิ่มรายการอะไหล่</button><div style="margin-top:8px;padding:10px 12px;background:var(--goldl);border-radius:var(--rs);font-size:13px;color:#5a4000">💡 ไม่พบอะไหล่ที่ต้องการ? แจ้ง Stock/ผจก. เพิ่มที่หน้า "จัดการอะไหล่/รถ" ก่อนค่ะ</div>
         </div>
         <div class="card" style="background:var(--goldl);border-color:#ffe082">
           <div class="ct" style="color:#5a4000">📋 หมายเหตุการถ่ายรูป</div>
@@ -1336,7 +1333,7 @@ textarea.fc{min-height:70px;resize:vertical;}
             <div style="font-size:15px;font-weight:700">🚗 ประวัติการซ่อม/เปลี่ยนอะไหล่ตาม Serial No.</div>
             <div style="font-size:11px;opacity:.8;margin-top:2px">ค้นหา Serial No. หรือสแกน QR Code รถ → ดูประวัติ + พิมพ์ Label</div>
           </div>
-          <button id="btnAddCustomerMaster" onclick="openAddCustomerModal()" style="background:#fff;color:#1a237e;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">➕ เพิ่มลูกค้า/รถใหม่</button>
+          <button id="btnAddCustomerMaster" onclick="go('master'); setTimeout(function(){ switchMasterTab('vehicles'); },100)" style="background:#fff;color:#1a237e;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">🚗 จัดการรถ/ลูกค้า</button>
           <button onclick="openBatchQRPrint()" style="background:#fff;color:#1a237e;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">🖨️ ปริ้น QR ทีเดียว</button>
         </div>
 
@@ -1803,9 +1800,7 @@ textarea.fc{min-height:70px;resize:vertical;}
             <span id="soCustIcon" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none"></span>
             <div id="soCustSuggest" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:600;background:#fff;border:1.5px solid var(--gm);border-top:none;border-radius:0 0 8px 8px;max-height:200px;overflow-y:auto;box-shadow:0 6px 20px rgba(0,0,0,.12)"></div>
           </div>
-          <div style="margin-top:4px">
-            <a href="javascript:void(0)" onclick="openAddCustomerModal(function(name){ var el=document.getElementById('soCustName'); if(el){ el.value=name; } })" style="font-size:11px;color:var(--gm);text-decoration:underline">➕ ไม่พบชื่อลูกค้า? เพิ่มลูกค้าใหม่</a>
-          </div>
+          <div style="margin-top:4px;font-size:11px;color:var(--g400)">ไม่พบชื่อลูกค้า? แจ้ง Stock/ผจก. เพิ่มที่หน้า "จัดการอะไหล่/รถ" ก่อนค่ะ</div>
         </div>
         <div class="fg">
           <label class="fl">สถานที่จัดส่ง</label>
@@ -2774,12 +2769,7 @@ function initApp(){
   if(ls) ls.classList.add('hidden');
   if(ap) ap.classList.remove('hidden');
 
-  // แสดง/ซ่อนปุ่มเพิ่มอะไหล่ใหม่ตาม Role
-  var canAddPart = CU && (CU.role==='STOCK'||CU.role==='MANAGER'||CU.role==='ADMIN');
-  var btnAddPart = document.getElementById('btnAddNewPart');
-  var btnAddPartLock = document.getElementById('btnAddNewPartLock');
-  if(btnAddPart) btnAddPart.style.display = canAddPart ? '' : 'none';
-  if(btnAddPartLock) btnAddPartLock.style.display = canAddPart ? 'none' : '';
+  // (เดิมมีปุ่ม "เพิ่มอะไหล่ใหม่" ในหน้าเปิดใบเบิกด้วย — ตัดออกแล้ว ให้เพิ่มอะไหล่ได้จุดเดียวที่หน้า "จัดการอะไหล่/รถ" เท่านั้น)
   var av=document.getElementById('avi'), un=document.getElementById('uname'), ur=document.getElementById('urole'), ue=document.getElementById('uEmail');
   if(av) av.textContent=(CU.name||'?')[0];
   if(un) un.textContent=CU.name;
@@ -8815,6 +8805,10 @@ function _pickCust(customerEnc, displayEnc){
   if(warn) warn.style.display='none';
   // ล้าง border error ถ้ามี
   if(inp)  inp.style.borderColor='';
+
+  // ── เปลี่ยนลูกค้า → ล้างรถที่เคยเลือกไว้ทิ้ง เพราะอาจเป็นรถของลูกค้าคนละรายกัน ──
+  var serialInp = document.getElementById('nSerial');
+  if(serialInp){ serialInp.value=''; serialInp.dataset.confirmed=''; }
 }
 
 // ปิด dropdown เมื่อ click นอก
@@ -8835,30 +8829,41 @@ document.addEventListener('click', function(e){
 });
 
 // ── ค้นหาเลข Serial รถจริงจากฐานข้อมูล Vehicles (กันพิมพ์รหัสมั่ว เช่น "FO-03" ที่ไม่ตรงกับเลขจริง) ──
+// กรองให้เห็นเฉพาะรถของลูกค้าที่เลือกไว้แล้วเท่านั้น (ต้องเลือกลูกค้าก่อนถึงจะเลือกรถได้)
 function onSerialInput(inp){
   var val = inp.value.trim().toLowerCase();
   var sug = document.getElementById('serialSuggest');
   if(!sug) return;
   inp.dataset.confirmed = ''; // พิมพ์ใหม่ = ยังไม่ยืนยันว่าตรงกับรถจริง
-  if(!val){ sug.style.display='none'; return; }
+  if(!_custSelected || !_custSelectedFormal){
+    sug.innerHTML = '<div style="padding:8px 12px;font-size:12px;color:#e65100">⚠️ กรุณาเลือกชื่อลูกค้า/โครงการก่อน ถึงจะเลือกรถได้ค่ะ</div>';
+    sug.style.display='block';
+    return;
+  }
   loadVehiclesDB().then(function(db){
-    var matches = (db||[]).filter(function(v){
-      return (v.SerialNo||'').toLowerCase().indexOf(val)>=0
-        || (v.CarNo||'').toLowerCase().indexOf(val)>=0
-        || (v.Customer||'').toLowerCase().indexOf(val)>=0;
-    }).slice(0, 15);
+    var custVehicles = (db||[]).filter(function(v){
+      return String(v.Customer||'').trim() === String(_custSelectedFormal||'').trim();
+    });
+    var matches = val
+      ? custVehicles.filter(function(v){
+          return (v.SerialNo||'').toLowerCase().indexOf(val)>=0 || (v.CarNo||'').toLowerCase().indexOf(val)>=0;
+        })
+      : custVehicles; // ── ยังไม่พิมพ์อะไร → โชว์รถของลูกค้านี้ทั้งหมดเป็น dropdown ──
+    matches = matches.slice(0, 30);
     if(!matches.length){
-      sug.innerHTML = '<div style="padding:8px 12px;font-size:12px;color:#b71c1c">⚠️ ไม่พบ S/N นี้ในระบบ — ต้องเลือกจากรายการรถที่มีอยู่จริงเท่านั้น ถ้าไม่พบ กรุณาแจ้งแอดมินเพิ่มข้อมูลรถก่อน</div>';
+      sug.innerHTML = '<div style="padding:8px 12px;font-size:12px;color:#b71c1c">⚠️ ไม่พบรถของลูกค้ารายนี้ในระบบ — กรุณาแจ้ง Stock/แอดมินเพิ่มข้อมูลรถที่หน้า "จัดการอะไหล่/รถ" ก่อน</div>';
       sug.style.display='block';
       return;
     }
     sug.innerHTML = matches.map(function(v){
-      var label = v.SerialNo + (v.CarNo?' ('+v.CarNo+')':'') + ' — ' + (v.Customer||v.Location||'');
+      var label = v.SerialNo + (v.CarNo?' ('+v.CarNo+')':'') + (v.VehicleType?' — '+v.VehicleType:'');
       return '<div style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #eef2ef" onmousedown="selSerial(\''+v.SerialNo.replace(/'/g,"\\'")+'\')">'+label+'</div>';
     }).join('');
     sug.style.display='block';
   });
 }
+// ── เปิด dropdown รถของลูกค้าที่เลือกไว้ ทันทีที่คลิก/โฟกัสช่อง (ไม่ต้องพิมพ์ก่อนก็เห็นตัวเลือกได้) ──
+function onSerialFocus(inp){ onSerialInput(inp); }
 function selSerial(serialNo){
   var inp = document.getElementById('nSerial');
   var sug = document.getElementById('serialSuggest');
@@ -8887,11 +8892,17 @@ function validateSerialOnBlur(inp){
     if(inp.dataset.confirmed==='true') return; // เพิ่งเลือกจาก dropdown มา ไม่ต้อง fetch ซ้ำ
     var parts = raw.split(',').map(function(s){ return s.trim(); }).filter(Boolean);
     loadVehiclesDB().then(function(db){
-      var known = {}; (db||[]).forEach(function(v){ known[String(v.SerialNo).trim()] = v; });
+      // ── ตรวจสอบว่า S/N ต้องเป็นรถของลูกค้าที่เลือกไว้เท่านั้น ไม่ใช่แค่มีอยู่ในระบบเฉยๆ ──
+      var known = {};
+      (db||[]).forEach(function(v){
+        if(!_custSelectedFormal || String(v.Customer||'').trim()===String(_custSelectedFormal).trim()){
+          known[String(v.SerialNo).trim()] = v;
+        }
+      });
       var valid = parts.filter(function(p){ return known[p]; });
       var invalid = parts.filter(function(p){ return !known[p]; });
       if(invalid.length){
-        toast('⚠️ ไม่พบ S/N ในระบบ: '+invalid.join(', ')+' — ตัดออกจากช่องแล้ว กรุณาเลือกจากรายการที่ค้นเจอเท่านั้น','error');
+        toast('⚠️ ไม่พบ S/N นี้ของลูกค้าที่เลือกไว้: '+invalid.join(', ')+' — ตัดออกจากช่องแล้ว กรุณาเลือกจากรายการที่ค้นเจอเท่านั้น','error');
       }
       inp.value = valid.join(', ');
       inp.dataset.confirmed = valid.length ? 'true' : '';
