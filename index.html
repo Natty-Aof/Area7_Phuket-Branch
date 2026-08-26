@@ -3484,11 +3484,18 @@ var _badgeCacheTTL = 3 * 60 * 1000; // cache 3 นาที
 var _badgeTimer = null;
 
 var _badgeRefreshing = false;
+var _badgeTimerIsForce = false; // ── ป้องกันการเรียก refreshBadges() แบบไม่ force มาแย่ง/ยกเลิก timer ที่ตั้ง force=true ไว้ก่อนหน้า ──
 function refreshBadges(force){
   if(_badgeRefreshing) return;
   if(!force && _badgeCache && (Date.now()-_badgeCacheTime)<_badgeCacheTTL) return;
+  // ⚠️ บั๊กเดิม: go() เรียก refreshBadges() แบบไม่ force ทุกครั้งที่เปลี่ยนหน้า/สลับสาขา
+  // ถ้ามี timer แบบ force=true ตั้งรออยู่แล้ว (เช่น เพิ่งสลับสาขาไป) คำสั่งไม่ force นี้จะไป clearTimeout()
+  // ทับของเดิมทิ้ง แล้วตั้งใหม่แบบไม่ force แทน ทำให้ cache ของ badge บางตัว (PM ฯลฯ) ไม่เคยถูกล้างจริง
+  // เพราะสุดท้ายฟังก์ชันที่รันจริงกลายเป็น force=false ไปเสีย — จึงต้องกันไว้ไม่ให้ downgrade กันแบบนี้
+  if(_badgeTimer && _badgeTimerIsForce && !force) return;
   if(_badgeTimer) clearTimeout(_badgeTimer);
-  _badgeTimer = setTimeout(function(){ _doRefreshBadges(force); }, force ? 100 : 1000);
+  _badgeTimerIsForce = !!force;
+  _badgeTimer = setTimeout(function(){ _badgeTimerIsForce=false; _doRefreshBadges(force); }, force ? 100 : 1000);
 }
 
 function _doRefreshBadges(force){
