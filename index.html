@@ -347,7 +347,7 @@ textarea.fc{min-height:70px;resize:vertical;}
     </div>
     <nav id="snav">
       <div class="ni active" data-pg="dashboard" onclick="go('dashboard')"><span class="ic">📊</span> Dashboard</div>
-      <div class="ni hidden" id="nRegionDash" data-pg="regiondash" onclick="go('regiondash')"><span class="ic">🗺️</span> แดชบอร์ดสถานะรถ Area7</div>
+      <div class="ni hidden" id="nRegionDash" data-pg="regiondash" onclick="go('regiondash')"><span class="ic">🗺️</span> Carts Status Area 7</div>
       <div class="ni" data-pg="create" onclick="go('create')"><span class="ic">📝</span> เปิดใบเบิก</div>
       <div class="ni" data-pg="list" onclick="go('list')"><span class="ic">📋</span> รายการใบเบิก</div>
       <div class="ni hidden" id="nApproval" data-pg="approval" onclick="go('approval')"><span class="ic">✅</span> รออนุมัติ<span class="badge" id="apBadge">0</span></div>
@@ -1338,6 +1338,11 @@ textarea.fc{min-height:70px;resize:vertical;}
         <div class="card" style="padding:16px;margin:14px 0;overflow-x:auto">
           <canvas id="fleetChartCanvas"></canvas>
         </div>
+        <div class="card" style="padding:16px;margin:14px 0;overflow-x:auto">
+          <canvas id="brandChartCanvas"></canvas>
+        </div>
+        <div class="ct" style="margin-top:16px">💰 รายได้สัมปทาน — รายเดือน</div>
+        <div id="concessionRevBox" style="margin:8px 0 16px"></div>
         <div class="ct" style="margin-top:16px">🚗 สถานะรถทั้งเขต — แยกตามสาขา</div>
         <div style="display:flex;gap:6px;margin:8px 0;flex-wrap:wrap">
           <button class="btn bp bsm fleetFilterBtn" data-fs="" onclick="switchFleetFilter('')">ทั้งหมด</button>
@@ -3416,7 +3421,143 @@ function loadRegionDashboard(){
     renderRegionCompareCards();
     var chartCanvas = document.getElementById('fleetChartCanvas');
     if(chartCanvas) drawFleetStatusChart(chartCanvas, _fleetData);
+    var brandCanvas = document.getElementById('brandChartCanvas');
+    if(brandCanvas) drawBrandChart(brandCanvas, _fleetData);
     switchFleetFilter(_fleetFilter);
+  });
+  loadConcessionRevenueSection();
+}
+
+// ── กราฟแท่งเปรียบเทียบยี่ห้อ Club Car vs อื่นๆ + เช่า vs สัมปทาน แต่ละสาขา ──
+function drawBrandChart(canvas, fleetData){
+  var order = {PHUKET:0, SAMUI:1, HATYAI:2, KRABI:3};
+  var list = fleetData.slice().sort(function(a,b){
+    var oa=order[a.branch], ob=order[b.branch];
+    return (oa===undefined?9:oa)-(ob===undefined?9:ob);
+  });
+  if(!list.length) return;
+
+  var dpr  = window.devicePixelRatio || 1;
+  var cont = canvas.parentElement;
+  var cssW = cont ? Math.max(cont.getBoundingClientRect().width||600, 300) : 600;
+  var isNarrow = cssW < 480;
+  var groupW = isNarrow ? 70 : 96, barW = isNarrow ? 14 : 20, gap = isNarrow ? 3 : 5;
+  var PAD_TOP = 50, PAD_BOT = 50, PAD_L = 30;
+  var maxVal = 1;
+  list.forEach(function(b){ maxVal = Math.max(maxVal, b.clubCar, b.nonClubCar, b.rented, b.concession); });
+  var chartH = isNarrow ? 130 : 170;
+  var cssH = PAD_TOP + chartH + PAD_BOT;
+  var cssWFinal = Math.max(cssW, PAD_L*2 + groupW*list.length + 40);
+  canvas.width  = Math.round(cssWFinal*dpr); canvas.height = Math.round(cssH*dpr);
+  canvas.style.width = cssWFinal+'px'; canvas.style.height = cssH+'px';
+  var ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0,0,cssWFinal,cssH);
+
+  ctx.fillStyle = '#1a4a2e'; ctx.font = 'bold '+(isNarrow?12:14)+'px Sarabun,Arial,sans-serif'; ctx.textAlign='center';
+  ctx.fillText('🚙 ยี่ห้อรถ และประเภทการใช้งาน แต่ละสาขา', cssWFinal/2, 22);
+
+  var baseY = PAD_TOP + chartH;
+  var COLORS = { clubCar:'#3949ab', nonClubCar:'#8d6e63', rented:'#1565c0', concession:'#8e24aa' };
+
+  list.forEach(function(b, gi){
+    var gx = PAD_L + gi*groupW + groupW/2;
+    var bars = [
+      {v:b.clubCar, c:COLORS.clubCar, label:'CC'},
+      {v:b.nonClubCar, c:COLORS.nonClubCar, label:'อื่นๆ'},
+      {v:b.rented, c:COLORS.rented, label:'เช่า'},
+      {v:b.concession, c:COLORS.concession, label:'สัมปทาน'},
+    ];
+    var totalBarsW = bars.length*barW + (bars.length-1)*gap;
+    var x0 = gx - totalBarsW/2;
+    bars.forEach(function(bar, bi){
+      var h = (bar.v/maxVal) * chartH;
+      var x = x0 + bi*(barW+gap);
+      ctx.fillStyle = bar.c;
+      _roundRect(ctx, x, baseY-h, barW, h, 3); ctx.fill();
+      if(bar.v>0){
+        ctx.fillStyle = '#333'; ctx.font = (isNarrow?9:10)+'px Sarabun,Arial,sans-serif'; ctx.textAlign='center';
+        ctx.fillText(bar.v, x+barW/2, baseY-h-4);
+      }
+    });
+    ctx.fillStyle = '#333'; ctx.font = 'bold '+(isNarrow?10:11)+'px Sarabun,Arial,sans-serif'; ctx.textAlign='center';
+    ctx.fillText(branchLabel(b.branch), gx, baseY+16);
+  });
+
+  // baseline
+  ctx.strokeStyle = '#ccc'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(PAD_L-10, baseY); ctx.lineTo(cssWFinal-10, baseY); ctx.stroke();
+
+  // Legend
+  var legY = baseY + 34;
+  var legItems = [
+    {label:'Club Car', c:COLORS.clubCar}, {label:'ยี่ห้ออื่นๆ', c:COLORS.nonClubCar},
+    {label:'เช่า', c:COLORS.rented}, {label:'สัมปทาน', c:COLORS.concession},
+  ];
+  ctx.font = (isNarrow?10:11)+'px Sarabun,Arial,sans-serif'; ctx.textAlign='left';
+  var lx = PAD_L;
+  legItems.forEach(function(it){
+    ctx.fillStyle = it.c; ctx.fillRect(lx, legY-8, 10, 10);
+    ctx.fillStyle = '#555';
+    ctx.fillText(it.label, lx+14, legY+1);
+    lx += ctx.measureText(it.label).width + (isNarrow?30:40);
+  });
+}
+
+// ── ส่วนกรอกรายได้สัมปทาน (รวมรายเดือน ไม่แยกรายคัน) ──
+function loadConcessionRevenueSection(){
+  var box = document.getElementById('concessionRevBox');
+  if(!box) return;
+  box.innerHTML = '<div style="text-align:center;padding:20px;color:var(--g400)">⏳ กำลังโหลด...</div>';
+  callAPI('getConcessionRevenueList', {}).then(function(res){
+    var sites = (res && res.success) ? (res.data||[]) : [];
+    if(!sites.length){ box.innerHTML = '<div class="card" style="padding:16px;text-align:center;color:var(--g400)">ยังไม่มีรถประเภทสัมปทานในระบบเลยค่ะ</div>'; return; }
+    box.innerHTML = sites.map(function(s){
+      var latest = s.latestRevenue;
+      return '<div class="card" style="padding:12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+        +'<div><div style="font-weight:700;color:var(--gd);font-size:13px">'+s.location+' <span style="font-weight:400;color:var(--g400);font-size:11px">('+branchLabel(s.branch)+' — '+s.vehicleCount+' คัน)</span></div>'
+          +(latest ? '<div style="font-size:12px;color:#6a1b9a;margin-top:2px">เดือน '+latest.yearMonth+': '+Number(latest.amount).toLocaleString()+' บาท</div>'
+                   : '<div style="font-size:12px;color:var(--g400);margin-top:2px">ยังไม่เคยบันทึกรายได้</div>')
+        +'</div>'
+        +(CU && ['MANAGER','ADMIN'].indexOf(CU.role)>=0
+          ? '<button class="btn bo bsm" onclick="openConcessionRevenueModal(\''+s.location.replace(/'/g,"\\'")+'\',\''+s.branch+'\')">📝 กรอกรายได้เดือนนี้</button>'
+          : '')
+      +'</div>';
+    }).join('');
+  });
+}
+function openConcessionRevenueModal(location, branch){
+  var now = new Date();
+  var defaultYM = now.getFullYear()+'-'+('0'+(now.getMonth()+1)).slice(-2);
+  var html = ''
+    +'<div class="mo" id="consRevModal" style="display:flex">'
+    +'<div class="mow" style="max-width:380px">'
+    +'<div class="moh"><div class="mot">💰 รายได้สัมปทาน — '+location+'</div><button class="mcl" onclick="closeModal(\'consRevModal\')">✕</button></div>'
+    +'<div class="mob">'
+    +'<div class="fg"><label class="fl">เดือน</label><input class="fc" type="month" id="consRevYearMonth" value="'+defaultYM+'"></div>'
+    +'<div class="fg"><label class="fl">รายได้รวมทั้งหมด (บาท)</label><input class="fc" type="number" id="consRevAmount" placeholder="0" min="0"></div>'
+    +'<div class="fg"><label class="fl">หมายเหตุ (ถ้ามี)</label><input class="fc" id="consRevNote" placeholder=""></div>'
+    +'</div>'
+    +'<div class="mof" style="justify-content:space-between">'
+    +'<button class="btn bd" onclick="closeModal(\'consRevModal\')">ยกเลิก</button>'
+    +'<button class="btn bgd" onclick="submitConcessionRevenue(\''+location.replace(/'/g,"\\'")+'\',\''+branch+'\')">บันทึก</button>'
+    +'</div></div></div>';
+  var old = document.getElementById('consRevModal');
+  if(old) old.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function submitConcessionRevenue(location, branch){
+  var yearMonth = document.getElementById('consRevYearMonth').value;
+  var amount = document.getElementById('consRevAmount').value;
+  var note = document.getElementById('consRevNote').value.trim();
+  if(!yearMonth || amount===''){ toast('กรุณากรอกเดือนและจำนวนเงินค่ะ','error'); return; }
+  callAPI('setConcessionRevenue', {location:location, branch:branch, yearMonth:yearMonth, amount:Number(amount), note:note}).then(function(res){
+    toast(res.message||'', res.success?'success':'error');
+    if(res.success){
+      var m = document.getElementById('consRevModal'); if(m) m.remove();
+      loadConcessionRevenueSection();
+      loadRegionDashboard();
+    }
   });
 }
 
@@ -3524,7 +3665,14 @@ function renderRegionCompareCards(){
   }
   var order = {PHUKET:0, SAMUI:1, HATYAI:2, KRABI:3};
   var sorted = _fleetData.slice().sort(function(a,b){ var oa=order[a.branch]; var ob=order[b.branch]; return (oa===undefined?9:oa)-(ob===undefined?9:ob); });
-  box.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">'
+  var grandRevenue = sorted.reduce(function(s,b){ return s+(b.revenueThisMonth||0); }, 0);
+  var now = new Date();
+  var curYMLabel = now.toLocaleDateString('th-TH',{year:'numeric',month:'long'});
+  box.innerHTML = '<div class="card" style="padding:12px 16px;margin-bottom:10px;background:linear-gradient(135deg,#1a4a2e,#2d6a4f);color:#fff">'
+      +'<div style="font-size:12px;opacity:.85">💰 รายได้รวมทั้งเขต — เดือน'+curYMLabel+'</div>'
+      +'<div style="font-size:24px;font-weight:800">'+grandRevenue.toLocaleString()+' <span style="font-size:13px;font-weight:400">บาท</span></div>'
+    +'</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">'
     + sorted.map(function(b){
         return '<div class="card" style="padding:14px 16px">'
           +'<div style="font-weight:700;color:var(--gd);font-size:14px;margin-bottom:8px">'+branchLabel(b.branch)+'</div>'
@@ -3535,7 +3683,10 @@ function renderRegionCompareCards(){
           +(b.concession>0 ? '<span style="background:#f3e5f5;color:#6a1b9a;padding:3px 8px;border-radius:12px">🟣 สัมปทาน '+b.concession+'</span>' : '')
           +'<span style="background:#fff8e1;color:#e65100;padding:3px 8px;border-radius:12px">🟡 ซ่อม '+b.maintenance+'</span>'
           +(b.offline>0 ? '<span style="background:#f5f5f5;color:#616161;padding:3px 8px;border-radius:12px">⚫ ปิด '+b.offline+'</span>' : '')
-          +'</div></div>';
+          +'</div>'
+          +(b.clubCar+b.nonClubCar>0 ? '<div style="margin-top:8px;font-size:11px;color:var(--g400)">🚙 Club Car '+b.clubCar+' | อื่นๆ '+b.nonClubCar+'</div>' : '')
+          +'<div style="margin-top:6px;padding-top:6px;border-top:1px dashed #e0e0e0;font-size:12px;color:#1a4a2e;font-weight:700">💰 '+(b.revenueThisMonth||0).toLocaleString()+' บาท/เดือนนี้</div>'
+          +'</div>';
       }).join('')
     + '</div>';
 }
@@ -3637,6 +3788,84 @@ function loadRentalHistoryForSerial(serialNo){
   });
 }
 
+// ── แก้ยี่ห้อรถ (Brand) ──
+function openEditBrandModal(serialNo, currentBrand){
+  var html = ''
+    +'<div class="mo" id="brandModal" style="display:flex">'
+    +'<div class="mow" style="max-width:360px">'
+    +'<div class="moh"><div class="mot">✏️ ยี่ห้อรถ — '+serialNo+'</div><button class="mcl" onclick="closeModal(\'brandModal\')">✕</button></div>'
+    +'<div class="mob">'
+    +'<div class="fg"><label class="fl">ยี่ห้อ</label>'
+    +'<input class="fc" id="newBrandInput" value="'+(currentBrand||'').replace(/"/g,'&quot;')+'" placeholder="เช่น Club Car, EZGO, Yamaha" list="brandSuggestList">'
+    +'<datalist id="brandSuggestList"><option value="Club Car"><option value="EZGO"><option value="Yamaha"></datalist>'
+    +'</div></div>'
+    +'<div class="mof" style="justify-content:space-between">'
+    +'<button class="btn bd" onclick="closeModal(\'brandModal\')">ยกเลิก</button>'
+    +'<button class="btn bgd" onclick="submitBrandChange(\''+serialNo+'\')">บันทึก</button>'
+    +'</div></div></div>';
+  var old = document.getElementById('brandModal');
+  if(old) old.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function submitBrandChange(serialNo){
+  var brand = document.getElementById('newBrandInput').value.trim();
+  callAPI('setVehicleBrand', {serialNo:serialNo, brand:brand}).then(function(res){
+    toast(res.message||'', res.success?'success':'error');
+    if(res.success){
+      var m = document.getElementById('brandModal'); if(m) m.remove();
+      var disp = document.getElementById('vhBrandDisplay'); if(disp) disp.textContent = brand || 'ยังไม่ระบุ';
+    }
+  });
+}
+
+// ── กรอกรายได้รายเดือนของรถเช่า 1 คัน ──
+function openVehicleRevenueModal(serialNo){
+  var now = new Date();
+  var defaultYM = now.getFullYear()+'-'+('0'+(now.getMonth()+1)).slice(-2);
+  var html = ''
+    +'<div class="mo" id="vhRevenueModal" style="display:flex">'
+    +'<div class="mow" style="max-width:360px">'
+    +'<div class="moh"><div class="mot">💰 กรอกรายได้ — '+serialNo+'</div><button class="mcl" onclick="closeModal(\'vhRevenueModal\')">✕</button></div>'
+    +'<div class="mob">'
+    +'<div class="fg"><label class="fl">เดือน</label><input class="fc" type="month" id="revYearMonth" value="'+defaultYM+'"></div>'
+    +'<div class="fg"><label class="fl">รายได้ (บาท)</label><input class="fc" type="number" id="revAmount" placeholder="0" min="0"></div>'
+    +'<div class="fg"><label class="fl">หมายเหตุ (ถ้ามี)</label><input class="fc" id="revNote" placeholder=""></div>'
+    +'</div>'
+    +'<div class="mof" style="justify-content:space-between">'
+    +'<button class="btn bd" onclick="closeModal(\'vhRevenueModal\')">ยกเลิก</button>'
+    +'<button class="btn bgd" onclick="submitVehicleRevenue(\''+serialNo+'\')">บันทึก</button>'
+    +'</div></div></div>';
+  var old = document.getElementById('vhRevenueModal');
+  if(old) old.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function submitVehicleRevenue(serialNo){
+  var yearMonth = document.getElementById('revYearMonth').value;
+  var amount = document.getElementById('revAmount').value;
+  var note = document.getElementById('revNote').value.trim();
+  if(!yearMonth || amount===''){ toast('กรุณากรอกเดือนและจำนวนเงินค่ะ','error'); return; }
+  callAPI('setVehicleRevenue', {serialNo:serialNo, yearMonth:yearMonth, amount:Number(amount), note:note}).then(function(res){
+    toast(res.message||'', res.success?'success':'error');
+    if(res.success){
+      var m = document.getElementById('vhRevenueModal'); if(m) m.remove();
+      if(typeof loadVehicleRevenueHistory==='function') loadVehicleRevenueHistory(serialNo);
+    }
+  });
+}
+function loadVehicleRevenueHistory(serialNo){
+  var box = document.getElementById('vhRevenueHistBox');
+  if(!box) return;
+  callAPI('getVehicleRevenue', {serialNo:serialNo}).then(function(res){
+    var rows = (res && res.success) ? (res.data||[]) : [];
+    if(!rows.length){ box.innerHTML = '<div style="font-size:12px;color:var(--g400);padding:8px 0">ยังไม่เคยบันทึกรายได้ของรถคันนี้ค่ะ</div>'; return; }
+    box.innerHTML = '<div class="tw"><table class="it" style="font-size:12px"><thead><tr><th>เดือน</th><th style="text-align:right">รายได้</th><th>หมายเหตุ</th></tr></thead><tbody>'
+      + rows.map(function(r){
+          return '<tr><td style="font-weight:700">'+r.YearMonth+'</td><td style="text-align:right;font-weight:700;color:#1a4a2e">'+Number(r.Amount).toLocaleString()+' บาท</td><td>'+(r.Note||'-')+'</td></tr>';
+        }).join('')
+      + '</tbody></table></div>';
+  });
+}
+
 function loadTechStock(){
   var box = document.getElementById('techStockBox');
   if(box) box.innerHTML = '<div style="text-align:center;padding:30px;color:var(--g400)">⏳ กำลังโหลด...</div>';
@@ -3673,7 +3902,7 @@ function renderTechStock(list){
 }
 
 // ── NAVIGATE ─────────────────────────────────────────────────
-var pgTitles={dashboard:'Dashboard',create:'เปิดใบเบิกอะไหล่',list:'รายการใบเบิกอะไหล่',approval:'รายการรออนุมัติ',stock:'จัดอะไหล่ / รับคืน',pickup:'รับอะไหล่',close:'เคลียร์ใบเบิก',print:'พิมพ์ใบเบิก',profile:'ลายเซ็นของฉัน',jobs:'จัดการ Job No.',stockcard:'Stock Card',stockcount:'นับสต็อก',changereq:'คำขออนุมัติแก้ไข',vehiclehistory:'ประวัติรถ',pmcheck:'ตรวจเช็ครถ PM (ใบแช็ง)',sales:'เปิดรายการขาย',inventory:'ยอดคงเหลือ',specialreq:'สั่งซื้อพิเศษ / ค้างส่งลูกค้า',master:'จัดการอะไหล่ / รถ',transfer:'เบิกข้ามสาขา',techstock:'คลังช่าง',regiondash:'แดชบอร์ดสถานะรถ Area7'};
+var pgTitles={dashboard:'Dashboard',create:'เปิดใบเบิกอะไหล่',list:'รายการใบเบิกอะไหล่',approval:'รายการรออนุมัติ',stock:'จัดอะไหล่ / รับคืน',pickup:'รับอะไหล่',close:'เคลียร์ใบเบิก',print:'พิมพ์ใบเบิก',profile:'ลายเซ็นของฉัน',jobs:'จัดการ Job No.',stockcard:'Stock Card',stockcount:'นับสต็อก',changereq:'คำขออนุมัติแก้ไข',vehiclehistory:'ประวัติรถ',pmcheck:'ตรวจเช็ครถ PM (ใบแช็ง)',sales:'เปิดรายการขาย',inventory:'ยอดคงเหลือ',specialreq:'สั่งซื้อพิเศษ / ค้างส่งลูกค้า',master:'จัดการอะไหล่ / รถ',transfer:'เบิกข้ามสาขา',techstock:'คลังช่าง',regiondash:'Carts Status Area 7'};
 
 function goAppBack(){
   // ⚡ ใช้ history.back() — จะไปเข้ากลไก popstate/_goWithoutPush ที่มีอยู่แล้ว (ไม่ push ซ้ำ ไม่ทำให้ค้าง)
@@ -12112,6 +12341,20 @@ function selectVH(serialNo){
               ? '<button class="btn bo bsm" onclick="openChangeRentalStatusModal(\''+car.SerialNo+'\',\''+(car.RentalStatus||'ว่าง/พร้อมเช่า')+'\',\''+(car.Customer||'').replace(/'/g,"\\'")+'\')">🔄 เปลี่ยนสถานะ</button>'
               : '')
           +'</div>'
+          // ── ยี่ห้อ (Brand) — Club Car / อื่นๆ ──
+          +'<div style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+            +'<div><span style="color:var(--g400);font-size:11px">ยี่ห้อ</span><div style="font-weight:600;font-size:13px" id="vhBrandDisplay">'+(car.Brand||'ยังไม่ระบุ')+'</div></div>'
+            +(CU && ['STOCK','SUPERVISOR','MANAGER','ADMIN'].indexOf(CU.role)>=0
+              ? '<button class="btn bo bsm" onclick="openEditBrandModal(\''+car.SerialNo+'\',\''+(car.Brand||'').replace(/'/g,"\\'")+'\')">✏️ แก้ยี่ห้อ</button>'
+              : '')
+          +'</div>'
+          // ── รายได้รายเดือน (เฉพาะรถเช่า — สัมปทานกรอกรวมที่หน้าแดชบอร์ดแทน) ──
+          +(car.RentalStatus==='เช่าอยู่' && CU && ['STOCK','SUPERVISOR','MANAGER','ADMIN'].indexOf(CU.role)>=0
+            ? '<div style="grid-column:1/-1;border-top:1px solid #c5cae9;padding-top:8px;margin-top:2px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+              +'<span style="color:var(--g400);font-size:11px">💰 รายได้รายเดือน — บันทึกต่อคัน</span>'
+              +'<button class="btn bo bsm" onclick="openVehicleRevenueModal(\''+car.SerialNo+'\')">📝 กรอกรายได้เดือนนี้</button>'
+            +'</div>'
+            : '')
           // ── ลูกค้า (ชื่อบริษัท) แยกจากสถานที่ ──
           +'<div style="grid-column:1/-1;border-top:1px solid #c5cae9;padding-top:8px;margin-top:2px">'
             +'<span style="color:var(--g400);font-size:11px">👤 ชื่อลูกค้า (บริษัท)</span>'
@@ -12140,10 +12383,15 @@ function selectVH(serialNo){
       var histHtml = '<div class="card" style="margin-top:10px;padding:12px 14px">'
         +'<div style="font-weight:700;color:var(--gd);font-size:13px;margin-bottom:6px">📋 ประวัติลูกค้าที่เคยเช่ารถคันนี้</div>'
         +'<div id="rentalHistBox" style="font-size:12px;color:var(--g400)">⏳ กำลังโหลด...</div>'
-      +'</div>';
+      +'</div>'
+      + (car && car.RentalStatus==='เช่าอยู่' ? '<div class="card" style="margin-top:10px;padding:12px 14px">'
+        +'<div style="font-weight:700;color:var(--gd);font-size:13px;margin-bottom:6px">💰 ประวัติรายได้รายเดือน</div>'
+        +'<div id="vhRevenueHistBox" style="font-size:12px;color:var(--g400)">⏳ กำลังโหลด...</div>'
+      +'</div>' : '');
 
       info.innerHTML = qrHtml + (car ? histHtml : '');
       if(car && typeof loadRentalHistoryForSerial==='function') loadRentalHistoryForSerial(car.SerialNo);
+      if(car && car.RentalStatus==='เช่าอยู่' && typeof loadVehicleRevenueHistory==='function') loadVehicleRevenueHistory(car.SerialNo);
 
       setTimeout(function(){
         var qbox = document.getElementById('vhQRBox');
