@@ -347,6 +347,7 @@ textarea.fc{min-height:70px;resize:vertical;}
     </div>
     <nav id="snav">
       <div class="ni active" data-pg="dashboard" onclick="go('dashboard')"><span class="ic">📊</span> Dashboard</div>
+      <div class="ni hidden" id="nRegionDash" data-pg="regiondash" onclick="go('regiondash')"><span class="ic">🗺️</span> Dashboard เขต</div>
       <div class="ni" data-pg="create" onclick="go('create')"><span class="ic">📝</span> เปิดใบเบิก</div>
       <div class="ni" data-pg="list" onclick="go('list')"><span class="ic">📋</span> รายการใบเบิก</div>
       <div class="ni hidden" id="nApproval" data-pg="approval" onclick="go('approval')"><span class="ic">✅</span> รออนุมัติ<span class="badge" id="apBadge">0</span></div>
@@ -1325,6 +1326,27 @@ textarea.fc{min-height:70px;resize:vertical;}
       </div>
 
       <!-- ═══════════════════════════════════════════════════ -->
+      <!-- DASHBOARD เขต — ภาพรวมเทียบทุกสาขา + บอร์ดสถานะรถทั้งเขต -->
+      <!-- ═══════════════════════════════════════════════════ -->
+      <div id="pg-regiondash" class="hidden">
+        <div class="card" style="padding:12px 16px;margin-bottom:10px">
+          <div style="font-size:12px;color:var(--g400)">
+            🗺️ ภาพรวมเปรียบเทียบทุกสาขาในเขต 7 — เห็นได้เฉพาะผจก.เขต
+          </div>
+        </div>
+        <div id="regionDashBox"></div>
+        <div class="ct" style="margin-top:16px">🚗 สถานะรถทั้งเขต — แยกตามสาขา</div>
+        <div style="display:flex;gap:6px;margin:8px 0;flex-wrap:wrap">
+          <button class="btn bp bsm fleetFilterBtn" data-fs="" onclick="switchFleetFilter('')">ทั้งหมด</button>
+          <button class="btn bo bsm fleetFilterBtn" data-fs="ว่าง/พร้อมเช่า" onclick="switchFleetFilter('ว่าง/พร้อมเช่า')">🟢 ว่าง/พร้อมเช่า</button>
+          <button class="btn bo bsm fleetFilterBtn" data-fs="เช่าอยู่" onclick="switchFleetFilter('เช่าอยู่')">🔵 เช่าอยู่</button>
+          <button class="btn bo bsm fleetFilterBtn" data-fs="ระหว่างซ่อม/PM" onclick="switchFleetFilter('ระหว่างซ่อม/PM')">🟡 ระหว่างซ่อม/PM</button>
+          <button class="btn bo bsm fleetFilterBtn" data-fs="ปิดใช้งาน" onclick="switchFleetFilter('ปิดใช้งาน')">⚫ ปิดใช้งาน</button>
+        </div>
+        <div id="fleetBoardBox"></div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════ -->
       <!-- VEHICLE HISTORY PAGE                               -->
       <!-- ═══════════════════════════════════════════════════ -->
       <div id="pg-vehiclehistory" class="hidden">
@@ -2158,6 +2180,7 @@ function _goWithoutPush(page){
   if(page==='jobs') loadJobs();
   if(page==='transfer'){ switchTransferTab(_trTab||''); }
   if(page==='techstock'){ switchTechStockTab(_tsTab||'pending'); }
+  if(page==='regiondash'){ loadRegionDashboard(); }
 }
 
 // ── SESSION RESTORE moved to bottom of script (after all functions defined) ──
@@ -2499,6 +2522,8 @@ var BRANCH_SCOPED_ACTIONS = ['getRequisitions','getStockCardEntries','getVehicle
   'getStockTransfers','getDashboard','getReport','getSalesOrders','getInspections','getVehicleHistory',
   'getSpecialPartRequests','getCustomerBackorders','getExternalHoldings','getVehiclesRequiringPM','getPMDashboardSummary',
   'getTechStock','getSlowMovingParts','getVehiclePartAnalytics','getWarrantyPlan'];
+// หมายเหตุ: getFleetStatusBoard ตั้งใจไม่ใส่ในลิสต์นี้ — หน้า "Dashboard เขต" ต้องเห็นทุกสาขาเปรียบเทียบกันเสมอ
+// ไม่ควรถูกตัวเลือกสาขาบนแถบบนกรองทับโดยอัตโนมัติ (แตกต่างจากหน้าอื่นๆ ที่ต้องการกรองตามสาขาที่เลือก)
 function callAPI(action, data, userEmail){
   var email = userEmail || (CU && CU.email) || '';
   var payload = data || {};
@@ -2819,6 +2844,9 @@ function initApp(){
   // ── ตัวเลือกสาขา: เฉพาะ ผจก.เขต/ADMIN เท่านั้น (ผจก.สาขา/พนักงานอื่นเห็นแค่สาขาตัวเองอัตโนมัติ) ──
   initBranchSwitcher();
   updateBranchLabels();
+  // ── Dashboard เขต: เห็นได้เฉพาะ ผจก.เขต/ADMIN เท่านั้น (ใช้กลไกเดียวกับตัวเลือกสาขา ไม่สร้างสิทธิ์แยกใหม่) ──
+  var nRd = document.getElementById('nRegionDash');
+  if(nRd && typeof isRegionalMgr==='function' && isRegionalMgr()) nRd.classList.remove('hidden');
   // เมนูจัดการข้อมูลหลัก — ทุก role เข้าดูได้ (ช่างดูรูปอะไหล่ได้) แต่แก้ไขได้เฉพาะ Stock/Manager/Admin
   var nm=document.getElementById('nMaster');
   if(nm) nm.classList.remove('hidden');
@@ -3369,6 +3397,140 @@ function renderTechStockExternal(list){
     +'</div></div>';
 }
 
+// ════════════════════════════════════════════════════════════════
+// DASHBOARD เขต — ภาพรวมเทียบทุกสาขา + บอร์ดสถานะรถทั้งเขต (เฉพาะผจก.เขต)
+// ════════════════════════════════════════════════════════════════
+var _fleetData = [];
+var _fleetFilter = '';
+
+function loadRegionDashboard(){
+  var box = document.getElementById('regionDashBox');
+  if(box) box.innerHTML = '<div style="text-align:center;padding:30px;color:var(--g400)">⏳ กำลังโหลดภาพรวมเขต...</div>';
+  // ── เรียกแบบไม่ผ่าน branch filter อัตโนมัติ เพราะหน้านี้ต้องเห็นทุกสาขาเทียบกันเสมอ ──
+  callAPI('getFleetStatusBoard', {}).then(function(res){
+    _fleetData = (res && res.success) ? (res.data||[]) : [];
+    renderRegionCompareCards();
+    switchFleetFilter(_fleetFilter);
+  });
+}
+
+function renderRegionCompareCards(){
+  var box = document.getElementById('regionDashBox');
+  if(!box) return;
+  if(!_fleetData.length){
+    box.innerHTML = '<div class="card" style="padding:24px;text-align:center;color:var(--g400)">ยังไม่มีข้อมูลรถในระบบเลยค่ะ</div>';
+    return;
+  }
+  var order = {PHUKET:0, SAMUI:1, HATYAI:2, KRABI:3};
+  var sorted = _fleetData.slice().sort(function(a,b){ var oa=order[a.branch]; var ob=order[b.branch]; return (oa===undefined?9:oa)-(ob===undefined?9:ob); });
+  box.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">'
+    + sorted.map(function(b){
+        return '<div class="card" style="padding:14px 16px">'
+          +'<div style="font-weight:700;color:var(--gd);font-size:14px;margin-bottom:8px">'+branchLabel(b.branch)+'</div>'
+          +'<div style="font-size:26px;font-weight:800;color:var(--gd)">'+b.total+'<span style="font-size:12px;font-weight:400;color:var(--g400)"> คัน</span></div>'
+          +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;font-size:11px">'
+          +'<span style="background:#e8f5e9;color:#1b5e20;padding:3px 8px;border-radius:12px">🟢 ว่าง '+b.available+'</span>'
+          +'<span style="background:#e3f2fd;color:#1565c0;padding:3px 8px;border-radius:12px">🔵 เช่าอยู่ '+b.rented+'</span>'
+          +'<span style="background:#fff8e1;color:#e65100;padding:3px 8px;border-radius:12px">🟡 ซ่อม '+b.maintenance+'</span>'
+          +(b.offline>0 ? '<span style="background:#f5f5f5;color:#616161;padding:3px 8px;border-radius:12px">⚫ ปิด '+b.offline+'</span>' : '')
+          +'</div></div>';
+      }).join('')
+    + '</div>';
+}
+
+function switchFleetFilter(status){
+  _fleetFilter = status;
+  document.querySelectorAll('.fleetFilterBtn').forEach(function(b){
+    b.classList.toggle('bp', b.dataset.fs===status);
+    b.classList.toggle('bo', b.dataset.fs!==status);
+  });
+  renderFleetBoard();
+}
+
+function renderFleetBoard(){
+  var box = document.getElementById('fleetBoardBox');
+  if(!box) return;
+  var order = {PHUKET:0, SAMUI:1, HATYAI:2, KRABI:3};
+  var sorted = _fleetData.slice().sort(function(a,b){ var oa=order[a.branch]; var ob=order[b.branch]; return (oa===undefined?9:oa)-(ob===undefined?9:ob); });
+  var html = '';
+  sorted.forEach(function(b){
+    var list = _fleetFilter ? b.vehicles.filter(function(v){ return v.status===_fleetFilter; }) : b.vehicles;
+    if(!list.length) return;
+    html += '<div class="card" style="padding:12px 16px;margin-bottom:10px">'
+      +'<div style="font-weight:700;color:var(--gd);font-size:13px;margin-bottom:8px">'+branchLabel(b.branch)+' ('+list.length+' คัน)</div>'
+      +'<div class="tw"><table class="it" style="font-size:12px"><thead><tr>'
+      +'<th>Serial No.</th><th>ทะเบียน</th><th>รุ่น</th><th>สถานะ</th><th>ลูกค้า/สถานที่</th>'
+      +'</tr></thead><tbody>'
+      + list.map(function(v){
+          var chip = ({'ว่าง/พร้อมเช่า':'🟢','เช่าอยู่':'🔵','ระหว่างซ่อม/PM':'🟡','ปิดใช้งาน':'⚫'})[v.status]||'';
+          return '<tr><td style="font-weight:700">'+v.serialNo+'</td><td>'+(v.carNo||'-')+'</td><td>'+(v.model||v.vehicleType||'-')+'</td>'
+            +'<td>'+chip+' '+v.status+'</td><td>'+(v.customer||v.location||'-')+'</td></tr>';
+        }).join('')
+      + '</tbody></table></div></div>';
+  });
+  box.innerHTML = html || '<div class="card" style="padding:24px;text-align:center;color:var(--g400)">ไม่มีรถในสถานะนี้เลยค่ะ</div>';
+}
+
+// ── เปลี่ยนสถานะเช่า/ลูกค้าของรถ — ใช้ได้จากหน้าประวัติรถ ──
+function openChangeRentalStatusModal(serialNo, currentStatus, currentCustomer){
+  var html = ''
+    +'<div class="mo" id="rentalStatusModal" style="display:flex">'
+    +'<div class="mow" style="max-width:420px">'
+    +'<div class="moh"><div class="mot">🚗 เปลี่ยนสถานะรถ — '+serialNo+'</div><button class="mcl" onclick="closeModal(\'rentalStatusModal\')">✕</button></div>'
+    +'<div class="mob">'
+    +'<div class="fg"><label class="fl">สถานะใหม่</label><select class="fc" id="newRentalStatus" onchange="_toggleRentalCustField()">'
+    +'<option value="ว่าง/พร้อมเช่า"'+(currentStatus==='ว่าง/พร้อมเช่า'?' selected':'')+'>🟢 ว่าง/พร้อมเช่า</option>'
+    +'<option value="เช่าอยู่"'+(currentStatus==='เช่าอยู่'?' selected':'')+'>🔵 เช่าอยู่</option>'
+    +'<option value="ระหว่างซ่อม/PM"'+(currentStatus==='ระหว่างซ่อม/PM'?' selected':'')+'>🟡 ระหว่างซ่อม/PM</option>'
+    +'<option value="ปิดใช้งาน"'+(currentStatus==='ปิดใช้งาน'?' selected':'')+'>⚫ ปิดใช้งาน</option>'
+    +'</select></div>'
+    +'<div class="fg" id="rentalCustFg" style="'+(currentStatus==='เช่าอยู่'?'':'display:none')+'"><label class="fl">ชื่อลูกค้า</label>'
+    +'<input class="fc" id="newRentalCustomer" value="'+(currentCustomer||'').replace(/"/g,'&quot;')+'" placeholder="ชื่อลูกค้า/โรงแรม/โครงการ"></div>'
+    +'<div class="fg"><label class="fl">หมายเหตุ (ถ้ามี)</label><input class="fc" id="newRentalNote" placeholder="เช่น ย้ายจากสาขาอื่น, ลูกค้าเปลี่ยนสัญญา"></div>'
+    +'</div>'
+    +'<div class="mof" style="justify-content:space-between">'
+    +'<button class="btn bd" onclick="closeModal(\'rentalStatusModal\')">ยกเลิก</button>'
+    +'<button class="btn bgd" onclick="submitRentalStatusChange(\''+serialNo+'\')">บันทึก</button>'
+    +'</div></div></div>';
+  var old = document.getElementById('rentalStatusModal');
+  if(old) old.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function _toggleRentalCustField(){
+  var sel = document.getElementById('newRentalStatus');
+  var fg = document.getElementById('rentalCustFg');
+  if(fg) fg.style.display = (sel.value==='เช่าอยู่') ? '' : 'none';
+}
+function submitRentalStatusChange(serialNo){
+  var newStatus = document.getElementById('newRentalStatus').value;
+  var newCustomer = document.getElementById('newRentalCustomer') ? document.getElementById('newRentalCustomer').value.trim() : '';
+  var note = document.getElementById('newRentalNote').value.trim();
+  if(newStatus==='เช่าอยู่' && !newCustomer){ toast('กรุณาระบุชื่อลูกค้าค่ะ','error'); return; }
+  callAPI('setVehicleRentalStatus', {serialNo:serialNo, newStatus:newStatus, newCustomer:newCustomer, note:note}).then(function(res){
+    toast(res.message||'', res.success?'success':'error');
+    if(res.success){
+      closeModal('rentalStatusModal');
+      var m = document.getElementById('rentalStatusModal'); if(m) m.remove();
+      if(typeof loadRentalHistoryForSerial==='function') loadRentalHistoryForSerial(serialNo);
+    }
+  });
+}
+// ── ดูประวัติลูกค้าที่เคยเช่ารถคันนี้ — เรียกจากหน้าประวัติรถหลังค้นหา S/N ──
+function loadRentalHistoryForSerial(serialNo){
+  var box = document.getElementById('rentalHistBox');
+  if(!box) return;
+  callAPI('getVehicleRentalHistory', {serialNo:serialNo}).then(function(res){
+    var rows = (res && res.success) ? (res.data||[]) : [];
+    if(!rows.length){ box.innerHTML = '<div style="font-size:12px;color:var(--g400);padding:8px 0">ยังไม่มีประวัติการเช่าของรถคันนี้ค่ะ</div>'; return; }
+    box.innerHTML = '<div class="tw"><table class="it" style="font-size:12px"><thead><tr><th>ลูกค้า</th><th>เริ่ม</th><th>สิ้นสุด</th><th>หมายเหตุ</th></tr></thead><tbody>'
+      + rows.map(function(r){
+          return '<tr><td style="font-weight:700">'+r.Customer+'</td><td>'+(r.StartDate||'').slice(0,10)+'</td>'
+            +'<td>'+(r.EndDate ? r.EndDate.slice(0,10) : '<span style="color:#1565c0">ปัจจุบัน</span>')+'</td><td>'+(r.Note||'-')+'</td></tr>';
+        }).join('')
+      + '</tbody></table></div>';
+  });
+}
+
 function loadTechStock(){
   var box = document.getElementById('techStockBox');
   if(box) box.innerHTML = '<div style="text-align:center;padding:30px;color:var(--g400)">⏳ กำลังโหลด...</div>';
@@ -3405,7 +3567,7 @@ function renderTechStock(list){
 }
 
 // ── NAVIGATE ─────────────────────────────────────────────────
-var pgTitles={dashboard:'Dashboard',create:'เปิดใบเบิกอะไหล่',list:'รายการใบเบิกอะไหล่',approval:'รายการรออนุมัติ',stock:'จัดอะไหล่ / รับคืน',pickup:'รับอะไหล่',close:'เคลียร์ใบเบิก',print:'พิมพ์ใบเบิก',profile:'ลายเซ็นของฉัน',jobs:'จัดการ Job No.',stockcard:'Stock Card',stockcount:'นับสต็อก',changereq:'คำขออนุมัติแก้ไข',vehiclehistory:'ประวัติรถ',pmcheck:'ตรวจเช็ครถ PM (ใบแช็ง)',sales:'เปิดรายการขาย',inventory:'ยอดคงเหลือ',specialreq:'สั่งซื้อพิเศษ / ค้างส่งลูกค้า',master:'จัดการอะไหล่ / รถ',transfer:'เบิกข้ามสาขา',techstock:'คลังช่าง'};
+var pgTitles={dashboard:'Dashboard',create:'เปิดใบเบิกอะไหล่',list:'รายการใบเบิกอะไหล่',approval:'รายการรออนุมัติ',stock:'จัดอะไหล่ / รับคืน',pickup:'รับอะไหล่',close:'เคลียร์ใบเบิก',print:'พิมพ์ใบเบิก',profile:'ลายเซ็นของฉัน',jobs:'จัดการ Job No.',stockcard:'Stock Card',stockcount:'นับสต็อก',changereq:'คำขออนุมัติแก้ไข',vehiclehistory:'ประวัติรถ',pmcheck:'ตรวจเช็ครถ PM (ใบแช็ง)',sales:'เปิดรายการขาย',inventory:'ยอดคงเหลือ',specialreq:'สั่งซื้อพิเศษ / ค้างส่งลูกค้า',master:'จัดการอะไหล่ / รถ',transfer:'เบิกข้ามสาขา',techstock:'คลังช่าง',regiondash:'Dashboard เขต'};
 
 function goAppBack(){
   // ⚡ ใช้ history.back() — จะไปเข้ากลไก popstate/_goWithoutPush ที่มีอยู่แล้ว (ไม่ push ซ้ำ ไม่ทำให้ค้าง)
@@ -3473,6 +3635,7 @@ function go(page){
   if(page==='jobs') loadJobs();
   if(page==='transfer'){ switchTransferTab(_trTab||''); }
   if(page==='techstock'){ switchTechStockTab(_tsTab||'pending'); }
+  if(page==='regiondash'){ loadRegionDashboard(); }
 }
 
 // ── DASHBOARD ────────────────────────────────────────────────
@@ -11835,6 +11998,14 @@ function selectVH(serialNo){
           +(car.CarNo ? '<div><span style="color:var(--g400);font-size:11px">เบอร์รถ</span><div style="font-weight:600">'+car.CarNo+'</div></div>' : '<div></div>')
           +'<div><span style="color:var(--g400);font-size:11px">ประเภท</span><div style="font-weight:600">'+(car.VehicleType||'—')+'</div></div>'
           +'<div><span style="color:var(--g400);font-size:11px">สถานะ</span><div style="font-weight:600;color:#1a237e">'+(car.StatusType||'—')+'</div></div>'
+          // ── สถานะเช่าปัจจุบัน + ปุ่มเปลี่ยนสถานะ ──
+          +'<div style="grid-column:1/-1;border-top:1px solid #c5cae9;padding-top:8px;margin-top:2px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+            +'<div><span style="color:var(--g400);font-size:11px">สถานะเช่า</span><div style="font-weight:700;font-size:13px">'
+              +(({'ว่าง/พร้อมเช่า':'🟢','เช่าอยู่':'🔵','ระหว่างซ่อม/PM':'🟡','ปิดใช้งาน':'⚫'})[car.RentalStatus]||'')+' '+(car.RentalStatus||'ว่าง/พร้อมเช่า')+'</div></div>'
+            +(CU && ['STOCK','SUPERVISOR','MANAGER','ADMIN'].indexOf(CU.role)>=0
+              ? '<button class="btn bo bsm" onclick="openChangeRentalStatusModal(\''+car.SerialNo+'\',\''+(car.RentalStatus||'ว่าง/พร้อมเช่า')+'\',\''+(car.Customer||'').replace(/'/g,"\\'")+'\')">🔄 เปลี่ยนสถานะ</button>'
+              : '')
+          +'</div>'
           // ── ลูกค้า (ชื่อบริษัท) แยกจากสถานที่ ──
           +'<div style="grid-column:1/-1;border-top:1px solid #c5cae9;padding-top:8px;margin-top:2px">'
             +'<span style="color:var(--g400);font-size:11px">👤 ชื่อลูกค้า (บริษัท)</span>'
@@ -11860,7 +12031,13 @@ function selectVH(serialNo){
         +'</div>'
       +'</div>';
 
-      info.innerHTML = qrHtml;
+      var histHtml = '<div class="card" style="margin-top:10px;padding:12px 14px">'
+        +'<div style="font-weight:700;color:var(--gd);font-size:13px;margin-bottom:6px">📋 ประวัติลูกค้าที่เคยเช่ารถคันนี้</div>'
+        +'<div id="rentalHistBox" style="font-size:12px;color:var(--g400)">⏳ กำลังโหลด...</div>'
+      +'</div>';
+
+      info.innerHTML = qrHtml + (car ? histHtml : '');
+      if(car && typeof loadRentalHistoryForSerial==='function') loadRentalHistoryForSerial(car.SerialNo);
 
       setTimeout(function(){
         var qbox = document.getElementById('vhQRBox');
