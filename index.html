@@ -347,7 +347,7 @@ textarea.fc{min-height:70px;resize:vertical;}
     </div>
     <nav id="snav">
       <div class="ni active" data-pg="dashboard" onclick="go('dashboard')"><span class="ic">📊</span> Dashboard</div>
-      <div class="ni hidden" id="nRegionDash" data-pg="regiondash" onclick="go('regiondash')"><span class="ic">🗺️</span> Dashboard เขต</div>
+      <div class="ni hidden" id="nRegionDash" data-pg="regiondash" onclick="go('regiondash')"><span class="ic">🗺️</span> แดชบอร์ดสถานะรถ Area7</div>
       <div class="ni" data-pg="create" onclick="go('create')"><span class="ic">📝</span> เปิดใบเบิก</div>
       <div class="ni" data-pg="list" onclick="go('list')"><span class="ic">📋</span> รายการใบเบิก</div>
       <div class="ni hidden" id="nApproval" data-pg="approval" onclick="go('approval')"><span class="ic">✅</span> รออนุมัติ<span class="badge" id="apBadge">0</span></div>
@@ -1335,6 +1335,9 @@ textarea.fc{min-height:70px;resize:vertical;}
           </div>
         </div>
         <div id="regionDashBox"></div>
+        <div class="card" style="padding:16px;margin:14px 0;overflow-x:auto">
+          <canvas id="fleetChartCanvas"></canvas>
+        </div>
         <div class="ct" style="margin-top:16px">🚗 สถานะรถทั้งเขต — แยกตามสาขา</div>
         <div style="display:flex;gap:6px;margin:8px 0;flex-wrap:wrap">
           <button class="btn bp bsm fleetFilterBtn" data-fs="" onclick="switchFleetFilter('')">ทั้งหมด</button>
@@ -3410,8 +3413,103 @@ function loadRegionDashboard(){
   callAPI('getFleetStatusBoard', {}).then(function(res){
     _fleetData = (res && res.success) ? (res.data||[]) : [];
     renderRegionCompareCards();
+    var chartCanvas = document.getElementById('fleetChartCanvas');
+    if(chartCanvas) drawFleetStatusChart(chartCanvas, _fleetData);
     switchFleetFilter(_fleetFilter);
   });
+}
+
+// ── กราฟแท่งซ้อน (Stacked Bar) เทียบสถานะรถแต่ละสาขา — สไตล์เดียวกับกราฟอื่นในระบบ (Canvas วาดเอง ไม่พึ่ง library ภายนอก) ──
+function drawFleetStatusChart(canvas, fleetData){
+  var order = {PHUKET:0, SAMUI:1, HATYAI:2, KRABI:3};
+  var list = fleetData.slice().sort(function(a,b){
+    var oa=order[a.branch], ob=order[b.branch];
+    return (oa===undefined?9:oa)-(ob===undefined?9:ob);
+  });
+  if(!list.length) return;
+
+  var dpr  = window.devicePixelRatio || 1;
+  var cont = canvas.parentElement;
+  var cssW = cont ? Math.max(cont.getBoundingClientRect().width||600, 300) : 600;
+  var isNarrow = cssW < 480;
+  var ROW_H = isNarrow ? 56 : 64, PAD_TOP = 44, PAD_BOT = 20;
+  var NAME_W = isNarrow ? 78 : 110, totalReserve = isNarrow ? 46 : 60;
+  var cssH = PAD_TOP + ROW_H*list.length + PAD_BOT;
+  canvas.width  = Math.round(cssW*dpr); canvas.height = Math.round(cssH*dpr);
+  canvas.style.width = cssW+'px'; canvas.style.height = cssH+'px';
+  var ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0,0,cssW,cssH);
+
+  ctx.fillStyle = '#1a4a2e'; ctx.font = 'bold '+(isNarrow?12:14)+'px Sarabun,Arial,sans-serif'; ctx.textAlign='center';
+  ctx.fillText('🚗 สัดส่วนสถานะรถแต่ละสาขา', cssW/2, 22);
+
+  var trackX0 = NAME_W, trackX1 = cssW - totalReserve;
+  var trackW = trackX1 - trackX0;
+  var maxTotal = Math.max.apply(null, list.map(function(b){ return b.total; }).concat([1]));
+
+  var COLORS = { available:'#2d6a4f', rented:'#1565c0', maintenance:'#e6a817', offline:'#9e9e9e' };
+
+  list.forEach(function(b, i){
+    var y = PAD_TOP + i*ROW_H + ROW_H*0.4;
+    var barH = isNarrow ? 20 : 26;
+
+    // ชื่อสาขา
+    ctx.fillStyle = '#333'; ctx.font = 'bold '+(isNarrow?11:13)+'px Sarabun,Arial,sans-serif'; ctx.textAlign='left';
+    ctx.fillText(branchLabel(b.branch), 2, y+barH/2+4);
+
+    // พื้นหลังแทร็ก
+    var fullW = trackW * (b.total / maxTotal);
+    ctx.fillStyle = '#f0f2f0';
+    _roundRect(ctx, trackX0, y, trackW, barH, 6); ctx.fill();
+
+    // แท่งซ้อน: ว่าง → เช่าอยู่ → ซ่อม → ปิด
+    var segs = [
+      {v:b.available, c:COLORS.available},
+      {v:b.rented, c:COLORS.rented},
+      {v:b.maintenance, c:COLORS.maintenance},
+      {v:b.offline, c:COLORS.offline},
+    ];
+    var x = trackX0;
+    segs.forEach(function(seg){
+      if(!seg.v) return;
+      var w = fullW * (seg.v / (b.total||1));
+      ctx.fillStyle = seg.c;
+      ctx.fillRect(x, y, w, barH);
+      x += w;
+    });
+    // จำนวนรวมท้ายแท่ง
+    ctx.fillStyle = '#1a4a2e'; ctx.font = 'bold '+(isNarrow?11:13)+'px Sarabun,Arial,sans-serif'; ctx.textAlign='left';
+    ctx.fillText(b.total+' คัน', trackX0+fullW+8, y+barH/2+4);
+  });
+
+  // ── Legend ──
+  var legY = PAD_TOP + ROW_H*list.length + 6;
+  var legItems = [
+    {label:'ว่าง/พร้อมเช่า', c:COLORS.available},
+    {label:'เช่าอยู่', c:COLORS.rented},
+    {label:'ซ่อม/PM', c:COLORS.maintenance},
+    {label:'ปิดใช้งาน', c:COLORS.offline},
+  ];
+  ctx.font = (isNarrow?10:11)+'px Sarabun,Arial,sans-serif'; ctx.textAlign='left';
+  var lx = NAME_W;
+  legItems.forEach(function(it){
+    ctx.fillStyle = it.c; ctx.beginPath(); ctx.arc(lx+5, legY+4, 5, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#555';
+    ctx.fillText(it.label, lx+14, legY+8);
+    lx += ctx.measureText(it.label).width + (isNarrow?34:44);
+  });
+}
+function _roundRect(ctx,x,y,w,h,r){ _roundRectPath(ctx,x,y,w,h,r); }
+function _roundRectPath(ctx,x,y,w,h,r){
+  if(w<=0) w=0.01;
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
 }
 
 function renderRegionCompareCards(){
@@ -3567,7 +3665,7 @@ function renderTechStock(list){
 }
 
 // ── NAVIGATE ─────────────────────────────────────────────────
-var pgTitles={dashboard:'Dashboard',create:'เปิดใบเบิกอะไหล่',list:'รายการใบเบิกอะไหล่',approval:'รายการรออนุมัติ',stock:'จัดอะไหล่ / รับคืน',pickup:'รับอะไหล่',close:'เคลียร์ใบเบิก',print:'พิมพ์ใบเบิก',profile:'ลายเซ็นของฉัน',jobs:'จัดการ Job No.',stockcard:'Stock Card',stockcount:'นับสต็อก',changereq:'คำขออนุมัติแก้ไข',vehiclehistory:'ประวัติรถ',pmcheck:'ตรวจเช็ครถ PM (ใบแช็ง)',sales:'เปิดรายการขาย',inventory:'ยอดคงเหลือ',specialreq:'สั่งซื้อพิเศษ / ค้างส่งลูกค้า',master:'จัดการอะไหล่ / รถ',transfer:'เบิกข้ามสาขา',techstock:'คลังช่าง',regiondash:'Dashboard เขต'};
+var pgTitles={dashboard:'Dashboard',create:'เปิดใบเบิกอะไหล่',list:'รายการใบเบิกอะไหล่',approval:'รายการรออนุมัติ',stock:'จัดอะไหล่ / รับคืน',pickup:'รับอะไหล่',close:'เคลียร์ใบเบิก',print:'พิมพ์ใบเบิก',profile:'ลายเซ็นของฉัน',jobs:'จัดการ Job No.',stockcard:'Stock Card',stockcount:'นับสต็อก',changereq:'คำขออนุมัติแก้ไข',vehiclehistory:'ประวัติรถ',pmcheck:'ตรวจเช็ครถ PM (ใบแช็ง)',sales:'เปิดรายการขาย',inventory:'ยอดคงเหลือ',specialreq:'สั่งซื้อพิเศษ / ค้างส่งลูกค้า',master:'จัดการอะไหล่ / รถ',transfer:'เบิกข้ามสาขา',techstock:'คลังช่าง',regiondash:'แดชบอร์ดสถานะรถ Area7'};
 
 function goAppBack(){
   // ⚡ ใช้ history.back() — จะไปเข้ากลไก popstate/_goWithoutPush ที่มีอยู่แล้ว (ไม่ push ซ้ำ ไม่ทำให้ค้าง)
