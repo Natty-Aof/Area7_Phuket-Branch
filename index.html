@@ -2530,9 +2530,10 @@ function demoLogin(role){
 var BRANCH_SCOPED_ACTIONS = ['getRequisitions','getStockCardEntries','getVehicles','getInventoryBalance',
   'getStockTransfers','getDashboard','getReport','getSalesOrders','getInspections','getVehicleHistory',
   'getSpecialPartRequests','getCustomerBackorders','getExternalHoldings','getVehiclesRequiringPM','getPMDashboardSummary',
-  'getTechStock','getSlowMovingParts','getVehiclePartAnalytics','getWarrantyPlan'];
-// หมายเหตุ: getFleetStatusBoard ตั้งใจไม่ใส่ในลิสต์นี้ — หน้า "Dashboard เขต" ต้องเห็นทุกสาขาเปรียบเทียบกันเสมอ
-// ไม่ควรถูกตัวเลือกสาขาบนแถบบนกรองทับโดยอัตโนมัติ (แตกต่างจากหน้าอื่นๆ ที่ต้องการกรองตามสาขาที่เลือก)
+  'getTechStock','getSlowMovingParts','getVehiclePartAnalytics','getWarrantyPlan','getFleetStatusBoard','getConcessionRevenueList'];
+// หมายเหตุ: getFleetStatusBoard เดิมตั้งใจไม่ใส่ในลิสต์นี้ เพื่อให้หน้า "Carts Status Area 7" เห็นทุกสาขาเปรียบเทียบกันเสมอ
+// แต่ทำให้ตัวเลือกสาขาบนแถบบนไม่มีผลกับหน้านี้เลย ต่างจากหน้าอื่นในระบบ สร้างความสับสน (เลือก "สมุย" แต่ยังเห็นข้อมูลภูเก็ตปนอยู่)
+// แก้ให้กรองตามตัวเลือกสาขาได้จริงเหมือนหน้าอื่นๆ แล้ว — เลือกสาขาใดสาขาหนึ่ง = กรองเฉพาะสาขานั้น, เลือก "ทุกสาขา" = เห็นเทียบกันเหมือนเดิม
 function callAPI(action, data, userEmail){
   var email = userEmail || (CU && CU.email) || '';
   var payload = data || {};
@@ -3415,7 +3416,7 @@ var _fleetFilter = '';
 function loadRegionDashboard(){
   var box = document.getElementById('regionDashBox');
   if(box) box.innerHTML = '<div style="text-align:center;padding:30px;color:var(--g400)">⏳ กำลังโหลดภาพรวมเขต...</div>';
-  // ── เรียกแบบไม่ผ่าน branch filter อัตโนมัติ เพราะหน้านี้ต้องเห็นทุกสาขาเทียบกันเสมอ ──
+  // ── ตอนนี้กรองตามตัวเลือกสาขาบนแถบบนได้แล้ว (เลือกสาขาใดสาขาหนึ่ง = กรองเฉพาะสาขานั้น, "ทุกสาขา" = เห็นเทียบกันทั้งหมด) ──
   callAPI('getFleetStatusBoard', {}).then(function(res){
     _fleetData = (res && res.success) ? (res.data||[]) : [];
     renderRegionCompareCards();
