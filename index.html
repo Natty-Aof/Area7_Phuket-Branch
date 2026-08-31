@@ -2843,7 +2843,7 @@ function initApp(){
     if(na) na.classList.remove('hidden');
     if(ba) ba.classList.remove('hidden');
   }
-  if(['STOCK','MANAGER'].indexOf(CU.role)>=0){
+  if(['STOCK','MANAGER','ADMIN'].indexOf(CU.role)>=0){ // ⚠️ แก้บั๊ก: เดิมไม่มี ADMIN เมนู "จัดอะไหล่" เลยไม่ขึ้นให้ ADMIN เห็น ทั้งที่สิทธิ์เบื้องหลังอนุญาตให้ทำได้ครบ
     var ns=document.getElementById('nStock'),bs=document.getElementById('bnSt');
     if(ns) ns.classList.remove('hidden');
     if(bs) bs.classList.remove('hidden');
