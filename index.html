@@ -5180,9 +5180,23 @@ function loadWarrantyPlanPage(){
     renderWarrantyPlanPage();
   });
 }
+// ⚠️ แก้บั๊ก: เดิม renderWarrantyPlanPage() แทนที่ DOM ทั้งหมดทุกครั้งที่พิมพ์ 1 ตัวอักษร รวมถึงช่องค้นหาเอง
+// ทำให้โฟกัสหลุดทุกตัวอักษร พิมพ์ได้ทีละตัวต้องคลิกใหม่ตลอด — แก้ด้วยการหน่วงเวลา (debounce) ให้ re-render
+// แค่ตอนหยุดพิมพ์ชั่วครู่ + คืนโฟกัส/ตำแหน่งเคอร์เซอร์กลับให้ช่องค้นหาหลัง re-render เสร็จ ──
+var _wpSearchDebounce = null;
 function onWarrantyPlanSearch(){
-  _wpSearchQ = (document.getElementById('wpSearchInput')||{}).value||'';
-  renderWarrantyPlanPage();
+  var inp = document.getElementById('wpSearchInput');
+  _wpSearchQ = inp ? inp.value : '';
+  var cursorPos = inp ? inp.selectionStart : null;
+  if(_wpSearchDebounce) clearTimeout(_wpSearchDebounce);
+  _wpSearchDebounce = setTimeout(function(){
+    renderWarrantyPlanPage();
+    var newInp = document.getElementById('wpSearchInput');
+    if(newInp){
+      newInp.focus();
+      if(cursorPos!==null) newInp.setSelectionRange(cursorPos, cursorPos);
+    }
+  }, 300);
 }
 // ── แปลงข้อมูลจากรายรถ (มี plans[] ซ้อนอยู่) ให้เป็น list แบนราบ 1 แถว = 1 นัด พร้อมข้อมูลรถติดไปด้วย ──
 // ── แปลงวันที่จาก Sheets ให้เป็นรูปแบบ 'YYYY-MM-DD' เสมอ ไม่ว่าค่าที่ได้มาจะเป็นรูปแบบไหน
