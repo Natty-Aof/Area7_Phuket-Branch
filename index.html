@@ -4076,7 +4076,7 @@ function _doRefreshBadges(force){
         var cnt = window._closeApprBadgeCache.filter(function(r){
           if(r.StatusStock!=='PENDING_FINAL_APPROVAL') return false;
           var needSup = CU.role==='SUPERVISOR' && r.SupervisorEmail && meEmailB===String(r.SupervisorEmail).toLowerCase() && !r.SupervisorCloseApprovedAt;
-          var needMgr = (CU.role==='MANAGER'||CU.role==='ADMIN') && r.ManagerEmail && meEmailB===String(r.ManagerEmail).toLowerCase() && !r.ManagerCloseApprovedAt;
+          var needMgr = CU.role==='MANAGER' && r.ManagerEmail && meEmailB===String(r.ManagerEmail).toLowerCase() && !r.ManagerCloseApprovedAt; // ⚠️ ตัด ADMIN ออก ตามนโยบายบริษัท (ADMIN อนุมัติไม่ได้)
           return needSup || needMgr;
         }).length;
         if(cnt>0){
@@ -7280,6 +7280,8 @@ function loadApproval(){
   if(!CU) return;
   var isSup = CU.role === 'SUPERVISOR';
   var isMgr = CU.role === 'MANAGER' || CU.role === 'ADMIN';
+  // ⚠️ ตามนโยบายบริษัท: ADMIN เข้าดูหน้ารออนุมัติ/ตีกลับได้ตามเดิม แต่กดปุ่ม "อนุมัติ" ไม่ได้ — แยกตัวแปรนี้ไว้เฉพาะปุ่มอนุมัติ
+  var canApproveMgr = CU.role === 'MANAGER';
   if(!isSup && !isMgr){
     var al=document.getElementById('apList');
     if(al) al.innerHTML='<div class="card tc tm" style="padding:32px">ไม่มีสิทธิ์ดูหน้านี้ค่ะ</div>';
@@ -7352,7 +7354,7 @@ function loadApproval(){
           +'<div style="display:flex;gap:6px;flex-shrink:0">'
             +'<button class="btn bo bsm" style="white-space:nowrap" onclick="openDetail(\''+r.ReqID+'\')">ดูรายละเอียด</button>'
             +'<button class="btn bd bsm" style="white-space:nowrap" onclick="rejectCancelReqUI(\''+r.ReqID+'\')">✕ ไม่อนุมัติ</button>'
-            +'<button class="btn bp bsm" style="background:#b71c1c;border-color:#b71c1c;white-space:nowrap" onclick="approveCancelReqUI(\''+r.ReqID+'\')">✅ อนุมัติยกเลิก</button>'
+            + (canApproveMgr ? '<button class="btn bp bsm" style="background:#b71c1c;border-color:#b71c1c;white-space:nowrap" onclick="approveCancelReqUI(\''+r.ReqID+'\')">✅ อนุมัติยกเลิก</button>' : '') // ⚠️ ตัดปุ่มอนุมัติออกจาก ADMIN
           +'</div>'
         +'</div>';
       }).join('');
@@ -7437,7 +7439,7 @@ function loadApproval(){
           +'<div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end;align-items:center">'
             +'<button class="btn bo bsm" onclick="viewSODetail(\''+o.SONo+'\')">ดูรายละเอียด</button>'
             +'<button class="btn bd bsm" onclick="rejectSO(\''+o.SONo+'\',true)">✕ ไม่อนุมัติ</button>'
-            +'<button class="btn bp bsm" style="background:#6a1599;border-color:#6a1599" onclick="approveSO(\''+o.SONo+'\',true)">✅ อนุมัติ</button>'
+            + (canApproveMgr ? '<button class="btn bp bsm" style="background:#6a1599;border-color:#6a1599" onclick="approveSO(\''+o.SONo+'\',true)">✅ อนุมัติ</button>' : '') // ⚠️ ตัดปุ่มอนุมัติออกจาก ADMIN
           +'</div>'
         +'</div>';
       }).join('');
@@ -7453,9 +7455,12 @@ function loadApproval(){
         if(isSup && isPendingSup){
           actionBtns = '<button class="btn bd bsm" onclick="openNoteMo(\'reject\',\''+r.ReqID+'\')">✕ ปฏิเสธ</button>'
             +'<button class="btn bp bsm" onclick="openNoteMo(\'approve\',\''+r.ReqID+'\')">✓ อนุมัติ</button>';
-        } else if(isMgr && isPendingMgr){
+        } else if(isMgr && isPendingMgr && canApproveMgr){
           actionBtns = '<button class="btn bd bsm" onclick="openNoteMo(\'reject\',\''+r.ReqID+'\')">✕ ปฏิเสธ</button>'
             +'<button class="btn bp bsm" onclick="openNoteMo(\'approve\',\''+r.ReqID+'\')">✓ อนุมัติ</button>';
+        } else if(isMgr && isPendingMgr){
+          // ⚠️ ADMIN: ตัดปุ่ม "อนุมัติ" ออก เหลือแค่ "ปฏิเสธ" ตามนโยบายบริษัท
+          actionBtns = '<button class="btn bd bsm" onclick="openNoteMo(\'reject\',\''+r.ReqID+'\')">✕ ปฏิเสธ</button>';
         } else if(isMgr && isPendingSup){
           actionBtns = '<span style="font-size:12px;color:#e65100;font-weight:600">⏳ รอหัวหน้าช่างอนุมัติก่อน</span>';
         }
@@ -9035,8 +9040,10 @@ function openDetail(reqId){
     });
     var mf=document.getElementById('moFoot'), foot='';
     var isSup=CU.role==='SUPERVISOR'&&d.StatusApproval==='PENDING_SUPERVISOR';
-    var isMgr=(CU.role==='MANAGER'||CU.role==='ADMIN')&&d.StatusApproval==='PENDING_MANAGER';
+    var isMgr=CU.role==='MANAGER'&&d.StatusApproval==='PENDING_MANAGER'; // ⚠️ ตัด ADMIN ออก ตามนโยบายบริษัท (ADMIN อนุมัติไม่ได้ แต่ยังตีกลับได้)
+    var isMgrReject=(CU.role==='MANAGER'||CU.role==='ADMIN')&&d.StatusApproval==='PENDING_MANAGER'; // ตีกลับยังให้ ADMIN ทำได้ตามเดิม
     if(isSup||isMgr) foot='<button class="btn bd" onclick="openNoteMo(\'reject\',\''+d.ReqID+'\');closeMo()">✕ ปฏิเสธ</button><button class="btn bp" onclick="openNoteMo(\'approve\',\''+d.ReqID+'\');closeMo()">✓ อนุมัติ</button>';
+    else if(isMgrReject) foot='<button class="btn bd" onclick="openNoteMo(\'reject\',\''+d.ReqID+'\');closeMo()">✕ ปฏิเสธ</button>';
     // ── ปุ่มอนุมัติปิดงานขั้นสุดท้าย (หัวหน้าช่าง/ผจก. ของใบเบิกนี้เท่านั้น) ──
     if(d.StatusStock==='PENDING_FINAL_APPROVAL'){
       var meEmail=(CU.email||'').toLowerCase();
@@ -9062,8 +9069,10 @@ function openDetail(reqId){
     }
     // ── ปุ่มอนุมัติ/ไม่อนุมัติคำขอยกเลิก (เฉพาะผจก./Admin ตอนมีคำขอค้างอยู่) ──
     if(d.CancelStatus==='PENDING' && (CU.role==='MANAGER'||CU.role==='ADMIN')){
-      foot += '<button class="btn bd bsm" onclick="rejectCancelReqUI(\''+d.ReqID+'\')">✕ ไม่อนุมัติยกเลิก</button>'
-        +'<button class="btn bp bsm" style="background:#b71c1c;border-color:#b71c1c" onclick="approveCancelReqUI(\''+d.ReqID+'\')">✅ อนุมัติยกเลิก</button>';
+      foot += '<button class="btn bd bsm" onclick="rejectCancelReqUI(\''+d.ReqID+'\')">✕ ไม่อนุมัติยกเลิก</button>';
+      if(CU.role==='MANAGER'){ // ⚠️ ตัดปุ่มอนุมัติออกจาก ADMIN ตามนโยบายบริษัท (ตีกลับ/ไม่อนุมัติยังทำได้)
+        foot += '<button class="btn bp bsm" style="background:#b71c1c;border-color:#b71c1c" onclick="approveCancelReqUI(\''+d.ReqID+'\')">✅ อนุมัติยกเลิก</button>';
+      }
     }
     // (ลบปุ่ม "รับจัดของ" ออกจาก popup — ให้ไปจัดของที่หน้า "จัดอะไหล่" แทน)
     // เพิ่มปุ่มแก้ไข/ลบสำหรับ MANAGER เสมอ (ต่อจาก foot ปกติ)
@@ -11296,11 +11305,17 @@ function initSales(){
         +'<div class="di"><div class="dl">PO</div><div class="dv">'+(o.PONo||'-')+'</div></div>'
         +'<div class="di"><div class="dl">ลูกค้า</div><div class="dv">'+((o.CustName||o.CustomerName||'—')||'-')+'</div></div>'
         +'</div>'
-        +(isPending && (CU.role==='MANAGER'||CU.role==='ADMIN')
+        +(isPending && CU.role==='MANAGER'
           ? '<div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">'
             +'<button class="btn bo bsm" onclick="viewSODetail(\''+o.SONo+'\')">ดูรายละเอียด</button>'
             +'<button class="btn bd bsm" onclick="rejectSO(\''+o.SONo+'\')">✕ ไม่อนุมัติ</button>'
             +'<button class="btn bgd bsm" onclick="approveSO(\''+o.SONo+'\')">✅ อนุมัติ</button>'
+            +'</div>'
+          : isPending && CU.role==='ADMIN'
+          // ⚠️ ตัดปุ่ม "อนุมัติ" ออกจาก ADMIN ตามนโยบายบริษัท — เหลือไว้แค่ "ไม่อนุมัติ" (ตีกลับยังทำได้)
+          ? '<div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">'
+            +'<button class="btn bo bsm" onclick="viewSODetail(\''+o.SONo+'\')">ดูรายละเอียด</button>'
+            +'<button class="btn bd bsm" onclick="rejectSO(\''+o.SONo+'\')">✕ ไม่อนุมัติ</button>'
             +'</div>'
           : isApproved && (CU.role==='STOCK'||CU.role==='MANAGER'||CU.role==='ADMIN')
           ? '<div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">'
@@ -13822,7 +13837,7 @@ function loadChangeReqPage(){
       if(isManager && cr.Status==='PENDING' && !isExpired){
         actionHtml = '<div style="display:flex;gap:8px;margin-top:10px">'
           +'<button class="btn bd bsm" onclick="doCRDecision(\''+cr.CRNo+'\',false)">✕ ไม่อนุมัติ</button>'
-          +'<button class="btn bp bsm" style="background:#6a1b9a;border-color:#6a1b9a" onclick="doCRDecision(\''+cr.CRNo+'\',true)">✅ อนุมัติ</button>'
+          + (myRole==='MANAGER' ? '<button class="btn bp bsm" style="background:#6a1b9a;border-color:#6a1b9a" onclick="doCRDecision(\''+cr.CRNo+'\',true)">✅ อนุมัติ</button>' : '') // ⚠️ ตัดปุ่มอนุมัติออกจาก ADMIN ตามนโยบายบริษัท
         +'</div>';
       } else if(isManager && cr.Status==='PENDING' && isExpired){
         actionHtml = '<div style="margin-top:6px;font-size:12px;color:#b71c1c">⛔ คำขอนี้หมดอายุแล้ว ไม่สามารถอนุมัติได้ค่ะ</div>';
