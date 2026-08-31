@@ -164,7 +164,11 @@ textarea.fc{min-height:70px;resize:vertical;}
 .bib{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 12px;cursor:pointer;border:none;background:transparent;color:rgba(255,255,255,.65);font-size:12px;font-weight:600;min-width:60px;border-radius:10px;transition:background .15s;}
 .bib .ic2{font-size:28px;line-height:1.1;}
 .bib.active{color:var(--gold);background:rgba(255,255,255,.08);}
-.ms{display:none;position:fixed;bottom:0;left:0;right:0;z-index:300;background:var(--gd);border-radius:16px 16px 0 0;padding:12px 0 env(safe-area-inset-bottom,12px);box-shadow:0 -4px 24px rgba(0,0,0,.3);}
+.ms{display:none;position:fixed;bottom:0;left:0;right:0;z-index:300;background:var(--gd);border-radius:16px 16px 0 0;padding:12px 0 env(safe-area-inset-bottom,12px);box-shadow:0 -4px 24px rgba(0,0,0,.3);
+  /* ⚠️ แก้บั๊ก: เดิมไม่จำกัดความสูง พอเมนูเยอะ (ครบทุกสิทธิ์) แผงจะขยายทะลุขึ้นเหนือจอ โดนแถบสถานะมือถือบัง
+     และเลื่อนดูส่วนที่โดนบังไม่ได้เลย เพราะไม่มี scroll ภายในแผง — จำกัดความสูงสูงสุดไว้ที่ 80% ของจอ
+     (เผื่อพื้นที่แถบสถานะด้านบนด้วย safe-area-inset-top) แล้วให้เลื่อนดูภายในแผงได้แทน */
+  max-height:calc(80vh - env(safe-area-inset-top,0px));overflow-y:auto;-webkit-overflow-scrolling:touch;}
 .ms.open{display:block;}
 .msh{width:36px;height:4px;background:rgba(255,255,255,.3);border-radius:2px;margin:0 auto 12px;}
 .msi{display:flex;align-items:center;gap:12px;padding:12px 20px;color:rgba(255,255,255,.85);font-size:15px;font-weight:500;cursor:pointer;}
