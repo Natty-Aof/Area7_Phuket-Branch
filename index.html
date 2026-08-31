@@ -5369,6 +5369,7 @@ function renderWarrantyCalendar(){
     +'<button class="btn bsm '+(_wpCalMode==='day'?'bp':'bo')+'" onclick="wpCalSwitchMode(\'day\')">วัน</button>'
     +'<button class="btn bsm '+(_wpCalMode==='week'?'bp':'bo')+'" onclick="wpCalSwitchMode(\'week\')">สัปดาห์</button>'
     +'<button class="btn bsm '+(_wpCalMode==='month'?'bp':'bo')+'" onclick="wpCalSwitchMode(\'month\')">เดือน</button>'
+    +'<button class="btn bo bsm" style="margin-left:8px" onclick="printWarrantySchedule()">🖨️ พิมพ์ตารางแผนเดือนนี้</button>'
   +'</div>';
 
   var bodyHtml = '', titleText = '';
@@ -16027,6 +16028,87 @@ function printPendingReport(){
 }
 
 
+
+// ── พิมพ์ตารางแผน Warranty ของเดือนที่กำลังดูอยู่ (เทียบแผน vs ตรวจจริง) ──────────────────
+function printWarrantySchedule(){
+  var flat = _wpFlatPlans();
+  var ref = _wpCalRefDate;
+  var y = ref.getFullYear(), m = ref.getMonth();
+  var monthNames = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  var monthLabel = monthNames[m]+' '+(y+543);
+
+  var inMonth = flat.filter(function(p){
+    if(!p.date) return false;
+    var parts = String(p.date).split('-');
+    return Number(parts[0])===y && Number(parts[1])===(m+1);
+  }).sort(function(a,b){ return a.date>b.date?1:(a.date<b.date?-1:0); });
+
+  if(!inMonth.length){
+    toast('เดือน '+monthLabel+' ไม่มีนัดแผน Warranty เลยค่ะ — เปลี่ยนเดือนที่ต้องการก่อนกดพิมพ์','error');
+    return;
+  }
+
+  var total=inMonth.length, doneOnTime=0, doneLate=0, overdue=0, pending=0;
+  inMonth.forEach(function(p){
+    if(p.status==='DONE'){ if(p.actualCheckDate && p.actualCheckDate>p.date) doneLate++; else doneOnTime++; }
+    else if(p.status==='OVERDUE') overdue++;
+    else pending++;
+  });
+
+  var rowsHtml = inMonth.map(function(p){
+    var stLabel, stColor, actualCell;
+    if(p.status==='DONE'){
+      var late = p.actualCheckDate && p.actualCheckDate > p.date;
+      stLabel = late ? '✅ ตรวจแล้ว (ล่าช้า)' : '✅ ตรวจแล้ว (ตรงแผน)';
+      stColor = late ? '#e65100' : '#2d6a4f';
+      actualCell = p.actualCheckDate || '-';
+    } else if(p.status==='OVERDUE'){
+      stLabel = '🔴 เลยกำหนด — ยังไม่ตรวจ'; stColor = '#b71c1c'; actualCell = '-';
+    } else {
+      stLabel = '⏳ รอถึงกำหนด'; stColor = '#1565c0'; actualCell = '-';
+    }
+    return '<tr>'
+      +'<td>'+p.date+'</td>'
+      +'<td>'+p.serialNo+'</td>'
+      +'<td>'+(p.vehicleType||'-')+'</td>'
+      +'<td>'+(p.customer||'-')+'</td>'
+      +'<td>'+(p.location||'-')+'</td>'
+      +'<td>'+(p.label||'-')+'</td>'
+      +'<td>'+actualCell+'</td>'
+      +'<td style="color:'+stColor+';font-weight:700">'+stLabel+'</td>'
+      +'<td>'+(p.note||'-')+'</td>'
+    +'</tr>';
+  }).join('');
+
+  var win = window.open('','_blank','width=1200,height=800');
+  if(!win){ toast('กรุณาอนุญาต popup ค่ะ','error'); return; }
+  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8">'
+    +'<style>body{font-family:Sarabun,sans-serif;font-size:11px;margin:10mm}'
+    +'h2{color:#1a4a2e;margin-bottom:4px}p{color:#888;font-size:11px;margin:2px 0}'
+    +'table{width:100%;border-collapse:collapse;margin-top:10px}'
+    +'th{background:#1a4a2e;color:#fff;padding:6px 8px;text-align:left;font-size:10px}'
+    +'td{padding:6px 8px;border-bottom:1px solid #eee;font-size:10px}'
+    +'tr:nth-child(even){background:#f9fdf9}'
+    +'.summary{display:flex;gap:16px;margin:10px 0;padding:10px;background:#f0f7f2;border-radius:6px;font-size:11px;flex-wrap:wrap}'
+    +'.summary b{color:#1a4a2e}'
+    +'@media print{@page{size:A4 landscape;margin:10mm}}</style>'
+    +'</head><body>'
+    +'<h2>📅 ตารางแผนตรวจเช็ค Warranty — เดือน'+monthLabel+' — '+currentBranchDisplayName()+'</h2>'
+    +'<p>พิมพ์วันที่: '+new Date().toLocaleDateString("th-TH",{year:"numeric",month:"long",day:"numeric"})+'</p>'
+    +'<div class="summary">'
+      +'<span>นัดทั้งหมด: <b>'+total+'</b> รายการ</span>'
+      +'<span>✅ ตรวจแล้วตรงแผน: <b>'+doneOnTime+'</b></span>'
+      +'<span>🟠 ตรวจแล้วล่าช้า: <b>'+doneLate+'</b></span>'
+      +'<span>🔴 เลยกำหนด-ยังไม่ตรวจ: <b>'+overdue+'</b></span>'
+      +'<span>⏳ รอถึงกำหนด: <b>'+pending+'</b></span>'
+      +'<span>อัตราทำตามแผน: <b>'+(total? Math.round((doneOnTime/total)*100):0)+'%</b> (ตรงแผน/ทั้งหมด)</span>'
+    +'</div>'
+    +'<table><thead><tr><th>วันที่แผน</th><th>Serial No.</th><th>รุ่นรถ</th><th>ลูกค้า</th><th>สถานที่</th><th>รายการตรวจ</th><th>วันตรวจจริง</th><th>สถานะ</th><th>หมายเหตุ</th></tr></thead>'
+    +'<tbody>'+rowsHtml+'</tbody></table>'
+    +'<script>setTimeout(function(){window.print();},400);<\/script>'
+    +'</body></html>');
+  win.document.close();
+}
 
 function printSlowMoveReport(){
   var el = document.getElementById('slowMoveContent');
