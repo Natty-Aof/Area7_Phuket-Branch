@@ -5165,6 +5165,11 @@ function drillPMGroup(customerEnc, locationEnc){
 // ── แผนตาราง Warranty — แอดมิน/ผจก.กำหนดวันนัดเองทีละคัน, ช่างดูได้อย่างเดียว ──
 var _wpFullList = [];
 var _wpSearchQ = '';
+var _wpViewMode = 'calendar'; // 'calendar' | 'list'
+var _wpCalMode = 'month';     // 'month' | 'week' | 'day'
+var _wpCalRefDate = new Date(); // วันที่อ้างอิงที่กำลังดูอยู่ในปฏิทิน
+var _wpSelectedDay = null;      // วันที่เลือกดูรายละเอียด (ใช้ตอนอยู่ในมุมมองเดือน/สัปดาห์)
+
 function loadWarrantyPlanPage(){
   var box = document.getElementById('pmWarrantyBox');
   if(!box) return;
@@ -5176,6 +5181,27 @@ function loadWarrantyPlanPage(){
 }
 function onWarrantyPlanSearch(){
   _wpSearchQ = (document.getElementById('wpSearchInput')||{}).value||'';
+  renderWarrantyPlanPage();
+}
+// ── แปลงข้อมูลจากรายรถ (มี plans[] ซ้อนอยู่) ให้เป็น list แบนราบ 1 แถว = 1 นัด พร้อมข้อมูลรถติดไปด้วย ──
+function _wpFlatPlans(){
+  var flat = [];
+  _wpFullList.forEach(function(v){
+    (v.plans||[]).forEach(function(p){
+      flat.push({
+        date: p.PlannedDate, planId: p.PlanID, label: p.Label, status: p.Status, note: p.Note,
+        actualCheckDate: p.ActualCheckDate, matchedActualDate: p.matchedActualDate,
+        serialNo: v.serialNo, vehicleType: v.vehicleType, customer: v.customer, location: v.location,
+      });
+    });
+  });
+  return flat;
+}
+function _wpFmtDate(d){ // Date -> 'YYYY-MM-DD'
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function switchWpView(mode){
+  _wpViewMode = mode;
   renderWarrantyPlanPage();
 }
 function renderWarrantyPlanPage(){
@@ -5211,11 +5237,23 @@ function renderWarrantyPlanPage(){
       }).join('')
     +'</div>';
 
-  // ── ค้นหา + ปุ่มเพิ่มรถใหม่เข้าแผน ──
+  // ── สลับมุมมอง: ปฏิทิน (ค่าเริ่มต้น) / รายการ ──
+  var toggleHtml = '<div class="card" style="padding:10px 16px;margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+    +'<button class="btn bsm '+(_wpViewMode==='calendar'?'bp':'bo')+'" onclick="switchWpView(\'calendar\')">📅 ปฏิทิน</button>'
+    +'<button class="btn bsm '+(_wpViewMode==='list'?'bp':'bo')+'" onclick="switchWpView(\'list\')">📋 รายการ (แก้ไข/เพิ่มนัด)</button>'
+    +(isAdmin ? '<button class="btn bp bsm" style="margin-left:auto" onclick="openAddWarrantyVehicleModal()">➕ เพิ่มรถเข้าแผน Warranty</button>' : '')
+  +'</div>';
+
+  if(_wpViewMode==='calendar'){
+    box.innerHTML = dashHtml + toggleHtml + '<div id="wpCalendarBox"></div>';
+    renderWarrantyCalendar();
+    return;
+  }
+
+  // ── มุมมองรายการเดิม (ไว้แก้ไข/เพิ่มนัดทีละคัน) ──
   var searchHtml = '<div class="card" style="padding:14px 16px;margin-bottom:12px">'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
       +'<input class="fc" id="wpSearchInput" placeholder="🔍 ค้นหารถ Warranty (Serial/ลูกค้า/สถานที่)..." style="flex:1;min-width:200px" value="'+_wpSearchQ.replace(/"/g,'&quot;')+'" oninput="onWarrantyPlanSearch()">'
-      + (isAdmin ? '<button class="btn bp" onclick="openAddWarrantyVehicleModal()">➕ เพิ่มรถเข้าแผน Warranty</button>' : '')
     +'</div></div>';
 
   var q = _wpSearchQ.trim().toLowerCase();
@@ -5224,15 +5262,15 @@ function renderWarrantyPlanPage(){
   }) : list;
 
   if(!list.length){
-    box.innerHTML = dashHtml + searchHtml + '<div class="card tc tm" style="padding:24px">ยังไม่มีรถที่ตั้งประเภทการดูแลเป็น "Warranty" ค่ะ — ไปตั้งค่าได้ที่หน้า "จัดการอะไหล่/รถ" หรือกด "➕ เพิ่มรถเข้าแผน Warranty" ด้านบน</div>';
+    box.innerHTML = dashHtml + toggleHtml + searchHtml + '<div class="card tc tm" style="padding:24px">ยังไม่มีรถที่ตั้งประเภทการดูแลเป็น "Warranty" ค่ะ — ไปตั้งค่าได้ที่หน้า "จัดการอะไหล่/รถ" หรือกด "➕ เพิ่มรถเข้าแผน Warranty" ด้านบน</div>';
     return;
   }
   if(!filtered.length){
-    box.innerHTML = dashHtml + searchHtml + '<div class="card tc tm" style="padding:24px">ไม่พบรถที่ตรงกับคำค้นหาค่ะ</div>';
+    box.innerHTML = dashHtml + toggleHtml + searchHtml + '<div class="card tc tm" style="padding:24px">ไม่พบรถที่ตรงกับคำค้นหาค่ะ</div>';
     return;
   }
 
-  box.innerHTML = dashHtml + searchHtml + filtered.map(function(v){
+  box.innerHTML = dashHtml + toggleHtml + searchHtml + filtered.map(function(v){
     var today = new Date().toISOString().slice(0,10);
     var nextPending = v.plans.find(function(p){ return p.Status!=='DONE'; });
     var headerColor = nextPending ? (nextPending.Status==='OVERDUE' ? '#b71c1c' : '#e65100') : '#2d6a4f';
@@ -5281,6 +5319,159 @@ function renderWarrantyPlanPage(){
         : '')
     +'</div>';
   }).join('');
+}
+
+// ════════════════════════════════════════════════════════════════
+// ปฏิทินแผน Warranty — มุมมองเดือน/สัปดาห์/วัน
+// ════════════════════════════════════════════════════════════════
+var WP_STATUS_COLOR = {PENDING:'#1565c0', OVERDUE:'#b71c1c', DONE_ONTIME:'#2d6a4f', DONE_LATE:'#e65100'};
+function _wpEntryColor(p){
+  if(p.status==='DONE') return (p.actualCheckDate && p.actualCheckDate > p.date) ? WP_STATUS_COLOR.DONE_LATE : WP_STATUS_COLOR.DONE_ONTIME;
+  return WP_STATUS_COLOR[p.status] || '#888';
+}
+function _wpEntryLabel(p){
+  if(p.status==='DONE') return (p.actualCheckDate && p.actualCheckDate > p.date) ? '✅ ตรวจแล้ว (ล่าช้า)' : '✅ ตรวจแล้ว (ตรงนัด)';
+  if(p.status==='OVERDUE') return '🔴 เลยกำหนด — ยังไม่ตรวจ';
+  return '⏳ รอถึงกำหนด';
+}
+function wpCalNav(dir){
+  var d = _wpCalRefDate;
+  if(dir==='today'){ _wpCalRefDate = new Date(); }
+  else if(_wpCalMode==='month'){ d.setMonth(d.getMonth()+dir); _wpCalRefDate = new Date(d); }
+  else if(_wpCalMode==='week'){ d.setDate(d.getDate()+dir*7); _wpCalRefDate = new Date(d); }
+  else { d.setDate(d.getDate()+dir); _wpCalRefDate = new Date(d); }
+  renderWarrantyCalendar();
+}
+function wpCalSwitchMode(mode){ _wpCalMode = mode; renderWarrantyCalendar(); }
+function wpSelectDay(dateStr){
+  _wpSelectedDay = dateStr;
+  var parts = dateStr.split('-');
+  _wpCalRefDate = new Date(Number(parts[0]), Number(parts[1])-1, Number(parts[2]));
+  _wpCalMode = 'day';
+  renderWarrantyCalendar();
+}
+function renderWarrantyCalendar(){
+  var box = document.getElementById('wpCalendarBox');
+  if(!box) return;
+  var flat = _wpFlatPlans();
+  var byDate = {};
+  flat.forEach(function(p){ (byDate[p.date] || (byDate[p.date]=[])).push(p); });
+
+  var monthNames = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  var dayNames = ['อา','จ','อ','พ','พฤ','ศ','ส'];
+  var todayStr = _wpFmtDate(new Date());
+
+  var navHtml = '<div class="card" style="padding:10px 16px;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+    +'<button class="btn bo bsm" onclick="wpCalNav(-1)">‹ ก่อนหน้า</button>'
+    +'<button class="btn bo bsm" onclick="wpCalNav(\'today\')">วันนี้</button>'
+    +'<button class="btn bo bsm" onclick="wpCalNav(1)">ถัดไป ›</button>'
+    +'<div style="font-weight:700;color:var(--gd);margin:0 8px;flex:1;min-width:120px" id="wpCalTitle"></div>'
+    +'<button class="btn bsm '+(_wpCalMode==='day'?'bp':'bo')+'" onclick="wpCalSwitchMode(\'day\')">วัน</button>'
+    +'<button class="btn bsm '+(_wpCalMode==='week'?'bp':'bo')+'" onclick="wpCalSwitchMode(\'week\')">สัปดาห์</button>'
+    +'<button class="btn bsm '+(_wpCalMode==='month'?'bp':'bo')+'" onclick="wpCalSwitchMode(\'month\')">เดือน</button>'
+  +'</div>';
+
+  var bodyHtml = '', titleText = '';
+  var ref = _wpCalRefDate;
+
+  if(_wpCalMode==='month'){
+    titleText = monthNames[ref.getMonth()]+' '+(ref.getFullYear()+543);
+    var firstOfMonth = new Date(ref.getFullYear(), ref.getMonth(), 1);
+    var startOffset = firstOfMonth.getDay(); // 0=อา
+    var gridStart = new Date(firstOfMonth); gridStart.setDate(gridStart.getDate()-startOffset);
+    var cells = [];
+    for(var i=0;i<42;i++){ var d=new Date(gridStart); d.setDate(d.getDate()+i); cells.push(d); }
+
+    bodyHtml = '<div class="card" style="padding:10px;overflow-x:auto">'
+      +'<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;min-width:560px">'
+      + dayNames.map(function(dn){ return '<div style="text-align:center;font-size:11px;font-weight:700;color:var(--g400);padding:4px">'+dn+'</div>'; }).join('')
+      + cells.map(function(d){
+          var dStr = _wpFmtDate(d);
+          var isThisMonth = d.getMonth()===ref.getMonth();
+          var isToday = dStr===todayStr;
+          var entries = byDate[dStr]||[];
+          var counts = {overdue:0, pending:0, doneOnTime:0, doneLate:0};
+          entries.forEach(function(p){
+            if(p.status==='OVERDUE') counts.overdue++;
+            else if(p.status==='PENDING') counts.pending++;
+            else if(p.status==='DONE'){ if(p.actualCheckDate && p.actualCheckDate>p.date) counts.doneLate++; else counts.doneOnTime++; }
+          });
+          var dots = '';
+          if(counts.overdue) dots += '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+WP_STATUS_COLOR.OVERDUE+';margin:1px"></span>';
+          if(counts.pending) dots += '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+WP_STATUS_COLOR.PENDING+';margin:1px"></span>';
+          if(counts.doneOnTime) dots += '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+WP_STATUS_COLOR.DONE_ONTIME+';margin:1px"></span>';
+          if(counts.doneLate) dots += '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+WP_STATUS_COLOR.DONE_LATE+';margin:1px"></span>';
+          return '<div onclick="wpSelectDay(\''+dStr+'\')" style="cursor:pointer;min-height:64px;padding:4px;border-radius:6px;background:'+(isToday?'#fff8e1':(isThisMonth?'#fff':'#f7f7f7'))+';border:1px solid '+(isToday?'#e6a817':'#eee')+';opacity:'+(isThisMonth?'1':'0.4')+'">'
+            +'<div style="font-size:11px;font-weight:'+(isToday?'800':'500')+';color:'+(isToday?'#e65100':'#333')+'">'+d.getDate()+'</div>'
+            +(entries.length ? '<div style="margin-top:2px">'+dots+'</div><div style="font-size:9px;color:var(--g400);margin-top:1px">'+entries.length+' นัด</div>' : '')
+          +'</div>';
+        }).join('')
+      +'</div>'
+      +'<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;padding-top:8px;border-top:1px solid #eee;font-size:11px;color:var(--g400)">'
+        +'<span>🔵 รอถึงกำหนด</span><span>🔴 เลยกำหนด</span><span>🟢 ตรวจแล้ว-ตรงนัด</span><span style="color:#e65100">🟠 ตรวจแล้ว-ล่าช้า</span>'
+      +'</div></div>';
+
+    if(_wpSelectedDay){
+      bodyHtml += renderWpDayDetailCard(_wpSelectedDay, byDate[_wpSelectedDay]||[]);
+    }
+
+  } else if(_wpCalMode==='week'){
+    var dow = ref.getDay();
+    var weekStart = new Date(ref); weekStart.setDate(weekStart.getDate()-dow);
+    var weekDays = []; for(var wi=0; wi<7; wi++){ var wd=new Date(weekStart); wd.setDate(wd.getDate()+wi); weekDays.push(wd); }
+    titleText = _wpFmtDate(weekDays[0])+' — '+_wpFmtDate(weekDays[6]);
+
+    bodyHtml = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">'
+      + weekDays.map(function(d){
+          var dStr = _wpFmtDate(d);
+          var isToday = dStr===todayStr;
+          var entries = (byDate[dStr]||[]).slice().sort(function(a,b){ return _wpStatusRank(a)-_wpStatusRank(b); });
+          return '<div class="card" style="padding:8px;'+(isToday?'border:2px solid #e6a817':'')+'">'
+            +'<div style="font-size:12px;font-weight:700;color:var(--gd);margin-bottom:6px;cursor:pointer" onclick="wpSelectDay(\''+dStr+'\')">'+dayNames[d.getDay()]+' '+d.getDate()+'/'+(d.getMonth()+1)+'</div>'
+            + (entries.length ? entries.map(function(p){
+                return '<div style="font-size:11px;padding:4px 6px;margin-bottom:3px;border-radius:4px;background:'+_wpEntryColor(p)+'22;border-left:3px solid '+_wpEntryColor(p)+'">'
+                  +'<div style="font-weight:700">'+p.serialNo+'</div><div style="color:var(--g400)">'+(p.customer||'-')+'</div></div>';
+              }).join('') : '<div style="font-size:11px;color:var(--g400)">ไม่มีนัด</div>')
+          +'</div>';
+        }).join('')
+    +'</div>';
+
+  } else { // day
+    titleText = dayNames[ref.getDay()]+'วัน ที่ '+ref.getDate()+' '+monthNames[ref.getMonth()]+' '+(ref.getFullYear()+543);
+    var dStr2 = _wpFmtDate(ref);
+    bodyHtml = renderWpDayDetailCard(dStr2, (byDate[dStr2]||[]).slice().sort(function(a,b){ return _wpStatusRank(a)-_wpStatusRank(b); }), true);
+  }
+
+  box.innerHTML = navHtml + bodyHtml;
+  var titleEl = document.getElementById('wpCalTitle');
+  if(titleEl) titleEl.textContent = titleText;
+}
+function _wpStatusRank(p){ return p.status==='OVERDUE'?0 : p.status==='PENDING'?1 : 2; }
+function renderWpDayDetailCard(dateStr, entries, isMainView){
+  var isAdmin = CU && (CU.role==='ADMIN'||CU.role==='MANAGER');
+  var html = '<div class="card" style="padding:14px 16px;margin-top:'+(isMainView?'0':'10px')+'">'
+    +'<div style="font-weight:700;color:var(--gd);font-size:13px;margin-bottom:8px">📌 นัดวันที่ '+dateStr+' ('+entries.length+' รายการ)</div>';
+  if(!entries.length){
+    html += '<div style="font-size:12px;color:var(--g400)">ไม่มีนัดในวันนี้ค่ะ</div>';
+  } else {
+    html += entries.map(function(p){
+      return '<div style="padding:10px;margin-bottom:8px;border-radius:8px;background:'+_wpEntryColor(p)+'15;border-left:4px solid '+_wpEntryColor(p)+'">'
+        +'<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px">'
+          +'<div><strong>🚙 '+p.serialNo+'</strong> — '+(p.vehicleType||'')+'<div style="font-size:11px;color:var(--g400)">ลูกค้า: '+(p.customer||'-')+' | '+(p.location||'-')+'</div></div>'
+          +'<div style="font-size:12px;font-weight:700;color:'+_wpEntryColor(p)+'">'+_wpEntryLabel(p)+'</div>'
+        +'</div>'
+        +(p.label ? '<div style="font-size:12px;margin-top:4px">รายการ: '+p.label+'</div>' : '')
+        +(p.note ? '<div style="font-size:12px;color:var(--g400);margin-top:2px">📝 หมายเหตุ: '+p.note+'</div>' : '')
+        + (isAdmin ? '<div style="margin-top:8px;display:flex;gap:6px">'
+            + (p.status!=='DONE' ? '<button class="btn bo bsm" style="font-size:11px" onclick="doMarkWarrantyDone(\''+p.planId+'\')">✓ ทำเครื่องหมายตรวจแล้ว</button>' : '')
+            + '<button class="btn bd bsm" style="font-size:11px" onclick="doDeleteWarrantyPlan(\''+p.planId+'\')">✕ ลบนัดนี้</button>'
+            + '<button class="btn bp bsm" style="font-size:11px" onclick="go(\'pmcheck\');switchPMMainTab(\'check\');setTimeout(function(){selectPMVehicle(\''+p.serialNo+'\')},300)">🔧 ตรวจเช็คเลย</button>'
+          + '</div>' : '')
+      +'</div>';
+    }).join('');
+  }
+  html += '</div>';
+  return html;
 }
 function confirmWarrantyActual(planId, actualDate){
   callAPI('markWarrantyPlanDone',{planId:planId, actualDate:actualDate}).then(function(res){
