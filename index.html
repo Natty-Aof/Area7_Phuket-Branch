@@ -5184,13 +5184,26 @@ function onWarrantyPlanSearch(){
   renderWarrantyPlanPage();
 }
 // ── แปลงข้อมูลจากรายรถ (มี plans[] ซ้อนอยู่) ให้เป็น list แบนราบ 1 แถว = 1 นัด พร้อมข้อมูลรถติดไปด้วย ──
+// ── แปลงวันที่จาก Sheets ให้เป็นรูปแบบ 'YYYY-MM-DD' เสมอ ไม่ว่าค่าที่ได้มาจะเป็นรูปแบบไหน
+// (⚠️ ปัญหาที่พบจริง: Google Sheets แปลงวันที่ที่บันทึกเป็น Date จริงอัตโนมัติ พอดึงกลับมาจะได้
+// รูปแบบ "d/M/yyyy" เช่น "5/8/2026" ไม่ใช่ "2026-08-05" ที่ปฏิทินคาดหวัง ทำให้จุดนัดไม่ขึ้นในปฏิทิน) ──
+function _wpNormDate(s){
+  s = String(s||'').trim();
+  if(!s) return '';
+  if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10); // อยู่ในรูปแบบที่ถูกต้องอยู่แล้ว
+  var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); // รูปแบบ d/M/yyyy จาก Sheets
+  if(m) return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+  var d = new Date(s); // เผื่อรูปแบบอื่นๆ ที่ JS parse ได้ตรงๆ
+  if(!isNaN(d.getTime())) return _wpFmtDate(d);
+  return s;
+}
 function _wpFlatPlans(){
   var flat = [];
   _wpFullList.forEach(function(v){
     (v.plans||[]).forEach(function(p){
       flat.push({
-        date: p.PlannedDate, planId: p.PlanID, label: p.Label, status: p.Status, note: p.Note,
-        actualCheckDate: p.ActualCheckDate, matchedActualDate: p.matchedActualDate,
+        date: _wpNormDate(p.PlannedDate), planId: p.PlanID, label: p.Label, status: p.Status, note: p.Note,
+        actualCheckDate: _wpNormDate(p.ActualCheckDate), matchedActualDate: _wpNormDate(p.matchedActualDate),
         serialNo: v.serialNo, vehicleType: v.vehicleType, customer: v.customer, location: v.location,
       });
     });
