@@ -9347,6 +9347,11 @@ document.addEventListener('click', function(e){
 
 // ── ค้นหาเลข Serial รถจริงจากฐานข้อมูล Vehicles (กันพิมพ์รหัสมั่ว เช่น "FO-03" ที่ไม่ตรงกับเลขจริง) ──
 // กรองให้เห็นเฉพาะรถของลูกค้าที่เลือกไว้แล้วเท่านั้น (ต้องเลือกลูกค้าก่อนถึงจะเลือกรถได้)
+// ── ทำให้เทียบชื่อลูกค้าแบบยืดหยุ่นขึ้น: ตัดเว้นวรรคซ้ำ/ต้น-ท้าย + ไม่สนตัวพิมพ์ใหญ่เล็ก
+// กันปัญหารถหายจากรายการเพราะสะกด/เว้นวรรคต่างกันนิดเดียว (พบปัญหานี้จริงกับข้อมูลที่ import มา) ──
+function _normCustName(s){
+  return String(s||'').trim().replace(/\s+/g,' ').toLowerCase();
+}
 function onSerialInput(inp){
   var val = inp.value.trim().toLowerCase();
   var sug = document.getElementById('serialSuggest');
@@ -9358,9 +9363,8 @@ function onSerialInput(inp){
     return;
   }
   loadVehiclesDB().then(function(db){
-    var custVehicles = (db||[]).filter(function(v){
-      return String(v.Customer||'').trim() === String(_custSelectedFormal||'').trim();
-    });
+    var custNorm = _normCustName(_custSelectedFormal);
+    var custVehicles = (db||[]).filter(function(v){ return _normCustName(v.Customer)===custNorm; });
     var matches = val
       ? custVehicles.filter(function(v){
           return (v.SerialNo||'').toLowerCase().indexOf(val)>=0 || (v.CarNo||'').toLowerCase().indexOf(val)>=0;
@@ -9368,14 +9372,37 @@ function onSerialInput(inp){
       : custVehicles; // ── ยังไม่พิมพ์อะไร → โชว์รถของลูกค้านี้ทั้งหมดเป็น dropdown ──
     matches = matches.slice(0, 30);
     if(!matches.length){
-      sug.innerHTML = '<div style="padding:8px 12px;font-size:12px;color:#b71c1c">⚠️ ไม่พบรถของลูกค้ารายนี้ในระบบ — กรุณาแจ้ง Stock/แอดมินเพิ่มข้อมูลรถที่หน้า "จัดการอะไหล่/รถ" ก่อน</div>';
+      sug.innerHTML = '<div style="padding:8px 12px;font-size:12px;color:#b71c1c">⚠️ ไม่พบรถของลูกค้ารายนี้ในระบบ (ตามชื่อที่บันทึกไว้)</div>'
+        + '<div style="padding:6px 12px;cursor:pointer;font-size:12px;color:#1565c0;text-decoration:underline;border-top:1px dashed #eee" onmousedown="showAllVehiclesFallback(\''+inp.id+'\')">🔍 หารถคันนี้ไม่เจอ? ค้นหาจากรถทั้งหมดในสาขาแทน</div>';
       sug.style.display='block';
       return;
     }
     sug.innerHTML = matches.map(function(v){
       var label = v.SerialNo + (v.CarNo?' ('+v.CarNo+')':'') + (v.VehicleType?' — '+v.VehicleType:'');
       return '<div style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #eef2ef" onmousedown="selSerial(\''+v.SerialNo.replace(/'/g,"\\'")+'\')">'+label+'</div>';
-    }).join('');
+    }).join('')
+    + '<div style="padding:6px 12px;cursor:pointer;font-size:11px;color:#1565c0;text-decoration:underline" onmousedown="showAllVehiclesFallback(\''+inp.id+'\')">🔍 หาคันที่ต้องการไม่เจอ? ค้นหาจากรถทั้งหมดในสาขาแทน</div>';
+    sug.style.display='block';
+  });
+}
+// ── ทางเลือกสำรอง: ถ้าชื่อลูกค้าในระบบไม่ตรงกับรถที่ต้องการ (สะกด/รูปแบบต่างกัน) ให้ค้นหาได้จากรถทั้งหมดในสาขาแทน
+// ต้องกดยืนยันก่อนเลือก เพราะข้ามการกรองตามลูกค้าไปแล้ว ให้ผู้ใช้ตรวจสอบเองว่าเป็นรถที่ถูกต้องจริง ──
+function showAllVehiclesFallback(inpId){
+  var inp = document.getElementById(inpId);
+  var val = inp ? inp.value.trim().toLowerCase() : '';
+  var sug = document.getElementById('serialSuggest');
+  if(!sug) return;
+  loadVehiclesDB().then(function(db){
+    var all = (db||[]);
+    var matches = val
+      ? all.filter(function(v){ return (v.SerialNo||'').toLowerCase().indexOf(val)>=0 || (v.CarNo||'').toLowerCase().indexOf(val)>=0; })
+      : all;
+    matches = matches.slice(0, 50);
+    sug.innerHTML = '<div style="padding:6px 12px;font-size:11px;color:#e65100;background:#fff8e1">⚠️ กำลังค้นหาจากรถทั้งหมด (ไม่ได้กรองตามลูกค้า) — ตรวจสอบให้แน่ใจว่าเลือกคันที่ถูกต้องก่อนกด</div>'
+      + matches.map(function(v){
+          var label = v.SerialNo + (v.CarNo?' ('+v.CarNo+')':'') + (v.VehicleType?' — '+v.VehicleType:'') + (v.Customer?' | '+v.Customer:'');
+          return '<div style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #eef2ef" onmousedown="selSerial(\''+v.SerialNo.replace(/'/g,"\\'")+'\')">'+label+'</div>';
+        }).join('');
     sug.style.display='block';
   });
 }
@@ -9409,10 +9436,11 @@ function validateSerialOnBlur(inp){
     if(inp.dataset.confirmed==='true') return; // เพิ่งเลือกจาก dropdown มา ไม่ต้อง fetch ซ้ำ
     var parts = raw.split(',').map(function(s){ return s.trim(); }).filter(Boolean);
     loadVehiclesDB().then(function(db){
-      // ── ตรวจสอบว่า S/N ต้องเป็นรถของลูกค้าที่เลือกไว้เท่านั้น ไม่ใช่แค่มีอยู่ในระบบเฉยๆ ──
+      // ── ตรวจสอบว่า S/N ต้องเป็นรถของลูกค้าที่เลือกไว้เท่านั้น ไม่ใช่แค่มีอยู่ในระบบเฉยๆ (เทียบแบบยืดหยุ่น กันปัญหาเว้นวรรค/ตัวพิมพ์ต่างกัน) ──
+      var custNorm2 = _custSelectedFormal ? _normCustName(_custSelectedFormal) : null;
       var known = {};
       (db||[]).forEach(function(v){
-        if(!_custSelectedFormal || String(v.Customer||'').trim()===String(_custSelectedFormal).trim()){
+        if(!custNorm2 || _normCustName(v.Customer)===custNorm2){
           known[String(v.SerialNo).trim()] = v;
         }
       });
