@@ -5169,6 +5169,7 @@ var _wpViewMode = 'calendar'; // 'calendar' | 'list'
 var _wpCalMode = 'month';     // 'month' | 'week' | 'day'
 var _wpCalRefDate = new Date(); // วันที่อ้างอิงที่กำลังดูอยู่ในปฏิทิน
 var _wpSelectedDay = null;      // วันที่เลือกดูรายละเอียด (ใช้ตอนอยู่ในมุมมองเดือน/สัปดาห์)
+var _wpSelected = [];           // Serial No. รถที่เลือกไว้ในมุมมองรายการ (สำหรับเพิ่มวันนัดหลายคันพร้อมกัน)
 
 function loadWarrantyPlanPage(){
   var box = document.getElementById('pmWarrantyBox');
@@ -5283,13 +5284,31 @@ function renderWarrantyPlanPage(){
     return;
   }
 
-  box.innerHTML = dashHtml + toggleHtml + searchHtml + filtered.map(function(v){
+  // ── แถบเลือกหลายคันพร้อมกัน (มีประโยชน์มากเมื่อลูกค้ารายเดียวมีรถเป็นสิบ-เป็นร้อยคัน) ──
+  var bulkBarHtml = isAdmin ? '<div class="card" style="padding:12px 16px;margin-bottom:12px;background:#f0f7f2">'
+    +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:'+(_wpSelected.length?'8px':'0')+'">'
+      +'<label style="font-size:12px;display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="wpSelectAllChk" onchange="wpToggleSelectAll(this.checked)"> เลือกทั้งหมดที่ค้นหาเจอ ('+filtered.length+' คัน)</label>'
+      +'<span style="font-size:12px;color:var(--g400)">เลือกอยู่: <b>'+_wpSelected.length+'</b> คัน</span>'
+    +'</div>'
+    + (_wpSelected.length ? '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding-top:8px;border-top:1px dashed #cfe3d5">'
+      +'<input class="fc" type="date" id="wpBulkDate" style="width:150px">'
+      +'<input class="fc" id="wpBulkLabel" placeholder="รายการ เช่น ตรวจครั้งที่ 1" style="flex:1;min-width:140px">'
+      +'<input class="fc" id="wpBulkNote" placeholder="หมายเหตุ" style="width:140px">'
+      +'<button class="btn bp bsm" onclick="doAddWarrantyPlanBulk()">➕ เพิ่มวันนัดให้ทั้ง '+_wpSelected.length+' คัน</button>'
+    +'</div>' : '')
+  +'</div>' : '';
+
+  box.innerHTML = dashHtml + toggleHtml + searchHtml + bulkBarHtml + filtered.map(function(v){
     var today = new Date().toISOString().slice(0,10);
     var nextPending = v.plans.find(function(p){ return p.Status!=='DONE'; });
     var headerColor = nextPending ? (nextPending.Status==='OVERDUE' ? '#b71c1c' : '#e65100') : '#2d6a4f';
+    var isChecked = _wpSelected.indexOf(v.serialNo)>=0;
     return '<div class="card" style="padding:14px 16px;margin-bottom:10px;border-left:4px solid '+headerColor+'">'
       +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
-        +'<div><strong style="font-size:14px">🚙 '+v.serialNo+'</strong> — '+(v.vehicleType||'')+'<div style="font-size:12px;color:var(--g400)">ลูกค้า: '+(v.customer||'-')+' | สถานที่: '+(v.location||'-')+'</div></div>'
+        +'<div style="display:flex;align-items:center;gap:8px">'
+          + (isAdmin ? '<input type="checkbox" '+(isChecked?'checked':'')+' onchange="wpToggleSelect(\''+v.serialNo+'\',this.checked)" style="width:16px;height:16px;cursor:pointer">' : '')
+          +'<div><strong style="font-size:14px">🚙 '+v.serialNo+'</strong> — '+(v.vehicleType||'')+'<div style="font-size:12px;color:var(--g400)">ลูกค้า: '+(v.customer||'-')+' | สถานที่: '+(v.location||'-')+'</div></div>'
+        +'</div>'
         +'<button class="btn bp bsm" onclick="go(\'pmcheck\');switchPMMainTab(\'check\');setTimeout(function(){selectPMVehicle(\''+v.serialNo+'\')},300)">🔧 ตรวจเช็คเลย</button>'
       +'</div>'
       +'<div style="margin-top:10px">'
@@ -5537,6 +5556,44 @@ function doAddWarrantyPlan(serialNo){
   callAPI('addWarrantyPlanEntry',{vehicleSerial:serialNo, plannedDate:date, label:label, note:note}).then(function(res){
     toast(res.message, res.success?'success':'error');
     if(res.success) loadWarrantyPlanPage();
+  });
+}
+// ── เลือก/ยกเลิกเลือกรถ 1 คัน สำหรับเพิ่มวันนัดหลายคันพร้อมกัน ──
+function wpToggleSelect(serialNo, checked){
+  var idx = _wpSelected.indexOf(serialNo);
+  if(checked && idx<0) _wpSelected.push(serialNo);
+  else if(!checked && idx>=0) _wpSelected.splice(idx,1);
+  renderWarrantyPlanPage();
+}
+// ── เลือกทั้งหมดที่ค้นหาเจอในตอนนี้ (เช่น ค้นชื่อลูกค้าแล้วเลือกทีเดียวหมด — มีประโยชน์เมื่อลูกค้ารายเดียวมีรถเป็นร้อยคัน) ──
+function wpToggleSelectAll(checked){
+  var q = _wpSearchQ.trim().toLowerCase();
+  var filtered = q ? _wpFullList.filter(function(v){
+    return (v.serialNo||'').toLowerCase().indexOf(q)>=0 || (v.customer||'').toLowerCase().indexOf(q)>=0 || (v.location||'').toLowerCase().indexOf(q)>=0;
+  }) : _wpFullList;
+  if(checked){
+    filtered.forEach(function(v){ if(_wpSelected.indexOf(v.serialNo)<0) _wpSelected.push(v.serialNo); });
+  } else {
+    var filteredSerials = filtered.map(function(v){ return v.serialNo; });
+    _wpSelected = _wpSelected.filter(function(s){ return filteredSerials.indexOf(s)<0; });
+  }
+  renderWarrantyPlanPage();
+}
+// ── เพิ่มวันนัดเดียวกันให้รถทุกคันที่เลือกไว้พร้อมกันในคำสั่งเดียว (เร็ว แม้เลือกเป็นร้อยคัน) ──
+function doAddWarrantyPlanBulk(){
+  var date = document.getElementById('wpBulkDate').value;
+  var label = document.getElementById('wpBulkLabel').value.trim();
+  var note = document.getElementById('wpBulkNote').value.trim();
+  if(!date) return toast('กรุณาเลือกวันนัดค่ะ','error');
+  if(!_wpSelected.length) return toast('กรุณาเลือกรถอย่างน้อย 1 คันก่อนค่ะ','error');
+  var unlockBulk = lockBtn(event.target, '⏳ กำลังบันทึก...');
+  callAPI('addWarrantyPlanEntriesBulk',{vehicleSerials:_wpSelected, plannedDate:date, label:label, note:note}).then(function(res){
+    toast(res.message, res.success?'success':'error');
+    if(unlockBulk) unlockBulk();
+    if(res.success){
+      _wpSelected = [];
+      loadWarrantyPlanPage();
+    }
   });
 }
 function doMarkWarrantyDone(planId){
