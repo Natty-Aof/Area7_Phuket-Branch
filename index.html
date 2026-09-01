@@ -3803,6 +3803,60 @@ function loadRentalHistoryForSerial(serialNo){
   });
 }
 
+// ── ย้ายรถไปสาขาอื่น (เช่น ส่งกลับ สนญ./ภูเก็ต หรือย้ายไปสาขาอื่น) ──
+function openTransferBranchModal(serialNo, fromBranch){
+  var allBranches = [['PHUKET','ภูเก็ต (Hub)'],['SAMUI','สมุย'],['HATYAI','หาดใหญ่'],['KRABI','กระบี่']];
+  var opts = allBranches.filter(function(b){ return b[0]!==fromBranch; })
+    .map(function(b){ return '<option value="'+b[0]+'">'+b[1]+'</option>'; }).join('');
+  var html = ''
+    +'<div class="mo" id="transferBranchModal" style="display:flex">'
+    +'<div class="mow" style="max-width:420px">'
+    +'<div class="moh"><div class="mot">🚚 ย้ายสาขา — '+serialNo+'</div><button class="mcl" onclick="closeModal(\'transferBranchModal\')">✕</button></div>'
+    +'<div class="mob">'
+    +'<div style="font-size:12px;color:var(--g400);margin-bottom:10px">สาขาปัจจุบัน: <strong>'+branchLabel(fromBranch)+'</strong></div>'
+    +'<div class="fg"><label class="fl">ย้ายไปสาขา</label><select class="fc" id="transferToBranch">'+opts+'</select></div>'
+    +'<div class="fg"><label class="fl">หมายเหตุ (ถ้ามี)</label><input class="fc" id="transferNote" placeholder="เช่น ส่งกลับซ่อมใหญ่ที่ภูเก็ต"></div>'
+    +'<div style="font-size:11px;color:#e65100;background:#fff8e1;padding:8px 10px;border-radius:6px;margin-top:6px">⚠️ พอย้ายแล้ว สถานะเช่า/ชื่อลูกค้าเดิมจะถูกล้างเป็น "ว่าง/พร้อมเช่า" ที่สาขาใหม่ทันที (ประวัติเดิมยังเก็บไว้ครบ ดูย้อนหลังได้)</div>'
+    +'</div>'
+    +'<div class="mof" style="justify-content:space-between">'
+    +'<button class="btn bd" onclick="closeModal(\'transferBranchModal\')">ยกเลิก</button>'
+    +'<button class="btn bgd" onclick="submitTransferBranch(\''+serialNo+'\')">ย้ายสาขา</button>'
+    +'</div></div></div>';
+  var old = document.getElementById('transferBranchModal');
+  if(old) old.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function submitTransferBranch(serialNo){
+  var toBranch = document.getElementById('transferToBranch').value;
+  var note = document.getElementById('transferNote').value.trim();
+  if(!confirm('ยืนยันย้าย '+serialNo+' ไปสาขา '+branchLabel(toBranch)+' ใช่ไหมคะ?')) return;
+  callAPI('transferVehicleBranch', {serialNo:serialNo, toBranch:toBranch, note:note}).then(function(res){
+    toast(res.message||'', res.success?'success':'error');
+    if(res.success){
+      var m = document.getElementById('transferBranchModal'); if(m) m.remove();
+      // รถย้ายสาขาไปแล้ว ไม่อยู่ในสาขาตัวเองอีกต่อไป (ถ้าไม่ใช่ผจก.เขต) — กลับไปหน้าค้นหาใหม่
+      var vhResultBox = document.getElementById('vhResultBox');
+      if(vhResultBox) vhResultBox.innerHTML = '<div class="card tc tm" style="padding:40px;color:var(--g400)"><div style="font-size:32px;margin-bottom:8px">🚚</div><div>ย้ายสาขาเรียบร้อยแล้วค่ะ — ค้นหา Serial No. คันอื่นต่อได้เลย</div></div>';
+      var vhSearch = document.getElementById('vhSearch'); if(vhSearch) vhSearch.value='';
+    }
+  });
+}
+// ── ดูประวัติการย้ายสาขาของรถ 1 คัน ──
+function loadBranchHistoryForSerial(serialNo){
+  var box = document.getElementById('branchHistBox');
+  if(!box) return;
+  callAPI('getVehicleBranchHistory', {serialNo:serialNo}).then(function(res){
+    var rows = (res && res.success) ? (res.data||[]) : [];
+    if(!rows.length){ box.innerHTML = '<div style="font-size:12px;color:var(--g400);padding:8px 0">รถคันนี้ยังไม่เคยย้ายสาขาเลยค่ะ</div>'; return; }
+    box.innerHTML = '<div class="tw"><table class="it" style="font-size:12px"><thead><tr><th>จากสาขา</th><th>ไปสาขา</th><th>วันที่ย้าย</th><th>โดย</th><th>หมายเหตุ</th></tr></thead><tbody>'
+      + rows.map(function(r){
+          return '<tr><td>'+branchLabel(r.FromBranch)+'</td><td style="font-weight:700;color:#00695c">'+branchLabel(r.ToBranch)+'</td>'
+            +'<td>'+(r.TransferDate||'').slice(0,10)+'</td><td style="font-size:11px;color:var(--g400)">'+(r.TransferBy||'-')+'</td><td>'+(r.Note||'-')+'</td></tr>';
+        }).join('')
+      + '</tbody></table></div>';
+  });
+}
+
 // ── แก้ยี่ห้อรถ (Brand) ──
 function openEditBrandModal(serialNo, currentBrand){
   var html = ''
@@ -12756,6 +12810,9 @@ function selectVH(serialNo){
             +(CU && ['STOCK','SUPERVISOR','MANAGER','ADMIN'].indexOf(CU.role)>=0
               ? '<button class="btn bo bsm" onclick="openChangeRentalStatusModal(\''+car.SerialNo+'\',\''+(car.RentalStatus||'ว่าง/พร้อมเช่า')+'\',\''+(car.Customer||'').replace(/'/g,"\\'")+'\')">🔄 เปลี่ยนสถานะ</button>'
               : '')
+            +(CU && ['MANAGER','ADMIN'].indexOf(CU.role)>=0
+              ? ' <button class="btn bo bsm" style="border-color:#00695c;color:#00695c" onclick="openTransferBranchModal(\''+car.SerialNo+'\',\''+(car.Branch||'PHUKET')+'\')">🚚 ย้ายสาขา</button>'
+              : '')
           +'</div>'
           // ── ยี่ห้อ (Brand) — Club Car / อื่นๆ ──
           +'<div style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
@@ -12800,6 +12857,10 @@ function selectVH(serialNo){
         +'<div style="font-weight:700;color:var(--gd);font-size:13px;margin-bottom:6px">📋 ประวัติลูกค้าที่เคยเช่ารถคันนี้</div>'
         +'<div id="rentalHistBox" style="font-size:12px;color:var(--g400)">⏳ กำลังโหลด...</div>'
       +'</div>'
+      + (car ? '<div class="card" style="margin-top:10px;padding:12px 14px">'
+        +'<div style="font-weight:700;color:var(--gd);font-size:13px;margin-bottom:6px">🚚 ประวัติการย้ายสาขา</div>'
+        +'<div id="branchHistBox" style="font-size:12px;color:var(--g400)">⏳ กำลังโหลด...</div>'
+      +'</div>' : '')
       + (car && car.RentalStatus==='เช่าอยู่' ? '<div class="card" style="margin-top:10px;padding:12px 14px">'
         +'<div style="font-weight:700;color:var(--gd);font-size:13px;margin-bottom:6px">💰 ประวัติรายได้รายเดือน</div>'
         +'<div id="vhRevenueHistBox" style="font-size:12px;color:var(--g400)">⏳ กำลังโหลด...</div>'
@@ -12807,6 +12868,7 @@ function selectVH(serialNo){
 
       info.innerHTML = qrHtml + (car ? histHtml : '');
       if(car && typeof loadRentalHistoryForSerial==='function') loadRentalHistoryForSerial(car.SerialNo);
+      if(car && typeof loadBranchHistoryForSerial==='function') loadBranchHistoryForSerial(car.SerialNo);
       if(car && car.RentalStatus==='เช่าอยู่' && typeof loadVehicleRevenueHistory==='function') loadVehicleRevenueHistory(car.SerialNo);
 
       setTimeout(function(){
