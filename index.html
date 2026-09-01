@@ -1222,6 +1222,14 @@ textarea.fc{min-height:70px;resize:vertical;}
           <div class="card" style="padding:14px 16px;margin-bottom:12px">
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <input class="fc" id="mVehSearch" placeholder="🔍 ค้นหา Serial / เลขรถ / ลูกค้า / สถานที่..." style="flex:1;min-width:200px" oninput="_mVehSelectAllFilteredMode=false;renderMasterVehicles()">
+              <select class="fc" id="mVehFilterCareType" style="width:auto" onchange="_mVehSelectAllFilteredMode=false;_mVehPage=0;renderMasterVehicles()">
+                <option value="">— กรองตามประเภททั้งหมด —</option>
+                <option value="Rental">เช่า (PM ทุกเดือน)</option>
+                <option value="Concession">สัมปทาน (PM ทุกเดือน)</option>
+                <option value="Warranty">Warranty (ตารางเฉพาะ)</option>
+                <option value="Other">อื่นๆ</option>
+                <option value="__blank__">ยังไม่ตั้งประเภท</option>
+              </select>
               <button class="btn bp bsm" onclick="openAddCustomerModal()">➕ เพิ่มรถ/ลูกค้า</button>
             </div>
             <div id="mVehCount" style="font-size:12px;color:var(--g400);margin-top:8px"></div>
@@ -3891,9 +3899,24 @@ function renderTechStock(list){
   }
   box.innerHTML = list.map(function(t){
     var rows = t.items.map(function(it){
-      return '<div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:6px 0;border-bottom:1px dashed #eee">'
+      var activeQty = it.qty - (it.qtyPendingClearance||0);
+      var statusBadge = '';
+      if(it.qtyPendingClearance>0 && activeQty>0){
+        // มีทั้งส่วนที่ยังถืออยู่จริง และส่วนที่ส่งเคลียร์รอปิดงานแล้ว
+        statusBadge = '<div style="font-size:10px;margin-top:2px">'
+          +'<span style="background:#e3f2fd;color:#1565c0;padding:1px 6px;border-radius:8px;margin-right:4px">🔧 ถืออยู่ '+activeQty+'</span>'
+          +'<span style="background:#fff3e0;color:#e65100;padding:1px 6px;border-radius:8px">🕐 รอปิดงาน '+it.qtyPendingClearance+'</span>'
+        +'</div>';
+      } else if(it.qtyPendingClearance>0){
+        // ทั้งหมดส่งเคลียร์แล้ว รอแอดมินปิดงานอย่างเดียว
+        statusBadge = '<div style="font-size:10px;margin-top:2px"><span style="background:#fff3e0;color:#e65100;padding:1px 6px;border-radius:8px">🕐 ช่างส่งเคลียร์แล้ว รอแอดมินปิดงาน</span></div>';
+      }
+      return '<div style="padding:6px 0;border-bottom:1px dashed #eee">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;font-size:13px">'
         +'<div><strong style="color:var(--gd)">'+it.partNo+'</strong> <span style="color:#555">'+(it.nameEN||'')+'</span></div>'
         +'<div style="font-weight:700">'+it.qty+' '+(it.unit||'ชิ้น')+'</div>'
+        +'</div>'
+        + statusBadge
         +'</div>';
     }).join('');
     return '<div class="card" style="padding:14px 16px;margin-bottom:10px">'
@@ -6442,11 +6465,14 @@ function loadMasterVehicles(){
   });
 }
 
+var _mVehPage = 0;
+var _mVehPageSize = 200;
 function renderMasterVehicles(){
   var el = document.getElementById('mVehList');
   var cnt = document.getElementById('mVehCount');
   if(!el) return;
   var q = ((document.getElementById('mVehSearch')||{}).value||'').trim().toLowerCase();
+  var careFilter = (document.getElementById('mVehFilterCareType')||{}).value||'';
   var rows = _mVehicles;
   if(q){
     rows = rows.filter(function(v){
@@ -6457,18 +6483,32 @@ function renderMasterVehicles(){
         || String(v.Model||'').toLowerCase().indexOf(q)>=0;
     });
   }
-  if(cnt) cnt.textContent = '🚙 ทั้งหมด '+_mVehicles.length+' คัน'+(q?' — ตรงกับที่ค้นหา '+rows.length:'');
+  // ── ตัวกรองประเภท (CareType) — แยกจากตัวตั้งค่าแบบ bulk ด้านล่าง ทำหน้าที่กรองรายการที่แสดงจริงๆ ──
+  if(careFilter){
+    rows = rows.filter(function(v){
+      return careFilter==='__blank__' ? !v.CareType : v.CareType===careFilter;
+    });
+  }
+  if(cnt) cnt.textContent = '🚙 ทั้งหมด '+_mVehicles.length+' คัน'+((q||careFilter)?' — ตรงกับตัวกรอง '+rows.length:'');
 
   if(!rows.length){
     el.innerHTML = '<div class="tc tm" style="padding:24px">ไม่พบรถค่ะ</div>';
     return;
   }
-  var shown = rows.slice(0, 200);
-  window._mVehFilteredAll = rows; // เก็บผลค้นหาทั้งหมดไว้ (ไม่ใช่แค่ 200 ที่แสดง) ไว้ใช้กับปุ่ม "เลือกทั้งหมดที่ค้นเจอ"
-  var truncateWarning = rows.length > 200
-    ? '<div style="font-size:11px;color:#b71c1c;margin-bottom:6px">⚠️ ผลค้นหามี '+rows.length+' คัน แต่แสดงบนหน้าจอแค่ 200 คันแรก — ถ้ากด "เลือกทั้งหมดที่กำลังแสดง" จะเลือกได้แค่ 200 คันนี้เท่านั้น ตกหล่นอีก '+(rows.length-200)+' คัน! ให้กด <b>"เลือกทั้งหมดที่ค้นเจอ ('+rows.length+' คัน)"</b> แทนถ้าต้องการตั้งค่าให้ครบทุกคันที่ค้นเจอ</div>'
+  // ── แบ่งหน้า (Pagination) แทนการตัดโชว์แค่ 200 คันแรกเฉยๆ — ตอนนี้เลื่อนดูได้ครบทุกคันแล้ว ──
+  var totalPages = Math.ceil(rows.length / _mVehPageSize);
+  if(_mVehPage >= totalPages) _mVehPage = Math.max(0, totalPages-1);
+  var pageStart = _mVehPage * _mVehPageSize;
+  var shown = rows.slice(pageStart, pageStart + _mVehPageSize);
+  window._mVehFilteredAll = rows; // เก็บผลค้นหาทั้งหมดไว้ (ไม่ใช่แค่หน้าที่แสดง) ไว้ใช้กับปุ่ม "เลือกทั้งหมดที่ค้นเจอ"
+  var pagerHtml = totalPages > 1
+    ? '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;font-size:12px">'
+      +'<button class="btn bo bsm" '+(_mVehPage<=0?'disabled':'')+' onclick="_mVehPage--;renderMasterVehicles()">‹ ก่อนหน้า</button>'
+      +'<span>หน้า '+(_mVehPage+1)+' / '+totalPages+' (คันที่ '+(pageStart+1)+'–'+Math.min(pageStart+_mVehPageSize, rows.length)+' จาก '+rows.length+')</span>'
+      +'<button class="btn bo bsm" '+(_mVehPage>=totalPages-1?'disabled':'')+' onclick="_mVehPage++;renderMasterVehicles()">ถัดไป ›</button>'
+    +'</div>'
     : '';
-  var bulkBar = truncateWarning + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;padding:8px 10px;background:#f5f5f5;border-radius:8px">'
+  var bulkBar = pagerHtml + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;padding:8px 10px;background:#f5f5f5;border-radius:8px">'
     +'<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" id="mVehSelectAll" onchange="toggleSelectAllVeh(this.checked)"> เลือกทั้งหมดที่กำลังแสดง ('+shown.length+' คัน)</label>'
     + (rows.length > shown.length
         ? '<button class="btn bd bsm" onclick="selectAllFilteredVeh()">🎯 เลือกทั้งหมดที่ค้นเจอ ('+rows.length+' คัน)</button>'
