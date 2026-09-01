@@ -693,6 +693,7 @@ textarea.fc{min-height:70px;resize:vertical;}
         </div>
         <div id="clDetail" class="hidden">
           <div id="clRejectBanner"></div>
+          <div id="clProxyBanner"></div>
 
           <!-- ช่างกรอก: รายการอะไหล่ per-part card -->
           <div id="techClearSection">
@@ -3910,6 +3911,9 @@ function renderTechStock(list){
       } else if(it.qtyPendingClearance>0){
         // ทั้งหมดส่งเคลียร์แล้ว รอแอดมินปิดงานอย่างเดียว
         statusBadge = '<div style="font-size:10px;margin-top:2px"><span style="background:#fff3e0;color:#e65100;padding:1px 6px;border-radius:8px">🕐 ช่างส่งเคลียร์แล้ว รอแอดมินปิดงาน</span></div>';
+      } else {
+        // ⚠️ แก้ไข: เดิมกรณีนี้ไม่ขึ้นป้ายเลย ทำให้ดูเหมือนไม่มีสถานะ — จริงๆ คือ "ถืออยู่ทั้งหมด ยังไม่ส่งเคลียร์เลย"
+        statusBadge = '<div style="font-size:10px;margin-top:2px"><span style="background:#e3f2fd;color:#1565c0;padding:1px 6px;border-radius:8px">🔧 ถืออยู่ทั้งหมด ยังไม่ส่งเคลียร์</span></div>';
       }
       return '<div style="padding:6px 0;border-bottom:1px dashed #eee">'
         +'<div style="display:flex;justify-content:space-between;align-items:center;font-size:13px">'
@@ -6458,9 +6462,12 @@ function savePartMaster(isEdit){
 function loadMasterVehicles(){
   var el = document.getElementById('mVehList');
   if(el) el.innerHTML = '<div class="tc tm" style="padding:24px">⏳ กำลังโหลด...</div>';
-  callAPI('getVehicles', {}).then(function(res){
+  // ── viewAllBranches: true — หน้านี้ให้ดูรถได้ทุกสาขา (แก้ไข/เพิ่มยังจำกัดแค่สาขาตัวเองอยู่ที่ backend เสมอ) ──
+  // ⚠️ ห้ามเซ็ต window._vehiclesDB = _mVehicles ที่นี่เหมือนโค้ดเดิม เพราะตอนนี้ _mVehicles มีรถทุกสาขาปนกัน
+  // ถ้าไปทับ window._vehiclesDB (ตัวที่หน้าเปิดใบเบิก/หน้าอื่นๆ ใช้กรองตามสาขาตัวเอง) จะทำให้ช่างเห็นรถข้ามสาขาปนเข้ามาได้
+  // ปล่อยให้แต่ละหน้าที่ต้องใช้ _vehiclesDB เรียก loadVehiclesDB() ของตัวเองแยกกันไป (มี TTL cache กันเรียกซ้ำอยู่แล้ว) ──
+  callAPI('getVehicles', {viewAllBranches: true}).then(function(res){
     _mVehicles = (res && res.success) ? (res.data||[]) : [];
-    window._vehiclesDB = _mVehicles;   // ให้ที่อื่นใช้ต่อได้
     renderMasterVehicles();
   });
 }
@@ -6524,34 +6531,38 @@ function renderMasterVehicles(){
   +'</div>';
   el.innerHTML = bulkBar + '<div class="tw"><table class="it" style="font-size:13px"><thead><tr>'
     +'<th></th><th>Serial No.</th><th>เลขรถ</th><th>รุ่น</th><th>ลูกค้า</th>'
-    +'<th>สถานที่</th><th>สถานะ</th><th>ประเภทการดูแล</th><th></th></tr></thead><tbody>'
+    +'<th>สถานที่</th><th>สาขา</th><th>สถานะ</th><th>ประเภทการดูแล</th><th></th></tr></thead><tbody>'
     + shown.map(function(v){
       var inactive = String(v.Status||'Active').toLowerCase()==='inactive';
       var snEsc = encodeURIComponent(v.SerialNo);
       var careType = v.CareType||'';
       var opts = [['','ไม่มี'],['Rental','เช่า (PM ทุกเดือน)'],['Concession','สัมปทาน (PM ทุกเดือน)'],['Warranty','Warranty (ตารางเฉพาะ)'],['Other','อื่นๆ']];
+      // ── ดูได้ทุกสาขา แต่แก้ไขได้เฉพาะสาขาตัวเอง (ผจก.เขตแก้ได้ทุกสาขา) — ปิดปุ่ม/ดรอปดาวน์ให้แถวสาขาอื่นไว้ก่อน กันกดแล้วเจอ Error ──
+      var canEditThis = (typeof isRegionalMgr==='function' && isRegionalMgr()) || !CU || !CU.branch || CU.branch===(v.Branch||'PHUKET');
       return '<tr'+(inactive?' style="opacity:0.5;background:#fafafa"':'')+'>'
-        +'<td><input type="checkbox" class="mVehChk" value="'+snEsc+'" onchange="updateVehSelCount()"></td>'
+        +'<td><input type="checkbox" class="mVehChk" value="'+snEsc+'" onchange="updateVehSelCount()" '+(canEditThis?'':'disabled title="แก้ไขได้เฉพาะรถสาขาตัวเอง"')+'></td>'
         +'<td style="font-size:12px;font-weight:600;color:var(--gd)">'+(v.SerialNo||'-')+'</td>'
         +'<td style="font-size:12px">'+(v.CarNo||'-')+'</td>'
         +'<td style="font-size:12px">'+(v.Model||'-')+'</td>'
         +'<td style="font-size:12px">'+(v.Customer||'-')+'</td>'
         +'<td style="font-size:12px;color:var(--g400)">'+(v.Location||'-')+'</td>'
+        +'<td style="font-size:11px;color:var(--g400)">'+branchLabel(v.Branch||'PHUKET')+'</td>'
         +'<td>'+(inactive
             ? '<span style="color:#b71c1c;font-size:12px;font-weight:700">🚫 ปิดใช้งาน</span>'
             : '<span style="color:#2d6a4f;font-size:12px;font-weight:700">✓ ใช้งาน</span>')+'</td>'
-        +'<td><select class="fc" style="font-size:11px;padding:4px" onchange="setVehicleCareType(\''+snEsc+'\',this.value)">'
+        +'<td><select class="fc" style="font-size:11px;padding:4px" onchange="setVehicleCareType(\''+snEsc+'\',this.value)" '+(canEditThis?'':'disabled title="แก้ไขได้เฉพาะรถสาขาตัวเอง"')+'>'
           + opts.map(function(o){ return '<option value="'+o[0]+'" '+(careType===o[0]?'selected':'')+'>'+o[1]+'</option>'; }).join('')
         +'</select></td>'
         +'<td style="white-space:nowrap">'
-          +'<button class="btn bo bsm m-veh-edit" data-sn="'+snEsc+'">✏️</button> '
-          +(inactive
-            ? '<button class="btn bp bsm m-veh-on" data-sn="'+snEsc+'">♻️ เปิด</button>'
-            : '<button class="btn bd bsm m-veh-off" data-sn="'+snEsc+'">🚫 ปิด</button>')
+          + (canEditThis
+            ? '<button class="btn bo bsm m-veh-edit" data-sn="'+snEsc+'">✏️</button> '
+              +(inactive
+                ? '<button class="btn bp bsm m-veh-on" data-sn="'+snEsc+'">♻️ เปิด</button>'
+                : '<button class="btn bd bsm m-veh-off" data-sn="'+snEsc+'">🚫 ปิด</button>')
+            : '<span style="font-size:11px;color:var(--g400)" title="แก้ไขได้เฉพาะรถสาขาตัวเอง">🔒 สาขาอื่น</span>')
         +'</td></tr>';
     }).join('')
-    +'</tbody></table></div>'
-    + (rows.length>200 ? '<div class="tc tm" style="padding:10px;font-size:12px">แสดง 200 จาก '+rows.length+' คัน — พิมพ์ค้นหาเพื่อกรองให้แคบลงค่ะ</div>' : '');
+    +'</tbody></table></div>';
 
   el.querySelectorAll('.m-veh-edit').forEach(function(b){
     b.onclick = function(){ openVehicleEditModal(decodeURIComponent(this.dataset.sn)); };
@@ -8309,6 +8320,17 @@ function closeCloseDetail(){
   window.scrollTo({top:0, behavior:'smooth'});
 }
 
+// ── สร้าง banner แจ้งกรณี Stock กรอก/ส่งเคลียร์แทนช่าง — ใช้ร่วมกันทั้งหน้าเคลียร์ใบเบิกและ modal รายละเอียดใบเบิก ──
+function _proxySubmitBannerHtml(clearInfo, d){
+  var submittedByEmail = String((clearInfo&&clearInfo.submittedBy)||'').toLowerCase();
+  var requesterEmail = String((d&&d.RequesterEmail)||'').toLowerCase();
+  if(!submittedByEmail || !requesterEmail || submittedByEmail === requesterEmail) return '';
+  return '<div class="card" style="border-left:4px solid #6a1b9a;background:#f3e5f5;margin-bottom:10px;padding:10px 12px">'
+    +'<div style="font-weight:700;color:#6a1b9a;font-size:13px">👤 Stock กรอก/ส่งเคลียร์แทนช่าง</div>'
+    +'<div style="font-size:12px;color:#333;margin-top:4px">ใบเบิกของช่าง <strong>'+(d.RequesterName||d.RequesterEmail)+'</strong> แต่ถูกกรอกและส่งเคลียร์โดย <strong>'+submittedByEmail+'</strong> (ไม่ใช่ช่างเจ้าของใบเบิกเอง)</div>'
+  +'</div>';
+}
+
 function loadCloseDetail(){
   var reqId=document.getElementById('clSel').value;
   var cd=document.getElementById('clDetail');
@@ -8368,6 +8390,12 @@ function loadCloseDetail(){
       } else {
         rejBanner.innerHTML = '';
       }
+    }
+
+    // ── Banner แจ้งกรณี Stock เป็นคนกรอก/ส่งเคลียร์แทนช่าง (ไม่ใช่ช่างเจ้าของใบเบิกเอง) — เพื่อความโปร่งใส ──
+    var proxyBanner = document.getElementById('clProxyBanner');
+    if(proxyBanner){
+      proxyBanner.innerHTML = hasPriorSubmission ? _proxySubmitBannerHtml(clearInfo, d) : '';
     }
 
     // เก็บ items + init state
@@ -9060,6 +9088,7 @@ function openDetail(reqId){
           }).join('');
           usageBox.innerHTML = '<hr class="sep">'
             +'<div style="font-weight:600;font-size:14px;margin-bottom:8px;color:var(--gd)">📦 รายละเอียดการใช้อะไหล่ (คืนดี/เข้า SCR/ใช้จริง + รถที่ติดตั้ง)</div>'
+            + _proxySubmitBannerHtml(clearInfoD, d)
             +'<div class="tw"><table style="width:100%;border-collapse:collapse;font-size:12px">'
             +'<thead><tr style="background:#f5f5f5;color:#222">'
             +'<th style="padding:6px 8px;border:0.5px solid #e0e0e0;text-align:left">Part No.</th>'
