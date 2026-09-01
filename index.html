@@ -1223,6 +1223,7 @@ textarea.fc{min-height:70px;resize:vertical;}
           <div class="card" style="padding:14px 16px;margin-bottom:12px">
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <input class="fc" id="mVehSearch" placeholder="🔍 ค้นหา Serial / เลขรถ / ลูกค้า / สถานที่..." style="flex:1;min-width:200px" oninput="_mVehSelectAllFilteredMode=false;renderMasterVehicles()">
+              <select class="fc" id="mVehFilterBranch" style="width:auto" onchange="_mVehSelectAllFilteredMode=false;_mVehPage=0;renderMasterVehicles()"></select>
               <select class="fc" id="mVehFilterCareType" style="width:auto" onchange="_mVehSelectAllFilteredMode=false;_mVehPage=0;renderMasterVehicles()">
                 <option value="">— กรองตามประเภททั้งหมด —</option>
                 <option value="Rental">เช่า (PM ทุกเดือน)</option>
@@ -6468,8 +6469,26 @@ function loadMasterVehicles(){
   // ปล่อยให้แต่ละหน้าที่ต้องใช้ _vehiclesDB เรียก loadVehiclesDB() ของตัวเองแยกกันไป (มี TTL cache กันเรียกซ้ำอยู่แล้ว) ──
   callAPI('getVehicles', {viewAllBranches: true}).then(function(res){
     _mVehicles = (res && res.success) ? (res.data||[]) : [];
+    _initMVehBranchFilter();
     renderMasterVehicles();
   });
+}
+// ── ตั้งตัวเลือกสาขาในดรอปดาวน์ + ค่าเริ่มต้น = สาขาตัวเอง (ผจก.เขตเริ่มที่ "ทุกสาขา") — รันครั้งแรกที่โหลดหน้าเท่านั้น ──
+var _mVehBranchFilterInit = false;
+function _initMVehBranchFilter(){
+  if(_mVehBranchFilterInit) return; // ไม่ต้องรีเซ็ตค่าที่ผู้ใช้เลือกไว้แล้ว ถ้ากดรีเฟรชข้อมูลซ้ำ
+  var sel = document.getElementById('mVehFilterBranch');
+  if(!sel) return;
+  var branches = Array.from(new Set(_mVehicles.map(function(v){ return v.Branch||'PHUKET'; })));
+  var order = {PHUKET:0, SAMUI:1, HATYAI:2, KRABI:3};
+  branches.sort(function(a,b){ var oa=order[a], ob=order[b]; return (oa===undefined?9:oa)-(ob===undefined?9:ob); });
+  var isRegional = typeof isRegionalMgr==='function' && isRegionalMgr();
+  var myBranch = CU && CU.branch;
+  sel.innerHTML = '<option value="">— ทุกสาขา —</option>'
+    + branches.map(function(b){ return '<option value="'+b+'">'+branchLabel(b)+'</option>'; }).join('');
+  // ── ค่าเริ่มต้น: ผจก.เขต/ผจก.ที่ไม่มีสาขาระบุ → เห็นทุกสาขา | คนอื่นๆ → เริ่มที่สาขาตัวเองก่อนเสมอ ──
+  sel.value = (!isRegional && myBranch) ? myBranch : '';
+  _mVehBranchFilterInit = true;
 }
 
 var _mVehPage = 0;
@@ -6480,7 +6499,11 @@ function renderMasterVehicles(){
   if(!el) return;
   var q = ((document.getElementById('mVehSearch')||{}).value||'').trim().toLowerCase();
   var careFilter = (document.getElementById('mVehFilterCareType')||{}).value||'';
+  var branchFilter = (document.getElementById('mVehFilterBranch')||{}).value||'';
   var rows = _mVehicles;
+  if(branchFilter){
+    rows = rows.filter(function(v){ return (v.Branch||'PHUKET')===branchFilter; });
+  }
   if(q){
     rows = rows.filter(function(v){
       return String(v.SerialNo||'').toLowerCase().indexOf(q)>=0
@@ -6496,7 +6519,7 @@ function renderMasterVehicles(){
       return careFilter==='__blank__' ? !v.CareType : v.CareType===careFilter;
     });
   }
-  if(cnt) cnt.textContent = '🚙 ทั้งหมด '+_mVehicles.length+' คัน'+((q||careFilter)?' — ตรงกับตัวกรอง '+rows.length:'');
+  if(cnt) cnt.textContent = '🚙 ทั้งหมด '+_mVehicles.length+' คัน'+((q||careFilter||branchFilter)?' — ตรงกับตัวกรอง '+rows.length:'');
 
   if(!rows.length){
     el.innerHTML = '<div class="tc tm" style="padding:24px">ไม่พบรถค่ะ</div>';
