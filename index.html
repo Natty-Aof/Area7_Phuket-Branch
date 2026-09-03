@@ -3527,19 +3527,41 @@ function loadConcessionRevenueSection(){
   callAPI('getConcessionRevenueList', {}).then(function(res){
     var sites = (res && res.success) ? (res.data||[]) : [];
     if(!sites.length){ box.innerHTML = '<div class="card" style="padding:16px;text-align:center;color:var(--g400)">ยังไม่มีรถประเภทสัมปทานในระบบเลยค่ะ</div>'; return; }
-    box.innerHTML = sites.map(function(s){
+    var grandTotal = sites.reduce(function(sum,s){ return sum+(s.totalRevenue||0); }, 0);
+    box.innerHTML = '<div class="card" style="padding:12px 16px;margin-bottom:10px;background:linear-gradient(135deg,#6a1b9a,#8e24aa);color:#fff">'
+        +'<div style="font-size:12px;opacity:.85">💰 รายได้สัมปทานรวมทั้งหมด (ทุกเดือนที่เคยบันทึกไว้)</div>'
+        +'<div style="font-size:22px;font-weight:800">'+grandTotal.toLocaleString()+' <span style="font-size:13px;font-weight:400">บาท</span></div>'
+      +'</div>'
+      + sites.map(function(s, idx){
       var latest = s.latestRevenue;
-      return '<div class="card" style="padding:12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
-        +'<div><div style="font-weight:700;color:var(--gd);font-size:13px">'+s.location+' <span style="font-weight:400;color:var(--g400);font-size:11px">('+branchLabel(s.branch)+' — '+s.vehicleCount+' คัน)</span></div>'
-          +(latest ? '<div style="font-size:12px;color:#6a1b9a;margin-top:2px">เดือน '+latest.yearMonth+': '+Number(latest.amount).toLocaleString()+' บาท</div>'
-                   : '<div style="font-size:12px;color:var(--g400);margin-top:2px">ยังไม่เคยบันทึกรายได้</div>')
+      var histId = 'consHist_'+idx;
+      return '<div class="card" style="padding:12px 16px;margin-bottom:8px">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+          +'<div><div style="font-weight:700;color:var(--gd);font-size:13px">'+s.location+' <span style="font-weight:400;color:var(--g400);font-size:11px">('+branchLabel(s.branch)+' — '+s.vehicleCount+' คัน)</span></div>'
+            +'<div style="font-size:13px;color:#6a1b9a;font-weight:700;margin-top:2px">รวมทั้งหมด: '+(s.totalRevenue||0).toLocaleString()+' บาท'
+              +(latest ? ' <span style="font-weight:400;color:var(--g400);font-size:11px">(ล่าสุด เดือน '+latest.yearMonth+': '+Number(latest.amount).toLocaleString()+' บาท)</span>' : '')
+            +'</div>'
+          +'</div>'
+          +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
+            + (s.history && s.history.length ? '<button class="btn bo bsm" onclick="toggleConsHist(\''+histId+'\')">📅 ดูรายเดือน ('+s.history.length+')</button>' : '')
+            + (CU && ['MANAGER','ADMIN'].indexOf(CU.role)>=0
+              ? '<button class="btn bo bsm" onclick="openConcessionRevenueModal(\''+s.location.replace(/'/g,"\\'")+'\',\''+s.branch+'\')">📝 กรอกรายได้เดือนนี้</button>'
+              : '')
+          +'</div>'
         +'</div>'
-        +(CU && ['MANAGER','ADMIN'].indexOf(CU.role)>=0
-          ? '<button class="btn bo bsm" onclick="openConcessionRevenueModal(\''+s.location.replace(/'/g,"\\'")+'\',\''+s.branch+'\')">📝 กรอกรายได้เดือนนี้</button>'
-          : '')
+        + (s.history && s.history.length ? '<div id="'+histId+'" class="hidden" style="margin-top:10px;padding-top:10px;border-top:1px solid #eee">'
+            +'<table class="it" style="width:100%;font-size:12px"><thead><tr><th>เดือน</th><th style="text-align:right">รายได้</th><th>หมายเหตุ</th></tr></thead><tbody>'
+            + s.history.map(function(h){
+                return '<tr><td style="font-weight:600">'+h.YearMonth+'</td><td style="text-align:right;color:#6a1b9a;font-weight:700">'+Number(h.Amount).toLocaleString()+' บาท</td><td style="color:var(--g400)">'+(h.Note||'-')+'</td></tr>';
+              }).join('')
+            +'</tbody></table></div>' : '')
       +'</div>';
     }).join('');
   });
+}
+function toggleConsHist(id){
+  var el = document.getElementById(id);
+  if(el) el.classList.toggle('hidden');
 }
 function openConcessionRevenueModal(location, branch){
   var now = new Date();
