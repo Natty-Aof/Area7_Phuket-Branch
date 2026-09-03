@@ -3550,30 +3550,46 @@ function loadConcessionRevenueSection(){
           +'</div>'
         +'</div>'
         + (s.history && s.history.length ? '<div id="'+histId+'" class="hidden" style="margin-top:10px;padding-top:10px;border-top:1px solid #eee">'
-            +'<table class="it" style="width:100%;font-size:12px"><thead><tr><th>เดือน</th><th style="text-align:right">รายได้</th><th>หมายเหตุ</th></tr></thead><tbody>'
+            +'<table class="it" style="width:100%;font-size:12px"><thead><tr><th>เดือน</th><th style="text-align:right">รายได้</th><th>หมายเหตุ</th>'+(CU && ['MANAGER','ADMIN'].indexOf(CU.role)>=0?'<th></th>':'')+'</tr></thead><tbody>'
             + s.history.map(function(h){
-                return '<tr><td style="font-weight:600">'+h.YearMonth+'</td><td style="text-align:right;color:#6a1b9a;font-weight:700">'+Number(h.Amount).toLocaleString()+' บาท</td><td style="color:var(--g400)">'+(h.Note||'-')+'</td></tr>';
+                return '<tr><td style="font-weight:600">'+h.YearMonth+'</td><td style="text-align:right;color:#6a1b9a;font-weight:700">'+Number(h.Amount).toLocaleString()+' บาท</td><td style="color:var(--g400)">'+(h.Note||'-')+'</td>'
+                  + (CU && ['MANAGER','ADMIN'].indexOf(CU.role)>=0
+                      ? '<td style="white-space:nowrap">'
+                        +'<button class="btn bo bsm" style="font-size:10px;padding:2px 6px" onclick="openConcessionRevenueModal(\''+s.location.replace(/'/g,"\\'")+'\',\''+s.branch+'\',\''+h.YearMonth+'\','+Number(h.Amount)+',\''+String(h.Note||'').replace(/'/g,"\\'")+'\')">✏️ แก้ไข</button> '
+                        +'<button class="btn bd bsm" style="font-size:10px;padding:2px 6px" onclick="deleteConcessionRevRow(\''+h.RevID+'\')">✕ ลบ</button>'
+                        +'</td>'
+                      : '')
+                  +'</tr>';
               }).join('')
             +'</tbody></table></div>' : '')
       +'</div>';
     }).join('');
   });
 }
+function deleteConcessionRevRow(revId){
+  if(!confirm('ยืนยันลบรายการรายได้นี้? (ใช้กรณีกรอกซ้ำ/ผิดพลาด)')) return;
+  callAPI('deleteConcessionRevenueEntry', {revId:revId}).then(function(res){
+    toast(res.message||'', res.success?'success':'error');
+    if(res.success) loadConcessionRevenueSection();
+  });
+}
 function toggleConsHist(id){
   var el = document.getElementById(id);
   if(el) el.classList.toggle('hidden');
 }
-function openConcessionRevenueModal(location, branch){
+function openConcessionRevenueModal(location, branch, editYearMonth, editAmount, editNote){
   var now = new Date();
-  var defaultYM = now.getFullYear()+'-'+('0'+(now.getMonth()+1)).slice(-2);
+  var defaultYM = editYearMonth || (now.getFullYear()+'-'+('0'+(now.getMonth()+1)).slice(-2));
+  var isEdit = !!editYearMonth;
   var html = ''
     +'<div class="mo" id="consRevModal" style="display:flex">'
     +'<div class="mow" style="max-width:380px">'
-    +'<div class="moh"><div class="mot">💰 รายได้สัมปทาน — '+location+'</div><button class="mcl" onclick="closeModal(\'consRevModal\')">✕</button></div>'
+    +'<div class="moh"><div class="mot">💰 '+(isEdit?'แก้ไขรายได้':'รายได้สัมปทาน')+' — '+location+'</div><button class="mcl" onclick="closeModal(\'consRevModal\')">✕</button></div>'
     +'<div class="mob">'
-    +'<div class="fg"><label class="fl">เดือน</label><input class="fc" type="month" id="consRevYearMonth" value="'+defaultYM+'"></div>'
-    +'<div class="fg"><label class="fl">รายได้รวมทั้งหมด (บาท)</label><input class="fc" type="number" id="consRevAmount" placeholder="0" min="0"></div>'
-    +'<div class="fg"><label class="fl">หมายเหตุ (ถ้ามี)</label><input class="fc" id="consRevNote" placeholder=""></div>'
+    +'<div class="fg"><label class="fl">เดือน</label><input class="fc" type="month" id="consRevYearMonth" value="'+defaultYM+'" '+(isEdit?'disabled':'')+'></div>'
+    + (isEdit ? '<div style="font-size:11px;color:var(--g400);margin:-6px 0 8px">แก้ไขได้เฉพาะจำนวนเงิน/หมายเหตุ — เปลี่ยนเดือนไม่ได้ (ลบแล้วเพิ่มใหม่แทนถ้าต้องการเปลี่ยนเดือน)</div>' : '')
+    +'<div class="fg"><label class="fl">รายได้รวมทั้งหมด (บาท)</label><input class="fc" type="number" id="consRevAmount" placeholder="0" min="0" value="'+(editAmount!==undefined?editAmount:'')+'"></div>'
+    +'<div class="fg"><label class="fl">หมายเหตุ (ถ้ามี)</label><input class="fc" id="consRevNote" placeholder="" value="'+(editNote?String(editNote).replace(/"/g,'&quot;'):'')+'"></div>'
     +'</div>'
     +'<div class="mof" style="justify-content:space-between">'
     +'<button class="btn bd" onclick="closeModal(\'consRevModal\')">ยกเลิก</button>'
@@ -3584,7 +3600,8 @@ function openConcessionRevenueModal(location, branch){
   document.body.insertAdjacentHTML('beforeend', html);
 }
 function submitConcessionRevenue(location, branch){
-  var yearMonth = document.getElementById('consRevYearMonth').value;
+  var ymInput = document.getElementById('consRevYearMonth');
+  var yearMonth = ymInput.value; // ใช้ .value เสมอ แม้ตอน disabled (แก้ไข) ก็ยังอ่านค่าได้ปกติ
   var amount = document.getElementById('consRevAmount').value;
   var note = document.getElementById('consRevNote').value.trim();
   if(!yearMonth || amount===''){ toast('กรุณากรอกเดือนและจำนวนเงินค่ะ','error'); return; }
