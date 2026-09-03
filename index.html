@@ -363,6 +363,7 @@ textarea.fc{min-height:70px;resize:vertical;}
       <div style="height:1px;background:rgba(255,255,255,.15);margin:8px 12px"></div>
       <div class="ni" data-pg="stockcard" onclick="go('stockcard')"><span class="ic">🗂️</span> Stock Card</div>
       <div class="ni" data-pg="techstock" onclick="go('techstock')"><span class="ic">👷</span> คลังช่าง</div>
+      <div class="ni" data-pg="techcal" onclick="go('techcal')"><span class="ic">🗓️</span> ปฏิทินช่าง</div>
       <div class="ni" data-pg="vehiclehistory" onclick="go('vehiclehistory')"><span class="ic">🚗</span> ประวัติรถ</div>
       <div class="ni" data-pg="pmcheck" onclick="go('pmcheck')" id="nPMCheck"><span class="ic">🔧</span> ตรวจเช็ครถ PM (ใบแช็ง)<span class="badge hidden" id="pmBadge">0</span></div>
       <div class="ni" data-pg="inspection" onclick="go('inspection')"><span class="ic">📋</span> ใบตรวจสภาพรถ <span id="insBadge" class="bdg hidden"></span></div>
@@ -1535,6 +1536,20 @@ textarea.fc{min-height:70px;resize:vertical;}
         </div>
       </div>
 
+      <!-- TECH CALENDAR: ปฏิทินช่าง (งานภาคสนาม ดึงจากใบเบิกอะไหล่) -->
+      <div id="pg-techcal" class="hidden">
+        <div class="card" style="padding:14px 16px;margin-bottom:12px">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <label class="fl" style="margin:0">เลือกช่าง:</label>
+            <select class="fc" id="techCalSelect" style="width:auto;min-width:180px" onchange="onTechCalSelect()">
+              <option value="">— เลือกช่าง —</option>
+            </select>
+          </div>
+          <div style="font-size:11px;color:var(--g400);margin-top:6px">📋 ข้อมูลดึงจาก 2 แหล่ง: <span style="color:#1565c0">📦 ใบเบิกอะไหล่</span> + <span style="color:#6a1b9a">📋 ใบตรวจสภาพรถ/PM</span> (งานที่ไม่ต้องเบิกอะไหล่ก็ยังขึ้นในปฏิทิน)</div>
+        </div>
+        <div id="techCalBox"></div>
+      </div>
+
       <!-- ═══════════════════════════════════════════════════ -->
     </div><!-- /content -->
   </div><!-- /main -->
@@ -2204,6 +2219,7 @@ function _goWithoutPush(page){
   if(page==='transfer'){ switchTransferTab(_trTab||''); }
   if(page==='techstock'){ switchTechStockTab(_tsTab||'pending'); }
   if(page==='regiondash'){ loadRegionDashboard(); }
+  if(page==='techcal'){ loadTechCalPage(); }
 }
 
 // ── SESSION RESTORE moved to bottom of script (after all functions defined) ──
@@ -4028,7 +4044,7 @@ function renderTechStock(list){
 }
 
 // ── NAVIGATE ─────────────────────────────────────────────────
-var pgTitles={dashboard:'Dashboard',create:'เปิดใบเบิกอะไหล่',list:'รายการใบเบิกอะไหล่',approval:'รายการรออนุมัติ',stock:'จัดอะไหล่ / รับคืน',pickup:'รับอะไหล่',close:'เคลียร์ใบเบิก',print:'พิมพ์ใบเบิก',profile:'ลายเซ็นของฉัน',jobs:'จัดการ Job No.',stockcard:'Stock Card',stockcount:'นับสต็อก',changereq:'คำขออนุมัติแก้ไข',vehiclehistory:'ประวัติรถ',pmcheck:'ตรวจเช็ครถ PM (ใบแช็ง)',sales:'เปิดรายการขาย',inventory:'ยอดคงเหลือ',specialreq:'สั่งซื้อพิเศษ / ค้างส่งลูกค้า',master:'จัดการอะไหล่ / รถ',transfer:'เบิกข้ามสาขา',techstock:'คลังช่าง',regiondash:'Carts Status Area 7'};
+var pgTitles={dashboard:'Dashboard',create:'เปิดใบเบิกอะไหล่',list:'รายการใบเบิกอะไหล่',approval:'รายการรออนุมัติ',stock:'จัดอะไหล่ / รับคืน',pickup:'รับอะไหล่',close:'เคลียร์ใบเบิก',print:'พิมพ์ใบเบิก',profile:'ลายเซ็นของฉัน',jobs:'จัดการ Job No.',stockcard:'Stock Card',stockcount:'นับสต็อก',changereq:'คำขออนุมัติแก้ไข',vehiclehistory:'ประวัติรถ',pmcheck:'ตรวจเช็ครถ PM (ใบแช็ง)',sales:'เปิดรายการขาย',inventory:'ยอดคงเหลือ',specialreq:'สั่งซื้อพิเศษ / ค้างส่งลูกค้า',master:'จัดการอะไหล่ / รถ',transfer:'เบิกข้ามสาขา',techstock:'คลังช่าง',regiondash:'Carts Status Area 7',techcal:'ปฏิทินช่าง'};
 
 function goAppBack(){
   // ⚡ ใช้ history.back() — จะไปเข้ากลไก popstate/_goWithoutPush ที่มีอยู่แล้ว (ไม่ push ซ้ำ ไม่ทำให้ค้าง)
@@ -4097,6 +4113,7 @@ function go(page){
   if(page==='transfer'){ switchTransferTab(_trTab||''); }
   if(page==='techstock'){ switchTechStockTab(_tsTab||'pending'); }
   if(page==='regiondash'){ loadRegionDashboard(); }
+  if(page==='techcal'){ loadTechCalPage(); }
 }
 
 // ── DASHBOARD ────────────────────────────────────────────────
@@ -5641,6 +5658,166 @@ function renderWpDayDetailCard(dateStr, entries, isMainView){
   html += '</div>';
   return html;
 }
+
+// ════════════════════════════════════════════════════════════════
+// ปฏิทินช่าง — ดูว่าช่างแต่ละคนไปทำงานที่ไหนวันไหนบ้าง (ดึงจากใบเบิกอะไหล่ที่ช่างเปิดเอง)
+// ════════════════════════════════════════════════════════════════
+var _techCalList = [];       // รายชื่อช่างทั้งหมด (สำหรับ dropdown)
+var _techCalSelected = '';   // อีเมลช่างที่กำลังดูอยู่
+var _techCalFlat = [];       // ข้อมูลงานของช่างที่เลือก (แบนราบ 1 แถว = 1 ใบเบิก)
+var _techCalMode = 'month';  // 'month' | 'week' | 'day'
+var _techCalRefDate = new Date();
+var _techCalSelectedDay = null;
+
+function loadTechCalPage(){
+  var sel = document.getElementById('techCalSelect');
+  if(!sel) return;
+  callAPI('getTechnicianList', {}).then(function(res){
+    _techCalList = (res && res.success) ? (res.data||[]) : [];
+    var opts = ['<option value="">— เลือกช่าง —</option>']
+      .concat(_techCalList.map(function(t){ return '<option value="'+t.email+'">'+(t.name||t.email)+'</option>'; }));
+    sel.innerHTML = opts.join('');
+    if(_techCalSelected){ sel.value = _techCalSelected; renderTechCalendar(); }
+  });
+}
+function onTechCalSelect(){
+  var sel = document.getElementById('techCalSelect');
+  _techCalSelected = sel ? sel.value : '';
+  var box = document.getElementById('techCalBox');
+  if(!_techCalSelected){ if(box) box.innerHTML=''; return; }
+  if(box) box.innerHTML = '<div class="card tc tm" style="padding:24px">⏳ กำลังโหลด...</div>';
+  callAPI('getTechFieldworkCalendar', {techEmail:_techCalSelected}).then(function(res){
+    _techCalFlat = (res && res.success) ? (res.data||[]) : [];
+    _techCalSelectedDay = null;
+    renderTechCalendar();
+  });
+}
+function techCalNav(dir){
+  var d = _techCalRefDate;
+  if(dir==='today'){ _techCalRefDate = new Date(); }
+  else if(_techCalMode==='month'){ d.setMonth(d.getMonth()+dir); _techCalRefDate = new Date(d); }
+  else if(_techCalMode==='week'){ d.setDate(d.getDate()+dir*7); _techCalRefDate = new Date(d); }
+  else { d.setDate(d.getDate()+dir); _techCalRefDate = new Date(d); }
+  renderTechCalendar();
+}
+function techCalSwitchMode(mode){ _techCalMode = mode; renderTechCalendar(); }
+function techCalSelectDay(dateStr){
+  _techCalSelectedDay = dateStr;
+  var parts = dateStr.split('-');
+  _techCalRefDate = new Date(Number(parts[0]), Number(parts[1])-1, Number(parts[2]));
+  _techCalMode = 'day';
+  renderTechCalendar();
+}
+function renderTechCalendar(){
+  var box = document.getElementById('techCalBox');
+  if(!box) return;
+  if(!_techCalSelected){ box.innerHTML = ''; return; }
+
+  var byDate = {};
+  _techCalFlat.forEach(function(e){ (byDate[e.date] || (byDate[e.date]=[])).push(e); });
+
+  var monthNames = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  var dayNames = ['อา','จ','อ','พ','พฤ','ศ','ส'];
+  var todayStr = _wpFmtDate(new Date());
+
+  var navHtml = '<div class="card" style="padding:10px 16px;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+    +'<button class="btn bo bsm" onclick="techCalNav(-1)">‹ ก่อนหน้า</button>'
+    +'<button class="btn bo bsm" onclick="techCalNav(\'today\')">วันนี้</button>'
+    +'<button class="btn bo bsm" onclick="techCalNav(1)">ถัดไป ›</button>'
+    +'<div style="font-weight:700;color:var(--gd);margin:0 8px;flex:1;min-width:120px" id="techCalTitle"></div>'
+    +'<button class="btn bsm '+(_techCalMode==='day'?'bp':'bo')+'" onclick="techCalSwitchMode(\'day\')">วัน</button>'
+    +'<button class="btn bsm '+(_techCalMode==='week'?'bp':'bo')+'" onclick="techCalSwitchMode(\'week\')">สัปดาห์</button>'
+    +'<button class="btn bsm '+(_techCalMode==='month'?'bp':'bo')+'" onclick="techCalSwitchMode(\'month\')">เดือน</button>'
+  +'</div>';
+
+  var bodyHtml = '', titleText = '';
+  var ref = _techCalRefDate;
+
+  if(_techCalMode==='month'){
+    titleText = monthNames[ref.getMonth()]+' '+(ref.getFullYear()+543);
+    var firstOfMonth = new Date(ref.getFullYear(), ref.getMonth(), 1);
+    var startOffset = firstOfMonth.getDay();
+    var gridStart = new Date(firstOfMonth); gridStart.setDate(gridStart.getDate()-startOffset);
+    var cells = [];
+    for(var i=0;i<42;i++){ var d=new Date(gridStart); d.setDate(d.getDate()+i); cells.push(d); }
+
+    bodyHtml = '<div class="card" style="padding:10px;overflow-x:auto">'
+      +'<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;min-width:560px">'
+      + dayNames.map(function(dn){ return '<div style="text-align:center;font-size:11px;font-weight:700;color:var(--g400);padding:4px">'+dn+'</div>'; }).join('')
+      + cells.map(function(d){
+          var dStr = _wpFmtDate(d);
+          var isThisMonth = d.getMonth()===ref.getMonth();
+          var isToday = dStr===todayStr;
+          var entries = byDate[dStr]||[];
+          return '<div onclick="techCalSelectDay(\''+dStr+'\')" style="cursor:pointer;min-height:64px;padding:4px;border-radius:6px;background:'+(isToday?'#fff8e1':(isThisMonth?'#fff':'#f7f7f7'))+';border:1px solid '+(isToday?'#e6a817':'#eee')+';opacity:'+(isThisMonth?'1':'0.4')+'">'
+            +'<div style="font-size:11px;font-weight:'+(isToday?'800':'500')+';color:'+(isToday?'#e65100':'#333')+'">'+d.getDate()+'</div>'
+            +(entries.length ? '<div style="margin-top:2px"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#1565c0"></span></div><div style="font-size:9px;color:var(--g400);margin-top:1px">'+entries.length+' งาน</div>' : '')
+          +'</div>';
+        }).join('')
+      +'</div></div>';
+
+    if(_techCalSelectedDay){
+      bodyHtml += renderTechCalDayCard(_techCalSelectedDay, byDate[_techCalSelectedDay]||[]);
+    }
+
+  } else if(_techCalMode==='week'){
+    var dow = ref.getDay();
+    var weekStart = new Date(ref); weekStart.setDate(weekStart.getDate()-dow);
+    var weekDays = []; for(var wi=0; wi<7; wi++){ var wd=new Date(weekStart); wd.setDate(wd.getDate()+wi); weekDays.push(wd); }
+    titleText = _wpFmtDate(weekDays[0])+' — '+_wpFmtDate(weekDays[6]);
+
+    bodyHtml = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">'
+      + weekDays.map(function(d){
+          var dStr = _wpFmtDate(d);
+          var isToday = dStr===todayStr;
+          var entries = byDate[dStr]||[];
+          return '<div class="card" style="padding:8px;'+(isToday?'border:2px solid #e6a817':'')+'">'
+            +'<div style="font-size:12px;font-weight:700;color:var(--gd);margin-bottom:6px;cursor:pointer" onclick="techCalSelectDay(\''+dStr+'\')">'+dayNames[d.getDay()]+' '+d.getDate()+'/'+(d.getMonth()+1)+'</div>'
+            + (entries.length ? entries.map(function(e){
+                var isInsp = e.source==='insp';
+                return '<div style="font-size:11px;padding:4px 6px;margin-bottom:3px;border-radius:4px;background:'+(isInsp?'#f3e5f5':'#e3f2fd')+';border-left:3px solid '+(isInsp?'#6a1b9a':'#1565c0')+'">'
+                  +'<div style="font-weight:700">'+(e.customer||'(ไม่ระบุลูกค้า)')+'</div><div style="color:var(--g400)">Job: '+(e.jobNo||'-')+'</div></div>';
+              }).join('') : '<div style="font-size:11px;color:var(--g400)">ไม่มีงาน</div>')
+          +'</div>';
+        }).join('')
+    +'</div>';
+
+  } else { // day
+    titleText = dayNames[ref.getDay()]+'วัน ที่ '+ref.getDate()+' '+monthNames[ref.getMonth()]+' '+(ref.getFullYear()+543);
+    var dStr2 = _wpFmtDate(ref);
+    bodyHtml = renderTechCalDayCard(dStr2, byDate[dStr2]||[], true);
+  }
+
+  box.innerHTML = navHtml + bodyHtml;
+  var titleEl = document.getElementById('techCalTitle');
+  if(titleEl) titleEl.textContent = titleText;
+}
+function renderTechCalDayCard(dateStr, entries, isMainView){
+  var html = '<div class="card" style="padding:14px 16px;margin-top:'+(isMainView?'0':'10px')+'">'
+    +'<div style="font-weight:700;color:var(--gd);font-size:13px;margin-bottom:8px">📌 งานวันที่ '+dateStr+' ('+entries.length+' รายการ)</div>';
+  if(!entries.length){
+    html += '<div style="font-size:12px;color:var(--g400)">ไม่มีงานในวันนี้ค่ะ</div>';
+  } else {
+    html += entries.map(function(e){
+      var isInsp = e.source==='insp';
+      var color = isInsp ? '#6a1b9a' : '#1565c0';
+      var bg = isInsp ? '#f3e5f5' : '#e3f2fd';
+      var btnHtml = isInsp
+        ? '<button class="btn bo bsm" onclick="openInspView(\''+e.reqId+'\')">ดูใบตรวจสภาพ</button>'
+        : '<button class="btn bo bsm" onclick="openDetail(\''+e.reqId+'\')">ดูใบเบิก</button>';
+      return '<div style="padding:10px;margin-bottom:8px;border-radius:8px;background:'+bg+';border-left:4px solid '+color+'">'
+        +'<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px">'
+          +'<div><strong>📍 '+(e.customer||'(ไม่ระบุลูกค้า)')+'</strong><div style="font-size:11px;color:var(--g400)">Job No: '+(e.jobNo||'-')+' | '+(isInsp?'📋 ใบตรวจสภาพ':'📦 ใบเบิกอะไหล่')+'</div></div>'
+          + btnHtml
+        +'</div>'
+        +(e.purpose ? '<div style="font-size:12px;margin-top:4px">'+(isInsp?'':'วัตถุประสงค์: ')+e.purpose+'</div>' : '')
+      +'</div>';
+    }).join('');
+  }
+  html += '</div>';
+  return html;
+}
+
 function confirmWarrantyActual(planId, actualDate){
   callAPI('markWarrantyPlanDone',{planId:planId, actualDate:actualDate}).then(function(res){
     toast(res.message, res.success?'success':'error');
