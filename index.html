@@ -5687,17 +5687,22 @@ function onTechCalSelect(){
   if(!_techCalSelected){ if(box) box.innerHTML=''; return; }
   if(box) box.innerHTML = '<div class="card tc tm" style="padding:24px">⏳ กำลังโหลด...</div>';
   callAPI('getTechFieldworkCalendar', {techEmail:_techCalSelected}).then(function(res){
-    _techCalFlat = (res && res.success) ? (res.data||[]) : [];
+    var raw = (res && res.success) ? (res.data||[]) : [];
+    // ⚠️ แก้บั๊ก: วันที่จากชีต (OpenDate/InspDate/CreatedAt) อาจมาเป็นรูปแบบ "d/M/yyyy" ไม่ใช่ "YYYY-MM-DD"
+    // (ปัญหาเดียวกับที่เจอตอนแก้ปฏิทิน Warranty) ต้อง normalize ก่อนใช้ ไม่งั้นปฏิทินจะกลายเป็น NaN ทั้งหน้า
+    _techCalFlat = raw.map(function(e){ e.date = _wpNormDate(e.date); return e; }).filter(function(e){ return e.date; });
     _techCalSelectedDay = null;
     // ── ถ้าเดือนปัจจุบันไม่มีงานเลย แต่มีงานอยู่เดือนอื่น ให้เลื่อนปฏิทินไปเดือนล่าสุดที่มีงานให้อัตโนมัติ กันเข้าใจผิดว่า "ไม่มีข้อมูล" ──
     if(_techCalFlat.length){
       var curYM = _techCalRefDate.getFullYear()+'-'+String(_techCalRefDate.getMonth()+1).padStart(2,'0');
-      var hasThisMonth = _techCalFlat.some(function(e){ return e.date && e.date.slice(0,7)===curYM; });
+      var hasThisMonth = _techCalFlat.some(function(e){ return e.date.slice(0,7)===curYM; });
       if(!hasThisMonth){
         var sorted = _techCalFlat.slice().sort(function(a,b){ return (b.date||'')>(a.date||'')?1:-1; });
-        var latest = sorted[0].date; // YYYY-MM-DD ล่าสุด
+        var latest = sorted[0].date; // YYYY-MM-DD ล่าสุด (normalize แล้ว ปลอดภัย)
         var parts = latest.split('-');
-        _techCalRefDate = new Date(Number(parts[0]), Number(parts[1])-1, 1);
+        if(parts.length===3 && !isNaN(Number(parts[0])) && !isNaN(Number(parts[1]))){
+          _techCalRefDate = new Date(Number(parts[0]), Number(parts[1])-1, 1);
+        }
       }
     }
     renderTechCalendar();
@@ -5723,6 +5728,8 @@ function renderTechCalendar(){
   var box = document.getElementById('techCalBox');
   if(!box) return;
   if(!_techCalSelected){ box.innerHTML = ''; return; }
+  // ── กันเหนียว: ถ้า _techCalRefDate กลายเป็นวันที่ผิดพลาด (Invalid Date) ไม่ว่าด้วยสาเหตุใด ให้รีเซ็ตกลับเป็นวันนี้ทันที กันหน้าจอโชว์ NaN ──
+  if(isNaN(_techCalRefDate.getTime())) _techCalRefDate = new Date();
 
   var byDate = {};
   _techCalFlat.forEach(function(e){ (byDate[e.date] || (byDate[e.date]=[])).push(e); });
