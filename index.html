@@ -5674,7 +5674,7 @@ function loadTechCalPage(){
   if(!sel) return;
   callAPI('getTechnicianList', {}).then(function(res){
     _techCalList = (res && res.success) ? (res.data||[]) : [];
-    var opts = ['<option value="">— เลือกช่าง —</option>']
+    var opts = ['<option value="">— เลือกช่าง —</option>', '<option value="__all__">🗂️ ทุกคน (ภาพรวม)</option>']
       .concat(_techCalList.map(function(t){ return '<option value="'+t.email+'">'+(t.name||t.email)+'</option>'; }));
     sel.innerHTML = opts.join('');
     if(_techCalSelected){ sel.value = _techCalSelected; renderTechCalendar(); }
@@ -5689,6 +5689,17 @@ function onTechCalSelect(){
   callAPI('getTechFieldworkCalendar', {techEmail:_techCalSelected}).then(function(res){
     _techCalFlat = (res && res.success) ? (res.data||[]) : [];
     _techCalSelectedDay = null;
+    // ── ถ้าเดือนปัจจุบันไม่มีงานเลย แต่มีงานอยู่เดือนอื่น ให้เลื่อนปฏิทินไปเดือนล่าสุดที่มีงานให้อัตโนมัติ กันเข้าใจผิดว่า "ไม่มีข้อมูล" ──
+    if(_techCalFlat.length){
+      var curYM = _techCalRefDate.getFullYear()+'-'+String(_techCalRefDate.getMonth()+1).padStart(2,'0');
+      var hasThisMonth = _techCalFlat.some(function(e){ return e.date && e.date.slice(0,7)===curYM; });
+      if(!hasThisMonth){
+        var sorted = _techCalFlat.slice().sort(function(a,b){ return (b.date||'')>(a.date||'')?1:-1; });
+        var latest = sorted[0].date; // YYYY-MM-DD ล่าสุด
+        var parts = latest.split('-');
+        _techCalRefDate = new Date(Number(parts[0]), Number(parts[1])-1, 1);
+      }
+    }
     renderTechCalendar();
   });
 }
@@ -5776,7 +5787,7 @@ function renderTechCalendar(){
             + (entries.length ? entries.map(function(e){
                 var isInsp = e.source==='insp';
                 return '<div style="font-size:11px;padding:4px 6px;margin-bottom:3px;border-radius:4px;background:'+(isInsp?'#f3e5f5':'#e3f2fd')+';border-left:3px solid '+(isInsp?'#6a1b9a':'#1565c0')+'">'
-                  +'<div style="font-weight:700">'+(e.customer||'(ไม่ระบุลูกค้า)')+'</div><div style="color:var(--g400)">Job: '+(e.jobNo||'-')+'</div></div>';
+                  +'<div style="font-weight:700">'+(e.customer||'(ไม่ระบุลูกค้า)')+'</div><div style="color:var(--g400)">'+(e.techName?'👷 '+e.techName+' | ':'')+'Job: '+(e.jobNo||'-')+'</div></div>';
               }).join('') : '<div style="font-size:11px;color:var(--g400)">ไม่มีงาน</div>')
           +'</div>';
         }).join('')
@@ -5807,7 +5818,8 @@ function renderTechCalDayCard(dateStr, entries, isMainView){
         : '<button class="btn bo bsm" onclick="openDetail(\''+e.reqId+'\')">ดูใบเบิก</button>';
       return '<div style="padding:10px;margin-bottom:8px;border-radius:8px;background:'+bg+';border-left:4px solid '+color+'">'
         +'<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px">'
-          +'<div><strong>📍 '+(e.customer||'(ไม่ระบุลูกค้า)')+'</strong><div style="font-size:11px;color:var(--g400)">Job No: '+(e.jobNo||'-')+' | '+(isInsp?'📋 ใบตรวจสภาพ':'📦 ใบเบิกอะไหล่')+'</div></div>'
+          +'<div><strong>📍 '+(e.customer||'(ไม่ระบุลูกค้า)')+'</strong><div style="font-size:11px;color:var(--g400)">'
+            + (e.techName ? '👷 '+e.techName+' | ' : '') + 'Job No: '+(e.jobNo||'-')+' | '+(isInsp?'📋 ใบตรวจสภาพ':'📦 ใบเบิกอะไหล่')+'</div></div>'
           + btnHtml
         +'</div>'
         +(e.purpose ? '<div style="font-size:12px;margin-top:4px">'+(isInsp?'':'วัตถุประสงค์: ')+e.purpose+'</div>' : '')
