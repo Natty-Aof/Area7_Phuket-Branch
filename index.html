@@ -521,6 +521,10 @@ textarea.fc{min-height:70px;resize:vertical;}
 
       <!-- CREATE -->
       <div id="pg-create" class="hidden">
+        <div id="resubmitBanner" class="hidden card" style="border-left:4px solid #00695c;background:#e0f2f1;margin-bottom:12px;padding:10px 14px">
+          <div style="font-weight:700;color:#00695c;font-size:13px">✏️ กำลังแก้ไขใบเบิกที่ถูกตีกลับ — <span id="resubmitReqIdLabel"></span></div>
+          <div style="font-size:12px;color:#333;margin-top:2px">แก้ข้อมูลตามที่ต้องการ แล้วกด "บันทึกและส่งใหม่" ด้านล่าง — จะใช้เลขที่ใบเบิกเดิม ไม่สร้างใบใหม่ ส่งกลับไปรอหัวหน้าช่างอนุมัติอีกครั้ง</div>
+        </div>
         <div class="card">
           <div class="ct">📝 ข้อมูลใบเบิก</div>
           <div class="fr">
@@ -580,7 +584,7 @@ textarea.fc{min-height:70px;resize:vertical;}
         </div>
         <div style="display:flex;gap:12px;justify-content:flex-end;padding-bottom:24px">
           <button class="btn bo" onclick="go('dashboard')">ยกเลิก</button>
-          <button class="btn bp" onclick="submitReq()"><span>📤</span> ส่งขออนุมัติ</button>
+          <button class="btn bp" id="submitReqBtn" onclick="submitReq()"><span>📤</span> ส่งขออนุมัติ</button>
         </div>
       </div>
 
@@ -7148,6 +7152,11 @@ function loadDashboard(){
 // ── CREATE ───────────────────────────────────────────────────
 function initCreate(){
   if(!CU) return;
+  window._resubmitReqId = null; // ── รีเซ็ตโหมดแก้ไขใบเดิมทุกครั้งที่เข้าหน้านี้ใหม่ (เว้นแต่ openResubmitForm จะตั้งค่าทับทีหลัง) ──
+  var rb = document.getElementById('resubmitBanner');
+  if(rb) rb.classList.add('hidden');
+  var submitBtnReset = document.getElementById('submitReqBtn');
+  if(submitBtnReset) submitBtnReset.innerHTML = '<span>📤</span> ส่งขออนุมัติ';
   _custSelected = false;
   _custSelectedFormal = '';
   var custIcon = document.getElementById('custStatusIcon');
@@ -7292,14 +7301,60 @@ function submitReq(){
   }
   var items=getItems();
   if(!items.length) return toast('กรุณาเพิ่มรายการอะไหล่','error');
-  var reqId=document.getElementById('nId').value.trim();
   var data={jobNo:job,customerName:cust,requesterName:CU.name,coWorkers:(document.getElementById('nCo').value||'').split(',').map(function(s){return s.trim();}).filter(Boolean),serialNos:(document.getElementById('nSerial').value||'').split(',').map(function(s){return s.trim();}).filter(Boolean),vehicleModel:document.getElementById('nModel').value,purpose:pp.join(', '),items:items};
-  toast('กำลังส่งใบเบิก...','info');
   window._reqSubmitting = true;
+  // ── โหมดแก้ไขใบเบิกที่ถูกตีกลับ (resubmit) — ใช้เลขที่ใบเบิกเดิม แทนที่จะสร้างใบใหม่ ──
+  if(window._resubmitReqId){
+    data.reqId = window._resubmitReqId;
+    toast('กำลังบันทึกและส่งใบเบิกใหม่...','info');
+    callAPI('resubmitRejectedRequisition',data).then(function(res){
+      window._reqSubmitting = false;
+      toast(res.message,res.success?'success':'error');
+      if(res.success){ window._resubmitReqId = null; go('list'); }
+    });
+    return;
+  }
+  toast('กำลังส่งใบเบิก...','info');
   callAPI('createRequisition',data).then(function(res){
     window._reqSubmitting = false;
     toast(res.message,res.success?'success':'error');
     if(res.success) go('list');
+  });
+}
+// ── เปิดฟอร์มแก้ไขใบเบิกที่ถูกตีกลับ พร้อมข้อมูลเดิมเต็มไว้ให้แก้ (ไม่ต้องกรอกใหม่ตั้งแต่ต้น) ──
+function openResubmitForm(reqId){
+  callAPI('getRequisitionDetail',{id:reqId}).then(function(res){
+    if(!res.success) return toast('โหลดข้อมูลใบเบิกไม่ได้ค่ะ','error');
+    var d = res.data;
+    go('create'); // จะ trigger initCreate() reset ฟอร์มให้สะอาดก่อน
+    window._resubmitReqId = reqId;
+
+    var rb = document.getElementById('resubmitBanner');
+    if(rb) rb.classList.remove('hidden');
+    var lbl = document.getElementById('resubmitReqIdLabel');
+    if(lbl) lbl.textContent = reqId;
+    var submitBtn = document.getElementById('submitReqBtn');
+    if(submitBtn) submitBtn.innerHTML = '<span>✏️</span> บันทึกและส่งใหม่ (ใบเดิม '+reqId+')';
+
+    var idEl = document.getElementById('nId'); if(idEl) idEl.value = reqId;
+    var jobEl = document.getElementById('nJob'); if(jobEl) jobEl.value = d.JobNo||'';
+    var custEl = document.getElementById('nCust'); if(custEl) custEl.value = d.CustomerName||'';
+    _custSelectedFormal = d.CustomerName||'';
+    _custSelected = true;
+    var coEl = document.getElementById('nCo'); if(coEl) coEl.value = d.CoWorkers||'';
+    var serEl = document.getElementById('nSerial'); if(serEl) serEl.value = d.SerialNos||'';
+
+    var purposeList = (d.Purpose||'').split(',').map(function(s){ return s.trim(); });
+    document.querySelectorAll('#purposeGrid input').forEach(function(cb){
+      cb.checked = purposeList.indexOf(cb.value) >= 0;
+    });
+
+    var itemsBody = document.getElementById('itemsBody');
+    if(itemsBody) itemsBody.innerHTML = ''; // ล้างแถวเปล่าที่ initCreate() เพิ่มไว้ก่อนหน้านี้
+    (d.Items||[]).forEach(function(it){
+      addRow({partNo:it.PartNo, nameTH:it.NameTH, nameEN:it.NameEN, qty:it.Qty, unit:it.Unit, note:it.Note});
+    });
+    if(!(d.Items||[]).length) addRow();
   });
 }
 
@@ -9425,6 +9480,13 @@ function openDetail(reqId){
     var isMgrReject=(CU.role==='MANAGER'||CU.role==='ADMIN')&&d.StatusApproval==='PENDING_MANAGER'; // ตีกลับยังให้ ADMIN ทำได้ตามเดิม
     if(isSup||isMgr) foot='<button class="btn bd" onclick="openNoteMo(\'reject\',\''+d.ReqID+'\');closeMo()">✕ ปฏิเสธ</button><button class="btn bp" onclick="openNoteMo(\'approve\',\''+d.ReqID+'\');closeMo()">✓ อนุมัติ</button>';
     else if(isMgrReject) foot='<button class="btn bd" onclick="openNoteMo(\'reject\',\''+d.ReqID+'\');closeMo()">✕ ปฏิเสธ</button>';
+    // ── ปุ่ม "แก้ไขและส่งใหม่" — เฉพาะใบที่ถูกตีกลับ (REJECTED) เท่านั้น เจ้าของใบเบิกเองหรือ Stock/หัวหน้าช่าง/ผจก./Admin ช่วยแก้แทนได้ ──
+    var canResubmit = d.StatusApproval==='REJECTED'
+      && (CU.email && d.RequesterEmail && CU.email.toLowerCase()===String(d.RequesterEmail).toLowerCase()
+          || ['STOCK','SUPERVISOR','MANAGER','ADMIN'].indexOf(CU.role)>=0);
+    if(canResubmit){
+      foot += '<button class="btn bp" style="background:#00695c;border-color:#00695c" onclick="openResubmitForm(\''+d.ReqID+'\');closeMo()">✏️ แก้ไขและส่งใหม่</button>';
+    }
     // ── ปุ่มอนุมัติปิดงานขั้นสุดท้าย (หัวหน้าช่าง/ผจก. ของใบเบิกนี้เท่านั้น) ──
     if(d.StatusStock==='PENDING_FINAL_APPROVAL'){
       var meEmail=(CU.email||'').toLowerCase();
