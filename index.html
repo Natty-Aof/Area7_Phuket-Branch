@@ -5,9 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ระบบใบเบิกอะไหล่ Area7</title>
 <!-- jsQR: QR Code scanner -->
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js" defer></script>
 <!-- QRCode.js: QR Code generator -->
-<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js" defer></script>
+<!-- ⚡ เพิ่ม defer ให้ 2 สคริปต์ด้านบน: เดิมวางไว้บนสุดของ <head> แบบบล็อก ทำให้เบราว์เซอร์ต้องรอโหลดจาก CDN
+ให้เสร็จก่อน ถึงจะเริ่มแสดงผลอะไรบนหน้าจอได้เลย (แม้แต่หน้า login ก็ยังไม่ขึ้น) ทั้งที่ 2 ไลบรารีนี้ใช้เฉพาะตอนสแกน/สร้าง QR
+(กดใช้งานทีหลัง ไม่ได้ใช้ตอนเปิดแอป) — defer ทำให้หน้าจอเริ่มแสดงผลได้ทันทีโดยไม่ต้องรอ ช่วยลดความรู้สึก "ช้า" ตอนเปิดแอปได้มาก -->
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@400;500;600;700&display=swap');
 :root {
@@ -1604,7 +1607,10 @@ textarea.fc{min-height:70px;resize:vertical;}
 </div>
 
 <div class="tw2" id="toastW"></div>
-<script src="parts_data.js"></script>
+<script src="parts_data.js" defer></script>
+<!-- ⚡ เพิ่ม defer: parts_data.js เป็นไฟล์ใหญ่ (ฐานข้อมูลอะไหล่ทั้งหมด) เดิมโหลดแบบบล็อกกลางหน้า ทำให้เบราว์เซอร์หยุดรอ
+ก่อนจะพาร์สส่วนที่เหลือของหน้าต่อได้ ทั้งที่ข้อมูลนี้ใช้จริงหลัง login เสร็จเท่านั้น (ใน initApp()) — defer ทำให้โหลดพร้อมกันไปเลย
+ไม่บล็อกการแสดงผลหน้าตอนเปิดแอปครั้งแรก ช่วยให้รู้สึกเร็วขึ้นตั้งแต่เปิดแอป -->
 <!-- ── BACK ORDER MODAL ───────────────────────────────────── -->
 <div id="backOrderModal" class="mo hidden" style="z-index:2000">
   <div class="mow" style="max-width:460px">
