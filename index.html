@@ -1589,6 +1589,10 @@ textarea.fc{min-height:70px;resize:vertical;}
   <div class="msh"></div>
   <div class="msi" onclick="go('close');closeMore()"><span>🔄</span> เคลียร์ใบเบิก</div>
   <div class="msi" onclick="go('list');closeMore()"><span>📋</span> รายการใบเบิก</div>
+  <div class="msi hidden" id="mRegionDash" onclick="go('regiondash');closeMore()"><span>🗺️</span> Carts Status Area 7</div>
+  <div class="msi hidden" id="mTransfer" onclick="go('transfer');closeMore()"><span>🚚</span> เบิกข้ามสาขา</div>
+  <div class="msi" onclick="go('techstock');closeMore()"><span>👷</span> คลังช่าง</div>
+  <div class="msi" onclick="go('techcal');closeMore()"><span>🗓️</span> ปฏิทินช่าง</div>
   <div class="msi" onclick="go('stockcard');closeMore()"><span>🗂️</span> Stock Card</div>
   <div class="msi" onclick="go('vehiclehistory');closeMore()"><span>🚗</span> ประวัติรถ</div>
   <div class="msi" onclick="go('pmcheck');closeMore()"><span>🔧</span> ตรวจเช็ครถ PM (ใบแช็ง) <span id="pmBadge2" class="bdg hidden"></span></div>
@@ -2885,18 +2889,22 @@ function initApp(){
     if(bs) bs.classList.remove('hidden');
   }
 
-  // ── เบิกข้ามสาขา (Stock Transfer): เห็นเมนูได้ทุก role ยกเว้นช่าง ──
+  // ── เบิกข้ามสาขา (Stock Transfer): เห็นเมนูได้ทุก role ยกเว้นช่าง (แสดงทั้งเมนู desktop และมือถือคู่กัน) ──
   if(['STOCK','SUPERVISOR','MANAGER','ADMIN'].indexOf(CU.role)>=0){
     var nTr = document.getElementById('nTransfer');
     if(nTr) nTr.classList.remove('hidden');
+    var mTr = document.getElementById('mTransfer');
+    if(mTr) mTr.classList.remove('hidden');
   }
 
   // ── ตัวเลือกสาขา: เฉพาะ ผจก.เขต/ADMIN เท่านั้น (ผจก.สาขา/พนักงานอื่นเห็นแค่สาขาตัวเองอัตโนมัติ) ──
   initBranchSwitcher();
   updateBranchLabels();
-  // ── Dashboard เขต: เห็นได้เฉพาะ ผจก.เขต/ADMIN เท่านั้น (ใช้กลไกเดียวกับตัวเลือกสาขา ไม่สร้างสิทธิ์แยกใหม่) ──
+  // ── Dashboard เขต: เห็นได้เฉพาะ ผจก.เขต/ADMIN เท่านั้น (ใช้กลไกเดียวกับตัวเลือกสาขา ไม่สร้างสิทธิ์แยกใหม่) — แสดงทั้ง desktop และมือถือคู่กัน ──
   var nRd = document.getElementById('nRegionDash');
   if(nRd && typeof isRegionalMgr==='function' && isRegionalMgr()) nRd.classList.remove('hidden');
+  var mRd = document.getElementById('mRegionDash');
+  if(mRd && typeof isRegionalMgr==='function' && isRegionalMgr()) mRd.classList.remove('hidden');
   // เมนูจัดการข้อมูลหลัก — ทุก role เข้าดูได้ (ช่างดูรูปอะไหล่ได้) แต่แก้ไขได้เฉพาะ Stock/Manager/Admin
   var nm=document.getElementById('nMaster');
   if(nm) nm.classList.remove('hidden');
