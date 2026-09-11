@@ -705,6 +705,34 @@ textarea.fc{min-height:70px;resize:vertical;}
 
           <!-- ช่างกรอก: รายการอะไหล่ per-part card -->
           <div id="techClearSection">
+            <div class="card" id="clJobPhotoBox" style="border:2px solid #e65100">
+              <div class="ct">📷 ถ่ายรูปหน้างาน <span style="color:#e65100">(บังคับ 3 รูป — ต้องถ่ายให้ครบก่อนถึงจะกรอกรายการอะไหล่ต่อได้)</span></div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px">
+                <div class="pd" id="jobPhoDrop_0" onclick="document.getElementById('jobPhoIn_0').click()" style="border:2px dashed var(--g300)">
+                  <div style="font-size:26px">📷</div>
+                  <div style="margin-top:4px;color:var(--g400);font-size:12px">รูปที่ 1</div>
+                  <img id="jobPhoPreview_0" class="pp hidden">
+                </div>
+                <div class="pd" id="jobPhoDrop_1" onclick="document.getElementById('jobPhoIn_1').click()" style="border:2px dashed var(--g300)">
+                  <div style="font-size:26px">📷</div>
+                  <div style="margin-top:4px;color:var(--g400);font-size:12px">รูปที่ 2</div>
+                  <img id="jobPhoPreview_1" class="pp hidden">
+                </div>
+                <div class="pd" id="jobPhoDrop_2" onclick="document.getElementById('jobPhoIn_2').click()" style="border:2px dashed var(--g300)">
+                  <div style="font-size:26px">📷</div>
+                  <div style="margin-top:4px;color:var(--g400);font-size:12px">รูปที่ 3</div>
+                  <img id="jobPhoPreview_2" class="pp hidden">
+                </div>
+              </div>
+              <input type="file" id="jobPhoIn_0" accept="image/*" style="display:none" onchange="onJobPhoto(event,0)">
+              <input type="file" id="jobPhoIn_1" accept="image/*" style="display:none" onchange="onJobPhoto(event,1)">
+              <input type="file" id="jobPhoIn_2" accept="image/*" style="display:none" onchange="onJobPhoto(event,2)">
+              <div id="jobPhoStatus" style="font-size:12px;color:#e65100;margin-top:8px;font-weight:700">⚠️ ยังถ่ายไม่ครบ (0/3 รูป) — ถ่ายให้ครบก่อนถึงจะกรอกรายการอะไหล่ด้านล่างได้</div>
+            </div>
+            <div id="clPartsSectionLocked" class="card tc" style="padding:24px;color:var(--g400)">
+              🔒 ถ่ายรูปหน้างานให้ครบ 3 รูปก่อน ถึงจะกรอกรายการอะไหล่ที่ต้องการคืน/รายงานได้ค่ะ
+            </div>
+            <div id="clPartsSectionUnlocked" class="hidden">
             <div class="card" id="clVehModeBox">
               <div class="ct">🚗 งานนี้เอาอะไหล่ไปใส่รถกี่คัน?</div>
               <div style="display:flex;gap:8px;margin-bottom:10px">
@@ -744,6 +772,7 @@ textarea.fc{min-height:70px;resize:vertical;}
                 <textarea class="fc" id="clNote" placeholder="สรุปงานที่ทำ อะไหล่ที่ใช้จริง สิ่งผิดปกติ..."></textarea>
               </div>
             </div>
+            </div><!-- /clPartsSectionUnlocked -->
             <div style="display:flex;gap:12px;justify-content:flex-end;padding-bottom:8px">
               <button class="btn bp" onclick="submitClearByTech()">📤 ส่งเคลียร์ให้ Stock ตรวจสอบ</button>
             </div>
@@ -8716,6 +8745,14 @@ function loadCloseDetail(){
   var reqId=document.getElementById('clSel').value;
   var cd=document.getElementById('clDetail');
   if(!reqId){if(cd)cd.classList.add('hidden');return;}
+  // ── รีเซ็ตรูปหน้างานทุกครั้งที่เปิดใบเบิกใหม่ กันรูปของใบก่อนหน้าค้างข้ามใบ ──
+  _clJobPhotos = [null, null, null];
+  [0,1,2].forEach(function(i){
+    var pv = document.getElementById('jobPhoPreview_'+i), drop = document.getElementById('jobPhoDrop_'+i);
+    if(pv){ pv.classList.add('hidden'); pv.src=''; }
+    if(drop){ drop.classList.remove('hp'); drop.style.border='2px dashed var(--g300)'; }
+  });
+  _clUpdateJobPhotoLock();
   callAPI('getRequisitionDetail',{id:reqId}).then(function(res){
     if(!res.success) return;
     var d = res.data;
@@ -8980,6 +9017,11 @@ function submitClearByTech(){
   var reqId=document.getElementById('clSel').value;
   if(!reqId) return toast('กรุณาเลือกใบเบิก','error');
 
+  // ⛔ บังคับถ่ายรูปหน้างานให้ครบ 3 รูปก่อนเสมอ (กันเหนียวอีกชั้น เผื่อ UI ล็อกหลุด) ──
+  if(!_clJobPhotosComplete()){
+    return toast('กรุณาถ่ายรูปหน้างานให้ครบ 3 รูปก่อนค่ะ (ยังถ่ายได้ '+_clJobPhotos.filter(Boolean).length+'/3 รูป)','error');
+  }
+
   var st = window._clItemState||[];
   if(!st.length) return toast('ไม่พบรายการอะไหล่','error');
 
@@ -9051,11 +9093,12 @@ function submitClearByTech(){
       defectItems:defectItems,
       externalHoldings:externalHoldings,
       photoUrl:retPhotoB64||'',
+      jobPhotos: _clJobPhotos,
     });
   }).then(function(res){
     unlockClear();
     toast(res.message, res.success?'success':'error');
-    if(res.success){ retPhotoB64=null; window._clItemState=null; setTimeout(function(){go('list');},600); }
+    if(res.success){ retPhotoB64=null; _clJobPhotos=[null,null,null]; window._clItemState=null; setTimeout(function(){go('list');},600); }
   }).catch(function(){ unlockClear(); });
 }
 
@@ -10666,6 +10709,40 @@ function loadCloseSel(){
   });
 }
 
+// ── รูปหน้างานบังคับ 3 รูป ก่อนเคลียร์ใบเบิก (ตามที่ Admin ขอ) — ต้องถ่ายครบก่อนถึงจะกรอกรายการอะไหล่ต่อได้ ──
+var _clJobPhotos = [null, null, null];
+function onJobPhoto(e, idx){
+  var file = e.target.files[0]; if(!file) return;
+  compressImage(file, function(b64){
+    _clJobPhotos[idx] = b64;
+    var pv = document.getElementById('jobPhoPreview_'+idx), drop = document.getElementById('jobPhoDrop_'+idx);
+    if(pv){ pv.src = b64; pv.classList.remove('hidden'); }
+    if(drop){ drop.classList.add('hp'); drop.style.border='2px solid var(--gm)'; }
+    _clUpdateJobPhotoLock();
+  });
+}
+function _clJobPhotosComplete(){
+  return _clJobPhotos[0] && _clJobPhotos[1] && _clJobPhotos[2];
+}
+function _clUpdateJobPhotoLock(){
+  var locked = document.getElementById('clPartsSectionLocked');
+  var unlocked = document.getElementById('clPartsSectionUnlocked');
+  var statusEl = document.getElementById('jobPhoStatus');
+  var count = _clJobPhotos.filter(Boolean).length;
+  if(statusEl){
+    if(count>=3){
+      statusEl.innerHTML = '✅ ถ่ายครบแล้ว (3/3 รูป) — กรอกรายการอะไหล่ด้านล่างได้เลยค่ะ';
+      statusEl.style.color = 'var(--gm)';
+    } else {
+      statusEl.innerHTML = '⚠️ ยังถ่ายไม่ครบ ('+count+'/3 รูป) — ถ่ายให้ครบก่อนถึงจะกรอกรายการอะไหล่ด้านล่างได้';
+      statusEl.style.color = '#e65100';
+    }
+  }
+  if(locked && unlocked){
+    if(count>=3){ locked.classList.add('hidden'); unlocked.classList.remove('hidden'); }
+    else { locked.classList.remove('hidden'); unlocked.classList.add('hidden'); }
+  }
+}
 function onRetPhoto(e){
   var file = e.target.files[0]; if(!file) return;
   compressImage(file, function(b64){
