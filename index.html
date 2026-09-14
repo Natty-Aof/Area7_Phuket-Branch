@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ระบบใบเบิกอะไหล่ Area7</title>
+<!-- ⚡ เปลี่ยนจาก @import ในสไตล์ชีตเป็น <link> ตรงนี้แทน — @import บล็อกการโหลดหนักกว่ามาก เพราะเบราว์เซอร์ต้องรอ
+พาร์สสไตล์ชีตหลักก่อนถึงจะเห็นคำสั่งไปโหลดฟอนต์ ส่วน <link> เบราว์เซอร์เจอตั้งแต่ต้นไฟล์ ดึงพร้อมกับของอื่นได้เลย เร็วกว่ามาก -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@400;500;600;700&display=swap">
 <!-- jsQR: QR Code scanner -->
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js" defer></script>
 <!-- QRCode.js: QR Code generator -->
@@ -12,7 +17,6 @@
 ให้เสร็จก่อน ถึงจะเริ่มแสดงผลอะไรบนหน้าจอได้เลย (แม้แต่หน้า login ก็ยังไม่ขึ้น) ทั้งที่ 2 ไลบรารีนี้ใช้เฉพาะตอนสแกน/สร้าง QR
 (กดใช้งานทีหลัง ไม่ได้ใช้ตอนเปิดแอป) — defer ทำให้หน้าจอเริ่มแสดงผลได้ทันทีโดยไม่ต้องรอ ช่วยลดความรู้สึก "ช้า" ตอนเปิดแอปได้มาก -->
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@400;500;600;700&display=swap');
 :root {
   --gd: #1a4a2e; --gm: #2d6a4f; --gl: #74c69d; --gp: #d8f3dc;
   --gold: #c9a84c; --goldl: #f4e4b0;
@@ -613,7 +617,7 @@ textarea.fc{min-height:70px;resize:vertical;}
 
         <!-- ── Filter + Tabs ── -->
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
-          <input class="fc" id="fJob" placeholder="🔍 Job No. / ลูกค้า / ชื่อช่าง..." oninput="_listPage=1;renderListFromCache()" style="flex:1;min-width:160px">
+          <input class="fc" id="fJob" placeholder="🔍 Job No. / ลูกค้า / ชื่อช่าง..." oninput="_listPage=1;debounceSearch('fJob',renderListFromCache)" style="flex:1;min-width:160px">
           <select id="fStatus" class="fc" style="width:auto;min-width:140px;font-size:13px" onchange="_listPage=1;_listStatusFilter=this.value;renderListFromCache()">
             <option value="all">📋 ทุกสถานะ</option>
             <option value="PENDING_SUPERVISOR">⏳ รอหัวหน้าช่าง</option>
@@ -1242,7 +1246,7 @@ textarea.fc{min-height:70px;resize:vertical;}
         <div id="mTabParts">
           <div class="card" style="padding:14px 16px;margin-bottom:12px">
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-              <input class="fc" id="mPartSearch" placeholder="🔍 ค้นหา Part No. / ชื่ออะไหล่..." style="flex:1;min-width:200px" oninput="renderMasterParts()">
+              <input class="fc" id="mPartSearch" placeholder="🔍 ค้นหา Part No. / ชื่ออะไหล่..." style="flex:1;min-width:200px" oninput="debounceSearch('mPartSearch',renderMasterParts)">
               <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--g400);white-space:nowrap">
                 <input type="checkbox" id="mShowInactive" onchange="loadMasterParts()"> แสดงที่ปิดใช้งาน
               </label>
@@ -1259,7 +1263,7 @@ textarea.fc{min-height:70px;resize:vertical;}
         <div id="mTabVehicles" class="hidden">
           <div class="card" style="padding:14px 16px;margin-bottom:12px">
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-              <input class="fc" id="mVehSearch" placeholder="🔍 ค้นหา Serial / เลขรถ / ลูกค้า / สถานที่..." style="flex:1;min-width:200px" oninput="_mVehSelectAllFilteredMode=false;renderMasterVehicles()">
+              <input class="fc" id="mVehSearch" placeholder="🔍 ค้นหา Serial / เลขรถ / ลูกค้า / สถานที่..." style="flex:1;min-width:200px" oninput="_mVehSelectAllFilteredMode=false;debounceSearch('mVehSearch',renderMasterVehicles)">
               <select class="fc" id="mVehFilterBranch" style="width:auto" onchange="_mVehSelectAllFilteredMode=false;_mVehPage=0;renderMasterVehicles()"></select>
               <select class="fc" id="mVehFilterCareType" style="width:auto" onchange="_mVehSelectAllFilteredMode=false;_mVehPage=0;renderMasterVehicles()">
                 <option value="">— กรองตามประเภททั้งหมด —</option>
@@ -5382,6 +5386,22 @@ function onWarrantyPlanSearch(){
       if(cursorPos!==null) newInp.setSelectionRange(cursorPos, cursorPos);
     }
   }, 300);
+}
+// ── ตัวช่วยหน่วงเวลาค้นหาแบบทั่วไป (debounce) — ใช้ซ้ำได้กับทุกช่องค้นหาที่ต้อง re-render ตารางทั้งหมด
+// กันปัญหาเดียวกับด้านบน (โฟกัสหลุดทุกตัวอักษร) โดยไม่ต้องเขียนฟังก์ชันแยกซ้ำทุกหน้า ──
+var _genericSearchDebounceTimers = {};
+function debounceSearch(inputId, renderFn, delay){
+  var inp = document.getElementById(inputId);
+  var cursorPos = inp ? inp.selectionStart : null;
+  if(_genericSearchDebounceTimers[inputId]) clearTimeout(_genericSearchDebounceTimers[inputId]);
+  _genericSearchDebounceTimers[inputId] = setTimeout(function(){
+    renderFn();
+    var newInp = document.getElementById(inputId);
+    if(newInp){
+      newInp.focus();
+      if(cursorPos!==null) newInp.setSelectionRange(cursorPos, cursorPos);
+    }
+  }, delay||300);
 }
 // ── แปลงข้อมูลจากรายรถ (มี plans[] ซ้อนอยู่) ให้เป็น list แบนราบ 1 แถว = 1 นัด พร้อมข้อมูลรถติดไปด้วย ──
 // ── แปลงวันที่จาก Sheets ให้เป็นรูปแบบ 'YYYY-MM-DD' เสมอ ไม่ว่าค่าที่ได้มาจะเป็นรูปแบบไหน
