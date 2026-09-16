@@ -3510,7 +3510,9 @@ function loadRegionDashboard(){
   loadConcessionRevenueSection();
 }
 
-// ── กราฟแท่งเปรียบเทียบยี่ห้อ Club Car vs อื่นๆ + เช่า vs สัมปทาน แต่ละสาขา ──
+// ── กราฟแท่งเปรียบเทียบยี่ห้อจริง (ไม่ใช่แค่ Club Car vs อื่นๆ) + เช่า vs สัมปทาน แต่ละสาขา ──
+// ⚠️ แก้ไข: เดิมแยกแค่ "Club Car" กับ "อื่นๆ" รวมกันหมด มองไม่เห็นว่ามียี่ห้ออื่นอะไรบ้างกี่คัน
+// ตอนนี้หา 4 ยี่ห้อที่มีเยอะสุดทั่วทั้งเขต มาโชว์แยกกันชัดๆ ยี่ห้อที่เหลือ (นอกท็อป 4) ถึงจะรวมเป็น "อื่นๆ"
 function drawBrandChart(canvas, fleetData){
   var order = {PHUKET:0, SAMUI:1, HATYAI:2, KRABI:3};
   var list = fleetData.slice().sort(function(a,b){
@@ -3519,14 +3521,30 @@ function drawBrandChart(canvas, fleetData){
   });
   if(!list.length) return;
 
+  // ── หายี่ห้อที่มีจำนวนรวมมากสุด 4 อันดับแรกทั่วทั้งเขต ใช้เป็นหมวดคงที่สำหรับทุกสาขา ──
+  var globalBrandTotals = {};
+  list.forEach(function(b){
+    Object.keys(b.brandCounts||{}).forEach(function(brand){
+      globalBrandTotals[brand] = (globalBrandTotals[brand]||0) + b.brandCounts[brand];
+    });
+  });
+  var topBrands = Object.keys(globalBrandTotals).sort(function(a,b){ return globalBrandTotals[b]-globalBrandTotals[a]; }).slice(0,4);
+
   var dpr  = window.devicePixelRatio || 1;
   var cont = canvas.parentElement;
   var cssW = cont ? Math.max(cont.getBoundingClientRect().width||600, 300) : 600;
   var isNarrow = cssW < 480;
-  var groupW = isNarrow ? 70 : 96, barW = isNarrow ? 14 : 20, gap = isNarrow ? 3 : 5;
-  var PAD_TOP = 50, PAD_BOT = 50, PAD_L = 30;
+  var barCount = topBrands.length + 3; // ยี่ห้อท็อป 4 (หรือน้อยกว่า) + อื่นๆ + เช่า + สัมปทาน
+  var groupW = isNarrow ? (14*barCount+20) : (18*barCount+28), barW = isNarrow ? 11 : 15, gap = isNarrow ? 2 : 4;
+  var PAD_TOP = 50, PAD_BOT = 60, PAD_L = 30;
+  var brandColors = ['#3949ab','#00838f','#6d4c41','#5e35b1'];
   var maxVal = 1;
-  list.forEach(function(b){ maxVal = Math.max(maxVal, b.clubCar, b.nonClubCar, b.rented, b.concession); });
+  list.forEach(function(b){
+    topBrands.forEach(function(brand){ maxVal = Math.max(maxVal, b.brandCounts[brand]||0); });
+    var otherCount = Object.keys(b.brandCounts||{}).filter(function(br){ return topBrands.indexOf(br)<0; })
+      .reduce(function(s,br){ return s+b.brandCounts[br]; }, 0);
+    maxVal = Math.max(maxVal, otherCount, b.rented, b.concession);
+  });
   var chartH = isNarrow ? 130 : 170;
   var cssH = PAD_TOP + chartH + PAD_BOT;
   var cssWFinal = Math.max(cssW, PAD_L*2 + groupW*list.length + 40);
@@ -3540,16 +3558,16 @@ function drawBrandChart(canvas, fleetData){
   ctx.fillText('🚙 ยี่ห้อรถ และประเภทการใช้งาน แต่ละสาขา', cssWFinal/2, 22);
 
   var baseY = PAD_TOP + chartH;
-  var COLORS = { clubCar:'#3949ab', nonClubCar:'#8d6e63', rented:'#1565c0', concession:'#8e24aa' };
+  var COLORS = { rented:'#1565c0', concession:'#8e24aa', other:'#8d6e63' };
 
   list.forEach(function(b, gi){
     var gx = PAD_L + gi*groupW + groupW/2;
-    var bars = [
-      {v:b.clubCar, c:COLORS.clubCar, label:'CC'},
-      {v:b.nonClubCar, c:COLORS.nonClubCar, label:'อื่นๆ'},
-      {v:b.rented, c:COLORS.rented, label:'เช่า'},
-      {v:b.concession, c:COLORS.concession, label:'สัมปทาน'},
-    ];
+    var otherCount = Object.keys(b.brandCounts||{}).filter(function(br){ return topBrands.indexOf(br)<0; })
+      .reduce(function(s,br){ return s+b.brandCounts[br]; }, 0);
+    var bars = topBrands.map(function(brand, bi){ return {v:b.brandCounts[brand]||0, c:brandColors[bi]||'#999', label:brand}; });
+    bars.push({v:otherCount, c:COLORS.other, label:'อื่นๆ'});
+    bars.push({v:b.rented, c:COLORS.rented, label:'เช่า'});
+    bars.push({v:b.concession, c:COLORS.concession, label:'สัมปทาน'});
     var totalBarsW = bars.length*barW + (bars.length-1)*gap;
     var x0 = gx - totalBarsW/2;
     bars.forEach(function(bar, bi){
@@ -3558,7 +3576,7 @@ function drawBrandChart(canvas, fleetData){
       ctx.fillStyle = bar.c;
       _roundRect(ctx, x, baseY-h, barW, h, 3); ctx.fill();
       if(bar.v>0){
-        ctx.fillStyle = '#333'; ctx.font = (isNarrow?9:10)+'px Sarabun,Arial,sans-serif'; ctx.textAlign='center';
+        ctx.fillStyle = '#333'; ctx.font = (isNarrow?8:9)+'px Sarabun,Arial,sans-serif'; ctx.textAlign='center';
         ctx.fillText(bar.v, x+barW/2, baseY-h-4);
       }
     });
@@ -3572,17 +3590,17 @@ function drawBrandChart(canvas, fleetData){
 
   // Legend
   var legY = baseY + 34;
-  var legItems = [
-    {label:'Club Car', c:COLORS.clubCar}, {label:'ยี่ห้ออื่นๆ', c:COLORS.nonClubCar},
-    {label:'เช่า', c:COLORS.rented}, {label:'สัมปทาน', c:COLORS.concession},
-  ];
-  ctx.font = (isNarrow?10:11)+'px Sarabun,Arial,sans-serif'; ctx.textAlign='left';
-  var lx = PAD_L;
+  var legItems = topBrands.map(function(brand, bi){ return {label:brand, c:brandColors[bi]||'#999'}; })
+    .concat([{label:'อื่นๆ', c:COLORS.other}, {label:'เช่า', c:COLORS.rented}, {label:'สัมปทาน', c:COLORS.concession}]);
+  ctx.font = (isNarrow?9:10)+'px Sarabun,Arial,sans-serif'; ctx.textAlign='left';
+  var lx = PAD_L, ly = legY;
   legItems.forEach(function(it){
-    ctx.fillStyle = it.c; ctx.fillRect(lx, legY-8, 10, 10);
+    var w = ctx.measureText(it.label).width + (isNarrow?24:30);
+    if(lx + w > cssWFinal - 10){ lx = PAD_L; ly += 18; } // ขึ้นบรรทัดใหม่ถ้าล้นขอบ (ยี่ห้อเยอะขึ้นตามข้อมูลจริง)
+    ctx.fillStyle = it.c; ctx.fillRect(lx, ly-8, 10, 10);
     ctx.fillStyle = '#555';
-    ctx.fillText(it.label, lx+14, legY+1);
-    lx += ctx.measureText(it.label).width + (isNarrow?30:40);
+    ctx.fillText(it.label, lx+14, ly+1);
+    lx += w;
   });
 }
 
@@ -3833,16 +3851,49 @@ function renderFleetBoard(){
     html += '<div class="card" style="padding:12px 16px;margin-bottom:10px">'
       +'<div style="font-weight:700;color:var(--gd);font-size:13px;margin-bottom:8px">'+branchLabel(b.branch)+' ('+list.length+' คัน)</div>'
       +'<div class="tw"><table class="it" style="font-size:12px"><thead><tr>'
-      +'<th>Serial No.</th><th>ทะเบียน</th><th>รุ่น</th><th>สถานะ</th><th>ลูกค้า/สถานที่</th>'
+      +'<th>Serial No.</th><th>ทะเบียน</th><th>รุ่น</th><th>สถานะ</th><th>ลูกค้า/สถานที่</th><th>ราคาเช่า/เดือน</th>'
       +'</tr></thead><tbody>'
       + list.map(function(v){
           var chip = ({'ว่าง/พร้อมเช่า':'🟢','เช่าอยู่':'🔵','สัมปทาน':'🟣','ระหว่างซ่อม/PM':'🟡','ปิดใช้งาน':'⚫'})[v.status]||'';
+          // ── ราคาเช่า: แก้ไขตรงในตารางได้เลย (เฉพาะรถที่กำลังเช่าอยู่ — คันอื่นไม่เกี่ยว ไม่ต้องกรอก) ──
+          var priceCell = v.status==='เช่าอยู่'
+            ? '<span style="cursor:pointer;color:'+(v.rentalPrice?'#2d6a4f;font-weight:700':'var(--g400)')+'" onclick="openRentalPriceModal(\''+v.serialNo+'\','+(Number(v.rentalPrice)||0)+')">'
+              + (v.rentalPrice ? Number(v.rentalPrice).toLocaleString()+' บาท ✏️' : '— ยังไม่ระบุ ✏️') + '</span>'
+            : '<span style="color:var(--g400)">-</span>';
           return '<tr><td style="font-weight:700">'+v.serialNo+'</td><td>'+(v.carNo||'-')+'</td><td>'+(v.model||v.vehicleType||'-')+'</td>'
-            +'<td>'+chip+' '+v.status+'</td><td>'+(v.customer||v.location||'-')+'</td></tr>';
+            +'<td>'+chip+' '+v.status+'</td><td>'+(v.customer||v.location||'-')+'</td><td>'+priceCell+'</td></tr>';
         }).join('')
       + '</tbody></table></div></div>';
   });
   box.innerHTML = html || '<div class="card" style="padding:24px;text-align:center;color:var(--g400)">ไม่มีรถในสถานะนี้เลยค่ะ</div>';
+}
+// ── เปิดฟอร์มแก้ไขราคาเช่ารายเดือนของรถ 1 คัน ──
+function openRentalPriceModal(serialNo, currentPrice){
+  var html = ''
+    +'<div class="mo" id="rentalPriceModal" style="display:flex">'
+    +'<div class="mow" style="max-width:360px">'
+    +'<div class="moh"><div class="mot">💰 ราคาเช่า — '+serialNo+'</div><button class="mcl" onclick="closeModal(\'rentalPriceModal\')">✕</button></div>'
+    +'<div class="mob">'
+    +'<div class="fg"><label class="fl">ราคาเช่าต่อเดือน (บาท)</label><input class="fc" type="number" id="newRentalPrice" min="0" value="'+(currentPrice||'')+'" placeholder="0"></div>'
+    +'</div>'
+    +'<div class="mof" style="justify-content:space-between">'
+    +'<button class="btn bd" onclick="closeModal(\'rentalPriceModal\')">ยกเลิก</button>'
+    +'<button class="btn bgd" onclick="submitRentalPrice(\''+serialNo+'\')">บันทึก</button>'
+    +'</div></div></div>';
+  var old = document.getElementById('rentalPriceModal');
+  if(old) old.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function submitRentalPrice(serialNo){
+  var price = document.getElementById('newRentalPrice').value;
+  if(price===''){ toast('กรุณากรอกราคาเช่าค่ะ','error'); return; }
+  callAPI('setVehicleRentalPrice', {serialNo:serialNo, rentalPrice:Number(price)}).then(function(res){
+    toast(res.message||'', res.success?'success':'error');
+    if(res.success){
+      var m = document.getElementById('rentalPriceModal'); if(m) m.remove();
+      loadRegionDashboard();
+    }
+  });
 }
 
 // ── เปลี่ยนสถานะเช่า/ลูกค้าของรถ — ใช้ได้จากหน้าประวัติรถ ──
