@@ -3854,7 +3854,7 @@ function renderFleetBoard(){
       +'<th>Serial No.</th><th>ทะเบียน</th><th>รุ่น</th><th>สถานะ</th><th>ลูกค้า/สถานที่</th><th>ราคาเช่า/เดือน</th>'
       +'</tr></thead><tbody>'
       + list.map(function(v){
-          var chip = ({'ว่าง/พร้อมเช่า':'🟢','เช่าอยู่':'🔵','สัมปทาน':'🟣','ระหว่างซ่อม/PM':'🟡','ปิดใช้งาน':'⚫'})[v.status]||'';
+          var chip = ({'ว่าง/พร้อมเช่า':'🟢','เช่าอยู่':'🔵','สัมปทาน':'🟣','ระหว่างซ่อม/PM':'🟡','ปิดใช้งาน':'⚫','ขายขาด (อยู่ในประกัน)':'🔧'})[v.status]||'';
           // ── ราคาเช่า: แก้ไขตรงในตารางได้เลย (เฉพาะรถที่กำลังเช่าอยู่ — คันอื่นไม่เกี่ยว ไม่ต้องกรอก) ──
           var priceCell = v.status==='เช่าอยู่'
             ? '<span style="cursor:pointer;color:'+(v.rentalPrice?'#2d6a4f;font-weight:700':'var(--g400)')+'" onclick="openRentalPriceModal(\''+v.serialNo+'\','+(Number(v.rentalPrice)||0)+')">'
@@ -3909,9 +3909,23 @@ function openChangeRentalStatusModal(serialNo, currentStatus, currentCustomer){
     +'<option value="สัมปทาน"'+(currentStatus==='สัมปทาน'?' selected':'')+'>🟣 สัมปทาน</option>'
     +'<option value="ระหว่างซ่อม/PM"'+(currentStatus==='ระหว่างซ่อม/PM'?' selected':'')+'>🟡 ระหว่างซ่อม/PM</option>'
     +'<option value="ปิดใช้งาน"'+(currentStatus==='ปิดใช้งาน'?' selected':'')+'>⚫ ปิดใช้งาน</option>'
+    +'<option value="ขายขาด (อยู่ในประกัน)"'+(currentStatus==='ขายขาด (อยู่ในประกัน)'?' selected':'')+'>🔧 ขายขาด (อยู่ในประกัน)</option>'
     +'</select></div>'
-    +'<div class="fg" id="rentalCustFg" style="'+(['เช่าอยู่','สัมปทาน'].indexOf(currentStatus)>=0?'':'display:none')+'"><label class="fl" id="rentalCustLabel">'+(currentStatus==='สัมปทาน'?'ชื่อสนาม/สถานที่สัมปทาน':'ชื่อลูกค้า')+'</label>'
+    +'<div class="fg" id="rentalCustFg" style="'+(['เช่าอยู่','สัมปทาน','ขายขาด (อยู่ในประกัน)'].indexOf(currentStatus)>=0?'':'display:none')+'"><label class="fl" id="rentalCustLabel">'+(currentStatus==='สัมปทาน'?'ชื่อสนาม/สถานที่สัมปทาน':(currentStatus==='ขายขาด (อยู่ในประกัน)'?'ชื่อลูกค้าที่ซื้อรถ':'ชื่อลูกค้า'))+'</label>'
     +'<input class="fc" id="newRentalCustomer" value="'+(currentCustomer||'').replace(/"/g,'&quot;')+'" placeholder="ชื่อลูกค้า/โรงแรม/สนามกอล์ฟ/โครงการ"></div>'
+    // ── ฟิลด์เพิ่มเติมเฉพาะรถ "ขายขาด (อยู่ในประกัน)" — ตามเงื่อนไขใบรับประกัน SD-MK-009 ──
+    +'<div id="soldWarrantyFg" style="'+(currentStatus==='ขายขาด (อยู่ในประกัน)'?'':'display:none')+'">'
+      +'<div style="display:flex;gap:8px">'
+        +'<div class="fg" style="flex:1"><label class="fl">วันเริ่มประกัน</label><input class="fc" type="date" id="warrantyStartDate"></div>'
+        +'<div class="fg" style="flex:1"><label class="fl">วันสิ้นสุดประกัน</label><input class="fc" type="date" id="warrantyEndDate"></div>'
+      +'</div>'
+      +'<div style="display:flex;gap:8px">'
+        +'<div class="fg" style="flex:1"><label class="fl">Odometer ที่รับประกัน (กม./ไมล์)</label><input class="fc" type="number" id="warrantyOdometerLimit" placeholder="เช่น 20000"></div>'
+        +'<div class="fg" style="flex:1"><label class="fl">Amp Hours ที่รับประกัน</label><input class="fc" type="number" id="warrantyAmpHoursLimit" placeholder="เช่น 20000"></div>'
+      +'</div>'
+      +'<div class="fg"><label class="fl">รอบตรวจเช็คที่ตกลงกับลูกค้า (เดือน)</label><input class="fc" type="number" id="pmIntervalMonths" placeholder="เช่น 4 หรือ 6" min="1"></div>'
+      +'<div style="font-size:11px;color:var(--g400);margin:-6px 0 8px">💡 รถกลุ่มนี้จะไม่นับรวมในภาพรวมรถเช่า/สัมปทานของบริษัท (ไม่ใช่ทรัพย์สินบริษัทแล้ว) แต่ยังเข้าคิวตรวจ PM ตามรอบที่กำหนดนี้ได้</div>'
+    +'</div>'
     +'<div class="fg"><label class="fl">หมายเหตุ (ถ้ามี)</label><input class="fc" id="newRentalNote" placeholder="เช่น ย้ายจากสาขาอื่น, ลูกค้าเปลี่ยนสัญญา"></div>'
     +'</div>'
     +'<div class="mof" style="justify-content:space-between">'
@@ -3926,16 +3940,33 @@ function _toggleRentalCustField(){
   var sel = document.getElementById('newRentalStatus');
   var fg = document.getElementById('rentalCustFg');
   var lbl = document.getElementById('rentalCustLabel');
-  var show = ['เช่าอยู่','สัมปทาน'].indexOf(sel.value)>=0;
+  var soldFg = document.getElementById('soldWarrantyFg');
+  var show = ['เช่าอยู่','สัมปทาน','ขายขาด (อยู่ในประกัน)'].indexOf(sel.value)>=0;
   if(fg) fg.style.display = show ? '' : 'none';
-  if(lbl) lbl.textContent = (sel.value==='สัมปทาน') ? 'ชื่อสนาม/สถานที่สัมปทาน' : 'ชื่อลูกค้า';
+  if(lbl) lbl.textContent = (sel.value==='สัมปทาน') ? 'ชื่อสนาม/สถานที่สัมปทาน' : (sel.value==='ขายขาด (อยู่ในประกัน)' ? 'ชื่อลูกค้าที่ซื้อรถ' : 'ชื่อลูกค้า');
+  if(soldFg) soldFg.style.display = (sel.value==='ขายขาด (อยู่ในประกัน)') ? '' : 'none';
 }
 function submitRentalStatusChange(serialNo){
   var newStatus = document.getElementById('newRentalStatus').value;
   var newCustomer = document.getElementById('newRentalCustomer') ? document.getElementById('newRentalCustomer').value.trim() : '';
   var note = document.getElementById('newRentalNote').value.trim();
-  if(['เช่าอยู่','สัมปทาน'].indexOf(newStatus)>=0 && !newCustomer){ toast((newStatus==='สัมปทาน'?'กรุณาระบุชื่อสนาม/สถานที่สัมปทานค่ะ':'กรุณาระบุชื่อลูกค้าค่ะ'),'error'); return; }
-  callAPI('setVehicleRentalStatus', {serialNo:serialNo, newStatus:newStatus, newCustomer:newCustomer, note:note}).then(function(res){
+  if(['เช่าอยู่','สัมปทาน','ขายขาด (อยู่ในประกัน)'].indexOf(newStatus)>=0 && !newCustomer){
+    toast((newStatus==='สัมปทาน'?'กรุณาระบุชื่อสนาม/สถานที่สัมปทานค่ะ':'กรุณาระบุชื่อลูกค้าค่ะ'),'error'); return;
+  }
+  var payload = {serialNo:serialNo, newStatus:newStatus, newCustomer:newCustomer, note:note};
+  if(newStatus === 'ขายขาด (อยู่ในประกัน)'){
+    var wStart = document.getElementById('warrantyStartDate').value;
+    var wEnd = document.getElementById('warrantyEndDate').value;
+    var pmInterval = document.getElementById('pmIntervalMonths').value;
+    if(!wStart || !wEnd){ toast('กรุณาระบุวันเริ่มและวันสิ้นสุดการรับประกันค่ะ','error'); return; }
+    if(!pmInterval){ toast('กรุณาระบุรอบตรวจเช็ค (จำนวนเดือน) ค่ะ','error'); return; }
+    payload.warrantyStartDate = wStart;
+    payload.warrantyEndDate = wEnd;
+    payload.warrantyOdometerLimit = document.getElementById('warrantyOdometerLimit').value;
+    payload.warrantyAmpHoursLimit = document.getElementById('warrantyAmpHoursLimit').value;
+    payload.pmIntervalMonths = pmInterval;
+  }
+  callAPI('setVehicleRentalStatus', payload).then(function(res){
     toast(res.message||'', res.success?'success':'error');
     if(res.success){
       closeModal('rentalStatusModal');
@@ -13265,7 +13296,7 @@ function selectVH(serialNo){
           // ── สถานะเช่าปัจจุบัน + ปุ่มเปลี่ยนสถานะ ──
           +'<div style="grid-column:1/-1;border-top:1px solid #c5cae9;padding-top:8px;margin-top:2px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
             +'<div><span style="color:var(--g400);font-size:11px">สถานะเช่า</span><div style="font-weight:700;font-size:13px">'
-              +(({'ว่าง/พร้อมเช่า':'🟢','เช่าอยู่':'🔵','สัมปทาน':'🟣','ระหว่างซ่อม/PM':'🟡','ปิดใช้งาน':'⚫'})[car.RentalStatus]||'')+' '+(car.RentalStatus||'ว่าง/พร้อมเช่า')+'</div></div>'
+              +(({'ว่าง/พร้อมเช่า':'🟢','เช่าอยู่':'🔵','สัมปทาน':'🟣','ระหว่างซ่อม/PM':'🟡','ปิดใช้งาน':'⚫','ขายขาด (อยู่ในประกัน)':'🔧'})[car.RentalStatus]||'')+' '+(car.RentalStatus||'ว่าง/พร้อมเช่า')+'</div></div>'
             +(CU && ['STOCK','SUPERVISOR','MANAGER','ADMIN'].indexOf(CU.role)>=0
               ? '<button class="btn bo bsm" onclick="openChangeRentalStatusModal(\''+car.SerialNo+'\',\''+(car.RentalStatus||'ว่าง/พร้อมเช่า')+'\',\''+(car.Customer||'').replace(/'/g,"\\'")+'\')">🔄 เปลี่ยนสถานะ</button>'
               : '')
@@ -13273,6 +13304,18 @@ function selectVH(serialNo){
               ? ' <button class="btn bo bsm" style="border-color:#00695c;color:#00695c" onclick="openTransferBranchModal(\''+car.SerialNo+'\',\''+(car.Branch||'PHUKET')+'\')">🚚 ย้ายสาขา</button>'
               : '')
           +'</div>'
+          // ── รายละเอียดประกัน — แสดงเฉพาะรถสถานะ "ขายขาด (อยู่ในประกัน)" ──
+          +(car.RentalStatus==='ขายขาด (อยู่ในประกัน)' ? (
+            '<div style="grid-column:1/-1;background:#fff3e0;border-radius:8px;padding:10px 12px;margin-top:2px">'
+            +'<div style="font-weight:700;color:#e65100;font-size:12px;margin-bottom:6px">🔧 รายละเอียดการรับประกัน</div>'
+            +'<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;font-size:12px">'
+              +'<div>เริ่มประกัน: <strong>'+(car.WarrantyStartDate||'-')+'</strong></div>'
+              +'<div>สิ้นสุดประกัน: <strong>'+(car.WarrantyEndDate||'-')+'</strong></div>'
+              +'<div>Odometer ที่รับประกัน: <strong>'+(car.WarrantyOdometerLimit||'-')+'</strong></div>'
+              +'<div>Amp Hours ที่รับประกัน: <strong>'+(car.WarrantyAmpHoursLimit||'-')+'</strong></div>'
+              +'<div style="grid-column:1/-1">รอบตรวจเช็ค: <strong>ทุก '+(car.PMIntervalMonths||'-')+' เดือน</strong> (ไม่นับรวมในภาพรวมรถเช่า/สัมปทานของบริษัท)</div>'
+            +'</div></div>'
+          ) : '')
           // ── ยี่ห้อ (Brand) — Club Car / อื่นๆ ──
           +'<div style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
             +'<div><span style="color:var(--g400);font-size:11px">ยี่ห้อ</span><div style="font-weight:600;font-size:13px" id="vhBrandDisplay">'+(car.Brand||'ยังไม่ระบุ')+'</div></div>'
