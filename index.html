@@ -13044,7 +13044,8 @@ function saveNewCustomer(){
 function loadVehiclesDB(){
   var now = Date.now();
   if(_vehiclesDB.length && (now - _vhDBLastFetch) < _VH_DB_TTL) return Promise.resolve(_vehiclesDB);
-  return callAPI('getVehicles',{}).then(function(res){
+  // ⚠️ แก้บั๊ก: เดิมไม่ส่ง branch ไปเลย ทำให้ผจก.เขตเห็นรถทุกสาขาตลอด ไม่ว่าจะกดสลับสาขาไหนก็ตาม
+  return callAPI('getVehicles',{branch: branchParam()}).then(function(res){
     _vehiclesDB = (res.data||[]).map(function(v){
       return {
         SerialNo:    String(v.SerialNo||'').trim(),
