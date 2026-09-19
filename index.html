@@ -2620,8 +2620,19 @@ function callAPI(action, data, userEmail){
   return fetch(SCRIPT_URL, {
     method:'POST',
     body:JSON.stringify({action:action, data:payload, userEmail:email})
-  }).then(function(r){ return r.json(); }).catch(function(e){
-    toast('Server error: '+e.message,'error');
+  }).then(function(r){
+    if(!r.ok){ throw new Error('เซิร์ฟเวอร์ตอบกลับผิดปกติ (HTTP '+r.status+')'); }
+    return r.text().then(function(txt){
+      try { return JSON.parse(txt); }
+      catch(parseErr){
+        // ⚠️ แก้ปัญหา error งงๆ "Unexpected token '<'": ปกติแปลว่า Apps Script ตอบกลับเป็นหน้า HTML
+        // (มักเกิดจากรันนานเกิน/ชนโควต้า/error ที่ไม่ได้ดักไว้) แทนที่จะเป็น JSON ตามปกติ
+        console.error('callAPI non-JSON response for action="'+action+'":', txt.slice(0,500));
+        throw new Error('เซิร์ฟเวอร์ประมวลผลไม่สำเร็จ (การเรียก "'+action+'" อาจใช้เวลานานเกินไป หรือมีปัญหาชั่วคราว) กรุณาลองใหม่อีกครั้งค่ะ');
+      }
+    });
+  }).catch(function(e){
+    toast(e.message,'error');
     return {success:false};
   });
 }
@@ -7033,7 +7044,7 @@ function renderMasterVehicles(){
         +'</select></td>'
         +'<td style="white-space:nowrap">'
           + (canEditThis
-            ? '<button class="btn bo bsm m-veh-edit" data-sn="'+snEsc+'">✏️</button> '
+            ? '<button class="btn bo bsm m-veh-goto" data-sn="'+snEsc+'" title="แก้ไขข้อมูลรถคันนี้ได้ที่หน้าประวัติรถ">🔍 ดูในประวัติรถ</button> '
               +(inactive
                 ? '<button class="btn bp bsm m-veh-on" data-sn="'+snEsc+'">♻️ เปิด</button>'
                 : '<button class="btn bd bsm m-veh-off" data-sn="'+snEsc+'">🚫 ปิด</button>')
@@ -7042,8 +7053,17 @@ function renderMasterVehicles(){
     }).join('')
     +'</tbody></table></div>';
 
-  el.querySelectorAll('.m-veh-edit').forEach(function(b){
-    b.onclick = function(){ openVehicleEditModal(decodeURIComponent(this.dataset.sn)); };
+  // ⚠️ เปลี่ยนจากการเปิด modal แก้ไขในหน้านี้ เป็นลิงก์ไปแก้ที่หน้า "ประวัติรถ" แทน (รวมจุดแก้ไขไว้ที่เดียว กันสับสน)
+  el.querySelectorAll('.m-veh-goto').forEach(function(b){
+    b.onclick = function(){
+      var sn = decodeURIComponent(this.dataset.sn);
+      go('vehiclehistory');
+      setTimeout(function(){
+        var inp = document.getElementById('vhSearch');
+        if(inp) inp.value = sn;
+        if(typeof selectVH==='function') selectVH(sn);
+      }, 150);
+    };
   });
   el.querySelectorAll('.m-veh-off').forEach(function(b){
     b.onclick = function(){ toggleVehicleStatus(decodeURIComponent(this.dataset.sn), 'Inactive'); };
@@ -7097,10 +7117,7 @@ function setVehicleCareType(snEsc, careType){
   var sn = decodeURIComponent(snEsc);
   callAPI('setVehicleCareType',{serialNo:sn, careType:careType}).then(function(res){
     toast(res.message, res.success?'success':'error');
-    if(res.success){
-      var v = _mVehicles.find(function(x){ return x.SerialNo===sn; });
-      if(v) v.CareType = careType;
-    }
+    if(res.success) _refreshVehicleViewsAfterEdit(sn);
   });
 }
 
@@ -7112,12 +7129,15 @@ function toggleVehicleStatus(serialNo, status){
   toast('กำลังบันทึก...','info');
   callAPI('setVehicleStatus', {serialNo:serialNo, status:status}).then(function(res){
     toast(res.message, res.success?'success':'error');
-    if(res.success) loadMasterVehicles();
+    if(res.success) _refreshVehicleViewsAfterEdit(serialNo);
   });
 }
 
 function openVehicleEditModal(serialNo){
-  var v = _mVehicles.find(function(x){ return x.SerialNo===serialNo; }) || {};
+  // ⚠️ แก้: เดิมหาได้แค่จาก _mVehicles (หน้า "จัดการอะไหล่/รถ" เท่านั้น) — ตอนนี้เรียกใช้จากหน้า "ประวัติรถ" ได้ด้วย
+  var v = (typeof _mVehicles!=='undefined' && _mVehicles.find(function(x){ return x.SerialNo===serialNo; }))
+       || _vehiclesDB.find(function(x){ return x.SerialNo===serialNo; })
+       || {};
   var esc = function(x){ return String(x==null?'':x).replace(/"/g,'&quot;'); };
 
   var old = document.getElementById('vehEditModal');
@@ -7172,7 +7192,7 @@ function saveVehicleMaster(){
     toast(res.message, res.success?'success':'error');
     if(res.success){
       var m = document.getElementById('vehEditModal'); if(m) m.remove();
-      loadMasterVehicles();
+      _refreshVehicleViewsAfterEdit(data.serialNo);
     }
   });
 }
@@ -12990,6 +13010,16 @@ var _scAllEntries = [];      // entries ทั้งหมดของ part น�
 // VEHICLE HISTORY — ประวัติรถ
 // ════════════════════════════════════════════════════════════════
 var _vehiclesDB = [];      // cache รายการรถ
+
+// ── ตัวช่วย: หลังแก้ไขข้อมูลรถ (ไม่ว่าจะแก้จากหน้า "ประวัติรถ" หรือ "จัดการอะไหล่/รถ")
+// ให้เคลียร์ cache ทั้ง 2 ชุด แล้ว refresh หน้าที่กำลังเปิดดูอยู่จริงให้ตรงกันเสมอ ──
+function _refreshVehicleViewsAfterEdit(serialNo){
+  if(typeof _mVehicles!=='undefined') _mVehicles = [];
+  _vehiclesDB = []; _vhDBLastFetch = 0;
+  if(typeof curPage!=='undefined' && curPage==='master' && typeof loadMasterVehicles==='function') loadMasterVehicles();
+  if(typeof curPage!=='undefined' && curPage==='vehiclehistory' && typeof _vhCurrentSerial!=='undefined'
+     && _vhCurrentSerial===serialNo && typeof selectVH==='function') selectVH(serialNo);
+}
 var _vhCurrentSerial = ''; // serial ที่กำลังดู
 var _vhAssignItems = [];   // รายการระบุรถตอนเคลียร์
 var _vhDBLastFetch = 0;    // timestamp ที่โหลดล่าสุด
@@ -13064,7 +13094,7 @@ function loadVehiclesDB(){
   // ⚠️ แก้บั๊ก: เดิมไม่ส่ง branch ไปเลย ทำให้ผจก.เขตเห็นรถทุกสาขาตลอด ไม่ว่าจะกดสลับสาขาไหนก็ตาม
   return callAPI('getVehicles',{branch: branchParam()}).then(function(res){
     _vehiclesDB = (res.data||[]).map(function(v){
-      return {
+      var trimmed = {
         SerialNo:    String(v.SerialNo||'').trim(),
         VehicleType: String(v.VehicleType||'').trim(),
         CarNo:       String(v.CarNo||'').trim(),
@@ -13076,6 +13106,10 @@ function loadVehiclesDB(){
         Note:        String(v.Note||'').trim(),
         Period:      String(v.Period||'').trim(),
       };
+      // ⚠️ แก้บั๊ก: เดิม whitelist แค่ 10 ฟิลด์ด้านบน ทำให้ RentalStatus/Brand/Branch/Warranty*
+      // หายไปหมด (ว่างเปล่าเสมอ ไม่ว่าข้อมูลจริงในชีทจะมีหรือไม่) เพราะหน้ารายละเอียดรถอ้างอิงฟิลด์เหล่านี้ตรงๆ
+      // แก้โดยคง object เดิมทุกฟิลด์ไว้ (Object.assign) แล้วค่อยทับด้วยเวอร์ชัน trim แล้วของ 10 ฟิลด์หลัก
+      return Object.assign({}, v, trimmed);
     }).filter(function(v){ return v.SerialNo; });
     _vhDBLastFetch = Date.now();
     return _vehiclesDB;
@@ -13357,6 +13391,30 @@ function selectVH(serialNo){
             +'<span style="color:var(--g400);font-size:11px">📍 สถานที่/โครงการ</span>'
             +'<div style="font-weight:700;color:#283593;font-size:13px">'+(car.Location||'—')+'</div>'
           +'</div>'
+          // ── รวมมาจากหน้า "จัดการอะไหล่/รถ": แก้ไขข้อมูลพื้นฐาน + ประเภทดูแล + สถานะใช้งาน (ตอนนี้แก้ได้ที่นี่ที่เดียว) ──
+          +(car && CU && ['STOCK','SUPERVISOR','MANAGER','ADMIN'].indexOf(CU.role)>=0 ? (
+            '<div style="grid-column:1/-1;border-top:1px solid #c5cae9;padding-top:8px;margin-top:2px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+              +'<span style="color:var(--g400);font-size:11px">✏️ รุ่น/ลูกค้า/สถานที่/ระยะสัญญา/หมายเหตุ</span>'
+              +'<button class="btn bo bsm" onclick="openVehicleEditModal(\''+car.SerialNo+'\')">✏️ แก้ไขข้อมูลรถ</button>'
+            +'</div>'
+            +'<div style="grid-column:1/-1;border-top:1px solid #c5cae9;padding-top:8px;margin-top:2px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+              +'<span style="color:var(--g400);font-size:11px">ประเภทการดูแล</span>'
+              +'<select class="fc" style="font-size:11px;padding:4px" onchange="setVehicleCareType(\''+encodeURIComponent(car.SerialNo)+'\',this.value)">'
+                +['','Rental','Concession','Warranty','Other'].map(function(o){
+                    var labels={'':'ไม่มี','Rental':'เช่า (PM ทุกเดือน)','Concession':'สัมปทาน (PM ทุกเดือน)','Warranty':'Warranty (ตารางเฉพาะ)','Other':'อื่นๆ'};
+                    return '<option value="'+o+'" '+(String(car.CareType||'')===o?'selected':'')+'>'+labels[o]+'</option>';
+                  }).join('')
+              +'</select>'
+            +'</div>'
+            +(['MANAGER','ADMIN'].indexOf(CU.role)>=0 ? (
+              '<div style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:center">'
+                +'<span style="color:var(--g400);font-size:11px">สถานะใช้งาน</span>'
+                +(String(car.Status||'Active').toLowerCase()==='inactive'
+                  ? '<button class="btn bp bsm" onclick="toggleVehicleStatus(\''+car.SerialNo+'\',\'Active\')">♻️ เปิดใช้งาน</button>'
+                  : '<button class="btn bd bsm" onclick="toggleVehicleStatus(\''+car.SerialNo+'\',\'Inactive\')">🚫 ปิดใช้งาน</button>')
+              +'</div>'
+            ) : '')
+          ) : '')
           // ── Period ──
           +(periodHtml ? '<div style="grid-column:1/-1;background:#fff3e0;border-radius:6px;padding:6px 10px">'+periodHtml+'</div>' : '')
           +(car.Note ? '<div style="grid-column:1/-1;font-size:12px;color:var(--g400)">📝 '+car.Note+'</div>' : '')
