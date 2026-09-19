@@ -6539,6 +6539,22 @@ function printPMCheckReport(checkId){
           }).join('') + '</tbody></table></div>'
       : '<div style="margin-top:14px;font-size:11px;color:#2d6a4f;font-weight:700">✅ ไม่พบปัญหาในรอบตรวจนี้</div>';
 
+    // ⚠️ แก้บั๊ก: เดิมเก็บรูปที่ช่างถ่ายไว้ในระบบแล้ว (PhotoUrls) แต่หน้าพรีวิว/พิมพ์ไม่เคยดึงมาแสดงเลย
+    var itemsWithPhotos = visit.items.filter(function(it){ return it.PhotoUrls; });
+    var photoHtml = itemsWithPhotos.length
+      ? '<div style="margin-top:14px;page-break-inside:avoid"><div style="font-weight:700;font-size:11px;margin-bottom:6px">📷 รูปภาพประกอบการตรวจเช็ค</div>'
+        + itemsWithPhotos.map(function(it){
+            var urls = String(it.PhotoUrls||'').split(',').map(function(u){ return u.trim(); }).filter(Boolean);
+            if(!urls.length) return '';
+            var imgs = urls.map(function(u){
+              return '<img src="'+u+'" style="width:110px;height:110px;object-fit:cover;border:1px solid #999;border-radius:4px;margin:2px" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'inline-block\'">'
+                +'<span style="display:none;width:110px;height:110px;border:1px dashed #c00;color:#c00;font-size:9px;text-align:center;align-items:center;justify-content:center;margin:2px">โหลดรูปไม่ได้</span>';
+            }).join('');
+            return '<div style="margin-bottom:8px"><div style="font-size:10px;color:#555;margin-bottom:3px">'+(it.ItemLabel||it.ItemKey||'-')+'</div><div style="display:flex;flex-wrap:wrap">'+imgs+'</div></div>';
+          }).join('')
+        + '</div>'
+      : '';
+
     var sigHtml = function(url, name){
       if(url) return '<img src="'+url+'" style="max-height:50px;max-width:150px;object-fit:contain">';
       if(name) return '<div style="font-size:11px;color:#666">'+name+'</div>';
@@ -6573,6 +6589,7 @@ function printPMCheckReport(checkId){
       +'</table>'
       +'<div style="font-size:9px;margin-top:4px">✓ = ปกติ/Normal &nbsp;&nbsp; O = แก้ไข/Corrective &nbsp;&nbsp; X = ชำรุด/Damaged</div>'
       + defectHtml
+      + photoHtml
       +'<table class="hdr-tbl" style="width:100%;margin-top:14px">'
         +'<tr><td style="width:50%"><b>รุ่นแบตเตอรี่:</b> '+(visit.batteryModel||'-')+'</td><td><b>ปี/ซีรี่แบตเตอรี่:</b> '+(visit.batteryYearSeries||'-')+'</td></tr>'
       +'</table>'
