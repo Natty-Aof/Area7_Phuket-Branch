@@ -3983,6 +3983,9 @@ function submitRentalStatusChange(serialNo){
       closeModal('rentalStatusModal');
       var m = document.getElementById('rentalStatusModal'); if(m) m.remove();
       if(typeof loadRentalHistoryForSerial==='function') loadRentalHistoryForSerial(serialNo);
+      // ⚠️ แก้บั๊ก: เดิมรีเฟรชแค่ตาราง "ประวัติลูกค้า" ด้านล่าง แต่การ์ดสถานะเช่าด้านบนไม่ถูกรีเฟรชเลย
+      // ยังโชว์ค่าเก่าจากแคชค้างอยู่ ทั้งที่บันทึกสำเร็จแล้วจริงๆ
+      _refreshVehicleViewsAfterEdit(serialNo);
     }
   });
 }
