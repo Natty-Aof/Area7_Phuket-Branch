@@ -3865,7 +3865,7 @@ function renderFleetBoard(){
       +'<th>Serial No.</th><th>ทะเบียน</th><th>รุ่น</th><th>สถานะ</th><th>ลูกค้า/สถานที่</th><th>ราคาเช่า/เดือน</th>'
       +'</tr></thead><tbody>'
       + list.map(function(v){
-          var chip = ({'ว่าง/พร้อมเช่า':'🟢','เช่าอยู่':'🔵','สัมปทาน':'🟣','ระหว่างซ่อม/PM':'🟡','ปิดใช้งาน':'⚫','ขายขาด (อยู่ในประกัน)':'🔧'})[v.status]||'';
+          var chip = ({'ว่าง/พร้อมเช่า':'🟢','เช่าอยู่':'🔵','สัมปทาน':'🟣','ระหว่างซ่อม/PM':'🟡','ปิดใช้งาน':'⚫','ขายขาด (อยู่ในประกัน)':'🔧','DEMO ทดลองขับ':'🚙','จอดโชว์':'🏪'})[v.status]||'';
           // ── ราคาเช่า: แก้ไขตรงในตารางได้เลย (เฉพาะรถที่กำลังเช่าอยู่ — คันอื่นไม่เกี่ยว ไม่ต้องกรอก) ──
           var priceCell = v.status==='เช่าอยู่'
             ? '<span style="cursor:pointer;color:'+(v.rentalPrice?'#2d6a4f;font-weight:700':'var(--g400)')+'" onclick="openRentalPriceModal(\''+v.serialNo+'\','+(Number(v.rentalPrice)||0)+')">'
@@ -3910,7 +3910,7 @@ function submitRentalPrice(serialNo){
 // ── เปลี่ยนสถานะเช่า/ลูกค้าของรถ — ใช้ได้จากหน้าประวัติรถ ──
 function openChangeRentalStatusModal(serialNo, currentStatus, currentCustomer){
   var html = ''
-    +'<div class="mo" id="rentalStatusModal" style="display:flex">'
+    +'<div class="mo" id="rentalStatusModal" style="display:flex;z-index:3500">'
     +'<div class="mow" style="max-width:420px">'
     +'<div class="moh"><div class="mot">🚗 เปลี่ยนสถานะรถ — '+serialNo+'</div><button class="mcl" onclick="closeModal(\'rentalStatusModal\')">✕</button></div>'
     +'<div class="mob">'
@@ -3921,6 +3921,8 @@ function openChangeRentalStatusModal(serialNo, currentStatus, currentCustomer){
     +'<option value="ระหว่างซ่อม/PM"'+(currentStatus==='ระหว่างซ่อม/PM'?' selected':'')+'>🟡 ระหว่างซ่อม/PM</option>'
     +'<option value="ปิดใช้งาน"'+(currentStatus==='ปิดใช้งาน'?' selected':'')+'>⚫ ปิดใช้งาน</option>'
     +'<option value="ขายขาด (อยู่ในประกัน)"'+(currentStatus==='ขายขาด (อยู่ในประกัน)'?' selected':'')+'>🔧 ขายขาด (อยู่ในประกัน)</option>'
+    +'<option value="DEMO ทดลองขับ"'+(currentStatus==='DEMO ทดลองขับ'?' selected':'')+'>🚙 DEMO ทดลองขับ</option>'
+    +'<option value="จอดโชว์"'+(currentStatus==='จอดโชว์'?' selected':'')+'>🏪 จอดโชว์</option>'
     +'</select></div>'
     +'<div class="fg" id="rentalCustFg" style="'+(['เช่าอยู่','สัมปทาน','ขายขาด (อยู่ในประกัน)'].indexOf(currentStatus)>=0?'':'display:none')+'"><label class="fl" id="rentalCustLabel">'+(currentStatus==='สัมปทาน'?'ชื่อสนาม/สถานที่สัมปทาน':(currentStatus==='ขายขาด (อยู่ในประกัน)'?'ชื่อลูกค้าที่ซื้อรถ':'ชื่อลูกค้า'))+'</label>'
     +'<input class="fc" id="newRentalCustomer" value="'+(currentCustomer||'').replace(/"/g,'&quot;')+'" placeholder="ชื่อลูกค้า/โรงแรม/สนามกอล์ฟ/โครงการ"></div>'
@@ -4011,7 +4013,7 @@ function openTransferBranchModal(serialNo, fromBranch){
   var opts = allBranches.filter(function(b){ return b[0]!==fromBranch; })
     .map(function(b){ return '<option value="'+b[0]+'">'+b[1]+'</option>'; }).join('');
   var html = ''
-    +'<div class="mo" id="transferBranchModal" style="display:flex">'
+    +'<div class="mo" id="transferBranchModal" style="display:flex;z-index:3500">'
     +'<div class="mow" style="max-width:420px">'
     +'<div class="moh"><div class="mot">🚚 ย้ายสาขา — '+serialNo+'</div><button class="mcl" onclick="closeModal(\'transferBranchModal\')">✕</button></div>'
     +'<div class="mob">'
@@ -4062,7 +4064,7 @@ function loadBranchHistoryForSerial(serialNo){
 // ── แก้ยี่ห้อรถ (Brand) ──
 function openEditBrandModal(serialNo, currentBrand){
   var html = ''
-    +'<div class="mo" id="brandModal" style="display:flex">'
+    +'<div class="mo" id="brandModal" style="display:flex;z-index:3500">'
     +'<div class="mow" style="max-width:360px">'
     +'<div class="moh"><div class="mot">✏️ ยี่ห้อรถ — '+serialNo+'</div><button class="mcl" onclick="closeModal(\'brandModal\')">✕</button></div>'
     +'<div class="mob">'
@@ -4094,7 +4096,7 @@ function openVehicleRevenueModal(serialNo){
   var now = new Date();
   var defaultYM = now.getFullYear()+'-'+('0'+(now.getMonth()+1)).slice(-2);
   var html = ''
-    +'<div class="mo" id="vhRevenueModal" style="display:flex">'
+    +'<div class="mo" id="vhRevenueModal" style="display:flex;z-index:3500">'
     +'<div class="mow" style="max-width:360px">'
     +'<div class="moh"><div class="mot">💰 กรอกรายได้ — '+serialNo+'</div><button class="mcl" onclick="closeModal(\'vhRevenueModal\')">✕</button></div>'
     +'<div class="mob">'
@@ -7170,6 +7172,28 @@ function openVehicleEditModal(serialNo){
         +'</div>'
         +'<div class="fg"><label class="fl">ระยะเวลา</label><input class="fc" id="vePeriod" value="'+esc(v.Period)+'"></div>'
         +'<div class="fg"><label class="fl">หมายเหตุ</label><input class="fc" id="veNote" value="'+esc(v.Note)+'"></div>'
+        // ── รวมทุกจุดที่เคย "แก้ไข/กรอกข้อมูล" ของหน้าประวัติรถมาไว้ที่นี่ ──
+        +'<div style="border-top:1px solid #eee;margin:12px 0 8px;padding-top:10px;font-size:12px;font-weight:700;color:var(--gd)">การจัดการอื่นๆ</div>'
+        +'<div class="fg" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+          +'<div><span class="fl" style="margin:0">สถานะเช่า</span><div style="font-weight:700;font-size:13px">'+(v.RentalStatus||'ว่าง/พร้อมเช่า')+'</div></div>'
+          +'<button class="btn bo bsm" onclick="openChangeRentalStatusModal(\''+esc(v.SerialNo)+'\',\''+(v.RentalStatus||'ว่าง/พร้อมเช่า')+'\',\''+esc(v.Customer||'').replace(/'/g,"\\'")+'\')">🔄 เปลี่ยนสถานะ</button>'
+        +'</div>'
+        +'<div class="fg" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+          +'<div><span class="fl" style="margin:0">ยี่ห้อ</span><div style="font-weight:700;font-size:13px">'+(v.Brand||'ยังไม่ระบุ')+'</div></div>'
+          +'<button class="btn bo bsm" onclick="openEditBrandModal(\''+esc(v.SerialNo)+'\',\''+esc(v.Brand||'').replace(/'/g,"\\'")+'\')">✏️ แก้ยี่ห้อ</button>'
+        +'</div>'
+        +(CU && ['MANAGER','ADMIN'].indexOf(CU.role)>=0 ? (
+          '<div class="fg" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+            +'<span class="fl" style="margin:0">สาขา</span>'
+            +'<button class="btn bo bsm" style="border-color:#00695c;color:#00695c" onclick="openTransferBranchModal(\''+esc(v.SerialNo)+'\',\''+(v.Branch||'PHUKET')+'\')">🚚 ย้ายสาขา</button>'
+          +'</div>'
+        ) : '')
+        +(v.RentalStatus==='เช่าอยู่' ? (
+          '<div class="fg" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+            +'<span class="fl" style="margin:0">💰 รายได้รายเดือน</span>'
+            +'<button class="btn bo bsm" onclick="openVehicleRevenueModal(\''+esc(v.SerialNo)+'\')">📝 กรอกรายได้เดือนนี้</button>'
+          +'</div>'
+        ) : '')
       +'</div>'
       +'<div class="mof">'
         +'<button class="btn bo" onclick="document.getElementById(\'vehEditModal\').remove()">ยกเลิก</button>'
@@ -13319,6 +13343,15 @@ function onVHSearch(){
   });
 }
 
+// ── ปุ่มเดียวจากหน้า "ประวัติรถ" พาไปหน้า "จัดการรถ" พร้อมเปิด modal แก้ไขให้เลย (รวมจุดแก้ไขไว้ที่เดียว) ──
+function goManageVehicle(serialNo){
+  go('master');
+  setTimeout(function(){
+    if(typeof switchMasterTab==='function') switchMasterTab('vehicles');
+    setTimeout(function(){ openVehicleEditModal(serialNo); }, 200);
+  }, 100);
+}
+
 function selectVH(serialNo){
   document.getElementById('vhSearch').value = serialNo;
   document.getElementById('vhSearchDrop').style.display='none';
@@ -13348,16 +13381,10 @@ function selectVH(serialNo){
           +(car.CarNo ? '<div><span style="color:var(--g400);font-size:11px">เบอร์รถ</span><div style="font-weight:600">'+car.CarNo+'</div></div>' : '<div></div>')
           +'<div><span style="color:var(--g400);font-size:11px">ประเภท</span><div style="font-weight:600">'+(car.VehicleType||'—')+'</div></div>'
           +'<div><span style="color:var(--g400);font-size:11px">สถานะ</span><div style="font-weight:600;color:#1a237e">'+(car.StatusType||'—')+'</div></div>'
-          // ── สถานะเช่าปัจจุบัน + ปุ่มเปลี่ยนสถานะ ──
-          +'<div style="grid-column:1/-1;border-top:1px solid #c5cae9;padding-top:8px;margin-top:2px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
-            +'<div><span style="color:var(--g400);font-size:11px">สถานะเช่า</span><div style="font-weight:700;font-size:13px">'
-              +(({'ว่าง/พร้อมเช่า':'🟢','เช่าอยู่':'🔵','สัมปทาน':'🟣','ระหว่างซ่อม/PM':'🟡','ปิดใช้งาน':'⚫','ขายขาด (อยู่ในประกัน)':'🔧'})[car.RentalStatus]||'')+' '+(car.RentalStatus||'ว่าง/พร้อมเช่า')+'</div></div>'
-            +(CU && ['STOCK','SUPERVISOR','MANAGER','ADMIN'].indexOf(CU.role)>=0
-              ? '<button class="btn bo bsm" onclick="openChangeRentalStatusModal(\''+car.SerialNo+'\',\''+(car.RentalStatus||'ว่าง/พร้อมเช่า')+'\',\''+(car.Customer||'').replace(/'/g,"\\'")+'\')">🔄 เปลี่ยนสถานะ</button>'
-              : '')
-            +(CU && ['MANAGER','ADMIN'].indexOf(CU.role)>=0
-              ? ' <button class="btn bo bsm" style="border-color:#00695c;color:#00695c" onclick="openTransferBranchModal(\''+car.SerialNo+'\',\''+(car.Branch||'PHUKET')+'\')">🚚 ย้ายสาขา</button>'
-              : '')
+          // ── สถานะเช่าปัจจุบัน (แสดงผลอย่างเดียว — แก้ไขที่หน้า "จัดการรถ" แทน) ──
+          +'<div style="grid-column:1/-1;border-top:1px solid #c5cae9;padding-top:8px;margin-top:2px">'
+            +'<span style="color:var(--g400);font-size:11px">สถานะเช่า</span><div style="font-weight:700;font-size:13px">'
+              +(({'ว่าง/พร้อมเช่า':'🟢','เช่าอยู่':'🔵','สัมปทาน':'🟣','ระหว่างซ่อม/PM':'🟡','ปิดใช้งาน':'⚫','ขายขาด (อยู่ในประกัน)':'🔧','DEMO ทดลองขับ':'🚙','จอดโชว์':'🏪'})[car.RentalStatus]||'')+' '+(car.RentalStatus||'ว่าง/พร้อมเช่า')+'</div>'
           +'</div>'
           // ── รายละเอียดประกัน — แสดงเฉพาะรถสถานะ "ขายขาด (อยู่ในประกัน)" ──
           +(car.RentalStatus==='ขายขาด (อยู่ในประกัน)' ? (
@@ -13371,20 +13398,10 @@ function selectVH(serialNo){
               +'<div style="grid-column:1/-1">รอบตรวจเช็ค: <strong>ทุก '+(car.PMIntervalMonths||'-')+' เดือน</strong> (ไม่นับรวมในภาพรวมรถเช่า/สัมปทานของบริษัท)</div>'
             +'</div></div>'
           ) : '')
-          // ── ยี่ห้อ (Brand) — Club Car / อื่นๆ ──
-          +'<div style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
-            +'<div><span style="color:var(--g400);font-size:11px">ยี่ห้อ</span><div style="font-weight:600;font-size:13px" id="vhBrandDisplay">'+(car.Brand||'ยังไม่ระบุ')+'</div></div>'
-            +(CU && ['STOCK','SUPERVISOR','MANAGER','ADMIN'].indexOf(CU.role)>=0
-              ? '<button class="btn bo bsm" onclick="openEditBrandModal(\''+car.SerialNo+'\',\''+(car.Brand||'').replace(/'/g,"\\'")+'\')">✏️ แก้ยี่ห้อ</button>'
-              : '')
+          // ── ยี่ห้อ (Brand) — แสดงผลอย่างเดียว ──
+          +'<div style="grid-column:1/-1">'
+            +'<span style="color:var(--g400);font-size:11px">ยี่ห้อ</span><div style="font-weight:600;font-size:13px" id="vhBrandDisplay">'+(car.Brand||'ยังไม่ระบุ')+'</div>'
           +'</div>'
-          // ── รายได้รายเดือน (เฉพาะรถเช่า — สัมปทานกรอกรวมที่หน้าแดชบอร์ดแทน) ──
-          +(car.RentalStatus==='เช่าอยู่' && CU && ['STOCK','SUPERVISOR','MANAGER','ADMIN'].indexOf(CU.role)>=0
-            ? '<div style="grid-column:1/-1;border-top:1px solid #c5cae9;padding-top:8px;margin-top:2px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
-              +'<span style="color:var(--g400);font-size:11px">💰 รายได้รายเดือน — บันทึกต่อคัน</span>'
-              +'<button class="btn bo bsm" onclick="openVehicleRevenueModal(\''+car.SerialNo+'\')">📝 กรอกรายได้เดือนนี้</button>'
-            +'</div>'
-            : '')
           // ── ลูกค้า (ชื่อบริษัท) แยกจากสถานที่ ──
           +'<div style="grid-column:1/-1;border-top:1px solid #c5cae9;padding-top:8px;margin-top:2px">'
             +'<span style="color:var(--g400);font-size:11px">👤 ชื่อลูกค้า (บริษัท)</span>'
@@ -13394,29 +13411,13 @@ function selectVH(serialNo){
             +'<span style="color:var(--g400);font-size:11px">📍 สถานที่/โครงการ</span>'
             +'<div style="font-weight:700;color:#283593;font-size:13px">'+(car.Location||'—')+'</div>'
           +'</div>'
-          // ── รวมมาจากหน้า "จัดการอะไหล่/รถ": แก้ไขข้อมูลพื้นฐาน + ประเภทดูแล + สถานะใช้งาน (ตอนนี้แก้ได้ที่นี่ที่เดียว) ──
+          // ── ⚠️ ทุกอย่างที่เกี่ยวกับการ "แก้ไข/กรอกข้อมูล" (สถานะเช่า, ราคาเช่า, รายได้, ยี่ห้อ, ย้ายสาขา,
+          // รุ่น/ลูกค้า/สถานที่, ประเภทดูแล, เปิด-ปิดใช้งาน) ย้ายไปรวมไว้ที่หน้า "จัดการรถ" ทั้งหมดแล้ว
+          // หน้านี้ ("ประวัติรถ") เหลือไว้สำหรับ "ดู" อย่างเดียว ไม่มีปุ่มแก้ไขค้างอยู่เลย ──
           +(car && CU && ['STOCK','SUPERVISOR','MANAGER','ADMIN'].indexOf(CU.role)>=0 ? (
-            '<div style="grid-column:1/-1;border-top:1px solid #c5cae9;padding-top:8px;margin-top:2px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
-              +'<span style="color:var(--g400);font-size:11px">✏️ รุ่น/ลูกค้า/สถานที่/ระยะสัญญา/หมายเหตุ</span>'
-              +'<button class="btn bo bsm" onclick="openVehicleEditModal(\''+car.SerialNo+'\')">✏️ แก้ไขข้อมูลรถ</button>'
+            '<div style="grid-column:1/-1;border-top:1px solid #c5cae9;padding-top:10px;margin-top:4px;text-align:center">'
+              +'<button class="btn bp" style="width:100%" onclick="goManageVehicle(\''+car.SerialNo+'\')">🔧 จัดการรถคันนี้ (แก้ไข/สถานะเช่า/รายได้ ฯลฯ)</button>'
             +'</div>'
-            +'<div style="grid-column:1/-1;border-top:1px solid #c5cae9;padding-top:8px;margin-top:2px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
-              +'<span style="color:var(--g400);font-size:11px">ประเภทการดูแล</span>'
-              +'<select class="fc" style="font-size:11px;padding:4px" onchange="setVehicleCareType(\''+encodeURIComponent(car.SerialNo)+'\',this.value)">'
-                +['','Rental','Concession','Warranty','Other'].map(function(o){
-                    var labels={'':'ไม่มี','Rental':'เช่า (PM ทุกเดือน)','Concession':'สัมปทาน (PM ทุกเดือน)','Warranty':'Warranty (ตารางเฉพาะ)','Other':'อื่นๆ'};
-                    return '<option value="'+o+'" '+(String(car.CareType||'')===o?'selected':'')+'>'+labels[o]+'</option>';
-                  }).join('')
-              +'</select>'
-            +'</div>'
-            +(['MANAGER','ADMIN'].indexOf(CU.role)>=0 ? (
-              '<div style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:center">'
-                +'<span style="color:var(--g400);font-size:11px">สถานะใช้งาน</span>'
-                +(String(car.Status||'Active').toLowerCase()==='inactive'
-                  ? '<button class="btn bp bsm" onclick="toggleVehicleStatus(\''+car.SerialNo+'\',\'Active\')">♻️ เปิดใช้งาน</button>'
-                  : '<button class="btn bd bsm" onclick="toggleVehicleStatus(\''+car.SerialNo+'\',\'Inactive\')">🚫 ปิดใช้งาน</button>')
-              +'</div>'
-            ) : '')
           ) : '')
           // ── Period ──
           +(periodHtml ? '<div style="grid-column:1/-1;background:#fff3e0;border-radius:6px;padding:6px 10px">'+periodHtml+'</div>' : '')
@@ -15864,7 +15865,9 @@ function _renderFullReport(){
     if(sa==='PENDING_SUPERVISOR'||sa==='PENDING_MANAGER') waitAppr++;
     if(sa==='APPROVED'&&ss==='PENDING') waitStock++;
     if(ss==='ACKNOWLEDGED'||ss==='PICKED_UP') inUse++;
-    if(ss==='PICKED_UP'||ss==='PENDING_CLEARANCE'||ss==='PENDING_FINAL_APPROVAL') waitClear++; // รวม PENDING_CLEARANCE/PENDING_FINAL_APPROVAL กัน Pipeline ตัวเลขไม่ครบ
+    // ⚠️ แก้บั๊ก: เดิมนับ PICKED_UP ซ้ำทั้งใน inUse และ waitClear ทำให้ผลรวม Pipeline (262) เกินใบเบิกทั้งหมด (215)
+    // PICKED_UP = ของยังอยู่กับช่าง (โอนไปคลังช่างแล้ว) กำลังใช้งานอยู่ ยังไม่ได้ส่งเคลียร์คืน — นับใน "กำลังใช้งาน" เพียงที่เดียว
+    if(ss==='PENDING_CLEARANCE'||ss==='PENDING_FINAL_APPROVAL') waitClear++;
     if(ss==='CLEARED') closed++;
     if(ageDays(r.OpenDate)>=7 && ss!=='CLEARED') overdue7++;
     // รายการขาดจ่าย: เช็คเฉพาะใบที่อนุมัติแล้วและยังไม่ปิดงาน
