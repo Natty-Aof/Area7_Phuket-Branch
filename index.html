@@ -1406,6 +1406,7 @@ textarea.fc{min-height:70px;resize:vertical;}
           <button class="btn bo bsm fleetFilterBtn" data-fs="สัมปทาน" onclick="switchFleetFilter('สัมปทาน')">🟣 สัมปทาน</button>
           <button class="btn bo bsm fleetFilterBtn" data-fs="ระหว่างซ่อม/PM" onclick="switchFleetFilter('ระหว่างซ่อม/PM')">🟡 ระหว่างซ่อม/PM</button>
           <button class="btn bo bsm fleetFilterBtn" data-fs="ปิดใช้งาน" onclick="switchFleetFilter('ปิดใช้งาน')">⚫ ปิดใช้งาน</button>
+          <button class="btn bo bsm fleetFilterBtn" data-fs="ไม่ระบุสถานะ" onclick="switchFleetFilter('ไม่ระบุสถานะ')" style="color:#c62828">❔ ไม่ระบุสถานะ</button>
         </div>
         <div id="fleetBoardBox"></div>
       </div>
@@ -3740,7 +3741,7 @@ function drawFleetStatusChart(canvas, fleetData){
   var trackW = trackX1 - trackX0;
   var maxTotal = Math.max.apply(null, list.map(function(b){ return b.total; }).concat([1]));
 
-  var COLORS = { available:'#2d6a4f', rented:'#1565c0', concession:'#8e24aa', maintenance:'#e6a817', offline:'#9e9e9e' };
+  var COLORS = { available:'#2d6a4f', rented:'#1565c0', concession:'#8e24aa', maintenance:'#e6a817', offline:'#9e9e9e', unspecified:'#c62828' };
 
   list.forEach(function(b, i){
     var y = PAD_TOP + i*ROW_H + ROW_H*0.4;
@@ -3755,13 +3756,14 @@ function drawFleetStatusChart(canvas, fleetData){
     ctx.fillStyle = '#f0f2f0';
     _roundRect(ctx, trackX0, y, trackW, barH, 6); ctx.fill();
 
-    // แท่งซ้อน: ว่าง → เช่าอยู่ → สัมปทาน → ซ่อม → ปิด
+    // แท่งซ้อน: ว่าง → เช่าอยู่ → สัมปทาน → ซ่อม → ปิด → ไม่ระบุสถานะ
     var segs = [
       {v:b.available, c:COLORS.available},
       {v:b.rented, c:COLORS.rented},
       {v:b.concession, c:COLORS.concession},
       {v:b.maintenance, c:COLORS.maintenance},
       {v:b.offline, c:COLORS.offline},
+      {v:b.unspecified, c:COLORS.unspecified},
     ];
     var x = trackX0;
     segs.forEach(function(seg){
@@ -3784,6 +3786,7 @@ function drawFleetStatusChart(canvas, fleetData){
     {label:'สัมปทาน', c:COLORS.concession},
     {label:'ซ่อม/PM', c:COLORS.maintenance},
     {label:'ปิดใช้งาน', c:COLORS.offline},
+    {label:'❔ ไม่ระบุสถานะ', c:COLORS.unspecified},
   ];
   ctx.font = (isNarrow?10:11)+'px Sarabun,Arial,sans-serif'; ctx.textAlign='left';
   var lx = NAME_W;
@@ -3833,6 +3836,7 @@ function renderRegionCompareCards(){
           +(b.concession>0 ? '<span style="background:#f3e5f5;color:#6a1b9a;padding:3px 8px;border-radius:12px">🟣 สัมปทาน '+b.concession+'</span>' : '')
           +'<span style="background:#fff8e1;color:#e65100;padding:3px 8px;border-radius:12px">🟡 ซ่อม '+b.maintenance+'</span>'
           +(b.offline>0 ? '<span style="background:#f5f5f5;color:#616161;padding:3px 8px;border-radius:12px">⚫ ปิด '+b.offline+'</span>' : '')
+          +(b.unspecified>0 ? '<span style="background:#ffebee;color:#c62828;padding:3px 8px;border-radius:12px;font-weight:700">❔ ไม่ระบุสถานะ '+b.unspecified+'</span>' : '')
           +'</div>'
           +(b.clubCar+b.nonClubCar>0 ? '<div style="margin-top:8px;font-size:11px;color:var(--g400)">🚙 Club Car '+b.clubCar+' | อื่นๆ '+b.nonClubCar+'</div>' : '')
           +'<div style="margin-top:6px;padding-top:6px;border-top:1px dashed #e0e0e0;font-size:12px;color:#1a4a2e;font-weight:700">💰 '+(b.revenueThisMonth||0).toLocaleString()+' บาท/เดือนนี้</div>'
@@ -3865,7 +3869,7 @@ function renderFleetBoard(){
       +'<th>Serial No.</th><th>ทะเบียน</th><th>รุ่น</th><th>สถานะ</th><th>ลูกค้า/สถานที่</th><th>ราคาเช่า/เดือน</th>'
       +'</tr></thead><tbody>'
       + list.map(function(v){
-          var chip = ({'ว่าง/พร้อมเช่า':'🟢','เช่าอยู่':'🔵','สัมปทาน':'🟣','ระหว่างซ่อม/PM':'🟡','ปิดใช้งาน':'⚫','ขายขาด (อยู่ในประกัน)':'🔧','DEMO ทดลองขับ':'🚙','จอดโชว์':'🏪'})[v.status]||'';
+          var chip = ({'ว่าง/พร้อมเช่า':'🟢','เช่าอยู่':'🔵','สัมปทาน':'🟣','ระหว่างซ่อม/PM':'🟡','ปิดใช้งาน':'⚫','ขายขาด (อยู่ในประกัน)':'🔧','DEMO ทดลองขับ':'🚙','จอดโชว์':'🏪','ไม่ระบุสถานะ':'❔'})[v.status]||'';
           // ── ราคาเช่า: แก้ไขตรงในตารางได้เลย (เฉพาะรถที่กำลังเช่าอยู่ — คันอื่นไม่เกี่ยว ไม่ต้องกรอก) ──
           var priceCell = v.status==='เช่าอยู่'
             ? '<span style="cursor:pointer;color:'+(v.rentalPrice?'#2d6a4f;font-weight:700':'var(--g400)')+'" onclick="openRentalPriceModal(\''+v.serialNo+'\','+(Number(v.rentalPrice)||0)+')">'
@@ -7049,7 +7053,7 @@ function renderMasterVehicles(){
         +'</select></td>'
         +'<td style="white-space:nowrap">'
           + (canEditThis
-            ? '<button class="btn bo bsm m-veh-goto" data-sn="'+snEsc+'" title="แก้ไขข้อมูลรถคันนี้ได้ที่หน้าประวัติรถ">🔍 ดูในประวัติรถ</button> '
+            ? '<button class="btn bo bsm m-veh-edit" data-sn="'+snEsc+'" title="แก้ไขข้อมูลรถ/สถานะเช่า/รายได้ทั้งหมดของคันนี้">✏️ แก้ไข</button> '
               +(inactive
                 ? '<button class="btn bp bsm m-veh-on" data-sn="'+snEsc+'">♻️ เปิด</button>'
                 : '<button class="btn bd bsm m-veh-off" data-sn="'+snEsc+'">🚫 ปิด</button>')
@@ -7058,17 +7062,9 @@ function renderMasterVehicles(){
     }).join('')
     +'</tbody></table></div>';
 
-  // ⚠️ เปลี่ยนจากการเปิด modal แก้ไขในหน้านี้ เป็นลิงก์ไปแก้ที่หน้า "ประวัติรถ" แทน (รวมจุดแก้ไขไว้ที่เดียว กันสับสน)
-  el.querySelectorAll('.m-veh-goto').forEach(function(b){
-    b.onclick = function(){
-      var sn = decodeURIComponent(this.dataset.sn);
-      go('vehiclehistory');
-      setTimeout(function(){
-        var inp = document.getElementById('vhSearch');
-        if(inp) inp.value = sn;
-        if(typeof selectVH==='function') selectVH(sn);
-      }, 150);
-    };
+  // ── กด "แก้ไข" แล้วเปิด modal แก้ไขทั้งหมดตรงนี้เลย (จัดการรถ = จุดแก้ไขเดียวของระบบ) ──
+  el.querySelectorAll('.m-veh-edit').forEach(function(b){
+    b.onclick = function(){ openVehicleEditModal(decodeURIComponent(this.dataset.sn)); };
   });
   el.querySelectorAll('.m-veh-off').forEach(function(b){
     b.onclick = function(){ toggleVehicleStatus(decodeURIComponent(this.dataset.sn), 'Inactive'); };
