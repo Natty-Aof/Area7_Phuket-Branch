@@ -3201,6 +3201,7 @@ function onBranchSwitch(val){
   syncStockBalance(); // คำนวณยอดคงเหลืออะไหล่ใหม่ตามสาขาที่เพิ่งเลือก (ยอดตั้งต้นภูเก็ตต้องไม่ติดไปกับสาขาอื่น)
   // ── เคลียร์ cache รายการรถทิ้ง — เดิม cache ไว้ 5 นาที ถ้าไม่ล้างตอนสลับสาขา จะเห็นรถของสาขาก่อนหน้าค้างอยู่ ──
   if(typeof _vehiclesDB !== 'undefined'){ _vehiclesDB = []; _vhDBLastFetch = 0; }
+  _mVehBranchFilterInit = false; // ให้ตัวกรองสาขาในหน้าจัดการรถ ตั้งค่าตามสาขาที่เพิ่งเลือกด้านบนใหม่
   // ── เคลียร์ cache ตัวเลข badge บนเมนูทั้งหมด (PM/ใบตรวจสภาพ/รออนุมัติปิดงาน ฯลฯ) — กันตัวเลขค้างจากสาขาก่อนหน้า ──
   if(typeof _badgeCache !== 'undefined'){ _badgeCache = null; _badgeCacheTime = 0; }
   if(typeof refreshBadges === 'function') refreshBadges(true);
@@ -6962,7 +6963,10 @@ function _initMVehBranchFilter(){
   sel.innerHTML = '<option value="">— ทุกสาขา —</option>'
     + branches.map(function(b){ return '<option value="'+b+'">'+branchLabel(b)+'</option>'; }).join('');
   // ── ค่าเริ่มต้น: ผจก.เขต/ผจก.ที่ไม่มีสาขาระบุ → เห็นทุกสาขา | คนอื่นๆ → เริ่มที่สาขาตัวเองก่อนเสมอ ──
-  sel.value = (!isRegional && myBranch) ? myBranch : '';
+  // ⚠️ แก้: ตัวเลือกสาขาด้านบน (branchSwitcher) ต้องคุมหน้านี้ด้วย — เดิมหน้านี้มีตัวกรองสาขาของตัวเองที่เริ่มที่ "ทุกสาขา" เสมอ
+  // ผจก.เขตเลือก "ภูเก็ต" ด้านบนแล้วก็ยังเห็นรถสาขาอื่นปน ตอนนี้ถ้าเลือกสาขาด้านบนไว้ จะตั้งตัวกรองในหน้านี้ตามนั้น (ยังเปลี่ยนเองในหน้านี้ได้)
+  sel.value = (typeof activeBranch!=='undefined' && activeBranch && branches.indexOf(activeBranch)>=0) ? activeBranch
+            : ((!isRegional && myBranch) ? myBranch : '');
   _mVehBranchFilterInit = true;
 }
 
