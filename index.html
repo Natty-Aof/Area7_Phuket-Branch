@@ -2608,7 +2608,9 @@ function demoLogin(role){
 var BRANCH_SCOPED_ACTIONS = ['getRequisitions','getStockCardEntries','getVehicles','getInventoryBalance',
   'getStockTransfers','getDashboard','getReport','getSalesOrders','getInspections','getVehicleHistory',
   'getSpecialPartRequests','getCustomerBackorders','getExternalHoldings','getVehiclesRequiringPM','getPMDashboardSummary',
-  'getTechStock','getSlowMovingParts','getVehiclePartAnalytics','getWarrantyPlan','getFleetStatusBoard','getConcessionRevenueList'];
+  'getTechStock','getSlowMovingParts','getVehiclePartAnalytics','getWarrantyPlan','getFleetStatusBoard','getConcessionRevenueList',
+  // ── เพิ่มใหม่: เดิมไม่ได้กรองตามสาขา ทำให้เห็นรายชื่อผู้ใช้/ช่าง/คำสั่งซื้อ HQ/คำขอแก้ไข ของสาขาอื่นปน ──
+  'getUsers','getTechnicianList','getTechFieldworkCalendar','getBackOrders','getChangeRequests'];
 // หมายเหตุ: getFleetStatusBoard เดิมตั้งใจไม่ใส่ในลิสต์นี้ เพื่อให้หน้า "Carts Status Area 7" เห็นทุกสาขาเปรียบเทียบกันเสมอ
 // แต่ทำให้ตัวเลือกสาขาบนแถบบนไม่มีผลกับหน้านี้เลย ต่างจากหน้าอื่นในระบบ สร้างความสับสน (เลือก "สมุย" แต่ยังเห็นข้อมูลภูเก็ตปนอยู่)
 // แก้ให้กรองตามตัวเลือกสาขาได้จริงเหมือนหน้าอื่นๆ แล้ว — เลือกสาขาใดสาขาหนึ่ง = กรองเฉพาะสาขานั้น, เลือก "ทุกสาขา" = เห็นเทียบกันเหมือนเดิม
@@ -3170,9 +3172,10 @@ function updateBranchLabels(){
 // ผจก.สาขา/พนักงานอื่น เห็นเฉพาะสาขาตัวเองเสมอ (ฝั่ง backend กรองให้อัตโนมัติอยู่แล้ว)
 function isRegionalMgr(){
   if(!CU) return false;
-  if(CU.role==='ADMIN') return true;
-  if(CU.role!=='MANAGER') return false;
   var bc = String(CU.branch||'').trim().toUpperCase();
+  // ⚠️ ต้องตรงกับ _isRegionalManager ฝั่ง backend: ADMIN ที่ผูกสาขาไว้ (เช่น แอดมินสมุย) เห็นเฉพาะสาขาตัวเอง
+  if(CU.role==='ADMIN') return bc==='ALL' || bc==='AREA7';
+  if(CU.role!=='MANAGER') return false;
   return !bc || bc==='ALL' || bc==='AREA7' || bc==='PHUKET'; // ผจก.ภูเก็ต = ผจก.เขต ตามโครงสร้างปัจจุบัน
 }
 
