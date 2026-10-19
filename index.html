@@ -16008,15 +16008,19 @@ function _renderFullReport(){
         }
         techCount[who]=(techCount[who]||0)+1;
       });
+      var branchCount = {};
+      tracked.forEach(function(r){ var bl = branchLabel(String(r.Branch||'PHUKET').toUpperCase()); branchCount[bl]=(branchCount[bl]||0)+1; });
       chartsEl.innerHTML =
         '<div style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap;align-items:stretch">'
         +'<div style="background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);display:flex;justify-content:center"><canvas id="rptAlertPieCat"></canvas></div>'
         +'<div style="background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);display:flex;justify-content:center"><canvas id="rptAlertPieTech"></canvas></div>'
+        +'<div style="background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);display:flex;justify-content:center"><canvas id="rptAlertPieBranch"></canvas></div>'
         +'<div id="rptInsightBox" style="flex:1;min-width:260px;background:#fff;border-radius:10px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.06)"></div>'
         +'</div>';
       var catColors = {'รออนุมัติ':'#1565c0','ยังไม่เคลียร์':'#c9a84c','รอตัด SAP':'#e65100','รอจ่ายของ':'#6a1599','ปิดแล้ว':'#388e3c','อื่นๆ':'#78909c'};
       drawAlertPieChart('rptAlertPieCat', catCount, 'แยกตามสถานะ (ทั้งหมด '+tracked.length+' ใบ)', catColors);
       drawAlertPieChart('rptAlertPieTech', techCount, 'แยกตามผู้รับผิดชอบปัจจุบัน', null);
+      drawAlertPieChart('rptAlertPieBranch', branchCount, 'แยกตามสาขา (ใบเบิก)', null);
 
       // ── สรุปข้อมูลเชิงลึก (rule-based, คำนวณจากข้อมูลจริง) ──
       var insightEl = document.getElementById('rptInsightBox');
