@@ -2949,9 +2949,9 @@ function initApp(){
   updateBranchLabels();
   // ── Dashboard เขต: เห็นได้เฉพาะ ผจก.เขต/ADMIN เท่านั้น (ใช้กลไกเดียวกับตัวเลือกสาขา ไม่สร้างสิทธิ์แยกใหม่) — แสดงทั้ง desktop และมือถือคู่กัน ──
   var nRd = document.getElementById('nRegionDash');
-  if(nRd && typeof isRegionalMgr==='function' && isRegionalMgr()) nRd.classList.remove('hidden');
+  if(nRd && CU && ['ADMIN','MANAGER'].indexOf(CU.role)>=0) nRd.classList.remove('hidden'); // ผจก.เขต เห็นทุกสาขา / แอดมิน-ผจก.สาขา เห็นเฉพาะสาขาตัวเอง (backend กรองให้)
   var mRd = document.getElementById('mRegionDash');
-  if(mRd && typeof isRegionalMgr==='function' && isRegionalMgr()) mRd.classList.remove('hidden');
+  if(mRd && CU && ['ADMIN','MANAGER'].indexOf(CU.role)>=0) mRd.classList.remove('hidden'); // ผจก.เขต เห็นทุกสาขา / แอดมิน-ผจก.สาขา เห็นเฉพาะสาขาตัวเอง (backend กรองให้)
   // เมนูจัดการข้อมูลหลัก — ทุก role เข้าดูได้ (ช่างดูรูปอะไหล่ได้) แต่แก้ไขได้เฉพาะ Stock/Manager/Admin
   var nm=document.getElementById('nMaster');
   if(nm) nm.classList.remove('hidden');
