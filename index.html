@@ -1273,6 +1273,7 @@ textarea.fc{min-height:70px;resize:vertical;}
                 <option value="Other">อื่นๆ</option>
                 <option value="__blank__">ยังไม่ตั้งประเภท</option>
               </select>
+              <button class="btn bo bsm" onclick="printVehicleList()">🖨️ พิมพ์รายการรถ</button>
               <button class="btn bp bsm" onclick="openAddCustomerModal()">➕ เพิ่มรถ/ลูกค้า</button>
             </div>
             <div id="mVehCount" style="font-size:12px;color:var(--g400);margin-top:8px"></div>
@@ -6975,6 +6976,40 @@ function _initMVehBranchFilter(){
 
 var _mVehPage = 0;
 var _mVehPageSize = 200;
+// ── พิมพ์รายการรถ: พิมพ์ "ทุกคันที่ตรงกับตัวกรองตอนนี้" (ไม่ใช่แค่หน้าที่แสดง) เปิดหน้าต่างใหม่แล้วสั่งพิมพ์ให้ ──
+function printVehicleList(){
+  var rows = window._mVehFilteredAll;
+  if(!rows || !rows.length){ if(typeof toast==='function') toast('ไม่มีรายการรถให้พิมพ์ค่ะ','err'); else alert('ไม่มีรายการรถให้พิมพ์ค่ะ'); return; }
+  var esc = function(x){ return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+  var careMap = {Rental:'เช่า',Concession:'สัมปทาน',Warranty:'Warranty',Other:'อื่นๆ'};
+  var bSel = document.getElementById('mVehFilterBranch'), cSel = document.getElementById('mVehFilterCareType');
+  var q = ((document.getElementById('mVehSearch')||{}).value||'').trim();
+  var info = [];
+  info.push('สาขา: '+(bSel && bSel.value ? branchLabel(bSel.value) : ((typeof isRegionalMgr==='function' && isRegionalMgr()) ? 'ทุกสาขา' : branchLabel((CU&&CU.branch)||'PHUKET'))));
+  if(cSel && cSel.value) info.push('ประเภท: '+cSel.options[cSel.selectedIndex].text);
+  if(q) info.push('ค้นหา: "'+q+'"');
+  var now = new Date();
+  var dateStr = now.toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'})+' '+now.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+  var body = rows.map(function(v,i){
+    var inactive = String(v.Status||'Active').toLowerCase()==='inactive';
+    return '<tr><td class="c">'+(i+1)+'</td><td>'+esc(v.SerialNo)+'</td><td>'+esc(v.CarNo)+'</td><td>'+esc(v.Model)+'</td>'
+      +'<td>'+esc(v.Customer)+'</td><td>'+esc(v.Location)+'</td><td>'+esc(branchLabel(v.Branch||'PHUKET'))+'</td>'
+      +'<td>'+esc(inactive?'ปิดใช้งาน':(v.RentalStatus||'ไม่ระบุสถานะ'))+'</td><td>'+esc(careMap[v.CareType]||'-')+'</td></tr>';
+  }).join('');
+  var html = '<!doctype html><html><head><meta charset="utf-8"><title>รายการรถ</title><style>'
+    +'@page{size:A4 landscape;margin:10mm}body{font-family:Sarabun,Tahoma,Arial,sans-serif;font-size:11px;color:#111;margin:0}'
+    +'h1{font-size:16px;margin:0 0 4px;color:#1a4a2e}.meta{font-size:11px;color:#555;margin-bottom:8px}'
+    +'table{border-collapse:collapse;width:100%}th,td{border:1px solid #999;padding:3px 5px;text-align:left;vertical-align:top}'
+    +'th{background:#e8f0e9;font-weight:700}thead{display:table-header-group}tr{page-break-inside:avoid}.c{text-align:center}'
+    +'</style></head><body><h1>รายการรถ — Beyond Green</h1>'
+    +'<div class="meta">'+esc(info.join(' | '))+' | รวม '+rows.length+' คัน | พิมพ์เมื่อ '+esc(dateStr)+'</div>'
+    +'<table><thead><tr><th>#</th><th>Serial No.</th><th>เลขรถ</th><th>รุ่น</th><th>ลูกค้า</th><th>สถานที่</th><th>สาขา</th><th>สถานะ</th><th>ประเภทการดูแล</th></tr></thead><tbody>'
+    +body+'</tbody></table><script>window.onload=function(){setTimeout(function(){window.print();},300);};<\/script></body></html>';
+  var win = window.open('','_blank');
+  if(!win){ if(typeof toast==='function') toast('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ — กรุณาอนุญาต Pop-up ของเว็บนี้ค่ะ','err'); else alert('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ — กรุณาอนุญาต Pop-up ของเว็บนี้ค่ะ'); return; }
+  win.document.open(); win.document.write(html); win.document.close();
+}
+
 function renderMasterVehicles(){
   var el = document.getElementById('mVehList');
   var cnt = document.getElementById('mVehCount');
