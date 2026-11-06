@@ -2930,6 +2930,7 @@ function initApp(){
       if(!keep) el.classList.add('hidden');
     });
     var nvh = document.querySelector('[data-pg="vehiclehistory"]'); if(nvh) nvh.classList.remove('hidden');
+    ['btnAddCustomerMaster','btnAddPartMaster'].forEach(function(id){ var b=document.getElementById(id); if(b) b.style.display='none'; });
     initBranchSwitcher(); updateBranchLabels();
     go('vehiclehistory');
     return;
@@ -13996,7 +13997,7 @@ function renderVHPMSummary(pmVisits, serial){
   if(!pmVisits.length){
     return '<div class="card" style="padding:10px 14px;margin-bottom:8px;background:#fff8e1;font-size:13px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
       +'<span>🔧 ยังไม่มีประวัติตรวจเช็ค PM ของรถคันนี้ค่ะ</span>'
-      +'<button class="btn bp bsm" onclick="go(\'pmcheck\');setTimeout(function(){selectPMVehicle(\''+serial+'\')},400)">🔧 ตรวจเช็ค PM เลย</button>'
+      +((CU && CU.role==='GUEST') ? '' : '<button class="btn bp bsm" onclick="go(\'pmcheck\');setTimeout(function(){selectPMVehicle(\''+serial+'\')},400)">🔧 ตรวจเช็ค PM เลย</button>')
     +'</div>';
   }
   var latest = pmVisits[0];
