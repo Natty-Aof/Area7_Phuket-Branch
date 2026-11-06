@@ -4079,6 +4079,51 @@ function submitTransferBranch(serialNo){
   });
 }
 // ── ดูประวัติการย้ายสาขาของรถ 1 คัน ──
+// ── รูปรถในประวัติรถ: Serial Number + หน้า/หลัง/ซ้าย/ขวา ──
+var VEH_PHOTO_SLOTS = [
+  {k:'serial', label:'🔢 Serial Number'}, {k:'front', label:'⬆️ ด้านหน้า'}, {k:'back', label:'⬇️ ด้านหลัง'},
+  {k:'left', label:'⬅️ ด้านซ้าย'}, {k:'right', label:'➡️ ด้านขวา'}
+];
+function loadVehiclePhotos(serialNo){
+  var box = document.getElementById('vhPhotoBox');
+  if(!box) return;
+  callAPI('getVehiclePhotos', {serialNo:serialNo}).then(function(res){
+    if(!res || !res.success){ box.innerHTML = '<div style="color:#c62828">'+((res&&res.message)||'โหลดรูปไม่ได้ค่ะ')+'</div>'; return; }
+    var latest = (res.data&&res.data.latest)||{}, count = (res.data&&res.data.count)||{};
+    var done = VEH_PHOTO_SLOTS.filter(function(s){ return latest[s.k]; }).length;
+    var pg = document.getElementById('vhPhotoProgress');
+    if(pg) pg.innerHTML = done===5 ? '<span style="color:#2e7d32;font-weight:700">✅ ครบ 5/5 รูป</span>' : '<span style="color:#e65100;font-weight:700">ยังไม่ครบ '+done+'/5 รูป</span>';
+    var sn = encodeURIComponent(serialNo);
+    box.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px">'
+      + VEH_PHOTO_SLOTS.map(function(s){
+          var r = latest[s.k];
+          var img = r
+            ? '<a href="'+(r.DriveUrl||r.PhotoUrl)+'" target="_blank" style="display:block"><img src="'+r.PhotoUrl+'" style="width:100%;height:100px;object-fit:cover;border-radius:6px;border:1px solid var(--g200)"></a>'
+              +'<div style="font-size:10px;color:var(--g400);margin-top:2px">'+String(r.UploadedAt||'').slice(0,10)+' · '+String(r.UploadedBy||'').split('@')[0]+(count[s.k]>1?' · '+count[s.k]+' ครั้ง':'')+'</div>'
+            : '<div style="height:100px;border:1.5px dashed var(--g200);border-radius:6px;display:flex;align-items:center;justify-content:center;color:#c62828;font-size:11px">ยังไม่มีรูป</div>';
+          return '<div style="text-align:center"><div style="font-weight:700;font-size:12px;margin-bottom:4px">'+s.label+'</div>'+img
+            +'<label class="btn bo bsm" style="display:block;margin-top:6px;cursor:pointer;font-size:11px">'+(r?'🔄 ถ่าย/เลือกใหม่':'📷 ถ่าย/เลือกรูป')
+            +'<input type="file" accept="image/*" capture="environment" style="display:none" onchange="onVehiclePhotoPick(\''+sn+'\',\''+s.k+'\',this)"></label></div>';
+        }).join('')
+      +'</div>'
+      +'<div style="font-size:11px;color:var(--g400);margin-top:8px">💡 กดช่องที่ต้องการเพื่อถ่าย/เลือกรูป ระบบย่อขนาดให้อัตโนมัติ · อัปโหลดซ้ำจะแทนที่รูปที่โชว์ (รูปเก่าเก็บไว้ในระบบ)</div>';
+  });
+}
+function onVehiclePhotoPick(snEsc, slot, input){
+  var file = input.files && input.files[0]; if(!file) return;
+  var serialNo = decodeURIComponent(snEsc);
+  var label = input.parentElement; if(label) label.style.opacity = '.5';
+  toast('กำลังย่อขนาดรูป...','info');
+  compressImage(file, function(b64){
+    if(!b64){ if(label) label.style.opacity=''; return toast('อ่านไฟล์รูปไม่ได้ค่ะ','error'); }
+    toast('กำลังอัปโหลดรูป...','info');
+    callAPI('saveVehiclePhoto', {serialNo:serialNo, slot:slot, base64:b64}).then(function(res){
+      toast((res&&res.message)||'', res&&res.success?'success':'error');
+      loadVehiclePhotos(serialNo);
+    });
+  }, {maxW:1280, maxH:1280, maxBytes:350*1024});
+}
+
 function loadBranchHistoryForSerial(serialNo){
   var box = document.getElementById('branchHistBox');
   if(!box) return;
@@ -13517,6 +13562,12 @@ function selectVH(serialNo){
         +'<div id="rentalHistBox" style="font-size:12px;color:var(--g400)">⏳ กำลังโหลด...</div>'
       +'</div>'
       + (car ? '<div class="card" style="margin-top:10px;padding:12px 14px">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:6px">'
+          +'<div style="font-weight:700;color:var(--gd);font-size:13px">📷 รูปรถ (Serial Number + 4 ด้าน)</div>'
+          +'<div id="vhPhotoProgress" style="font-size:11px;color:var(--g400)"></div></div>'
+        +'<div id="vhPhotoBox" style="font-size:12px;color:var(--g400)">⏳ กำลังโหลด...</div>'
+      +'</div>' : '')
+      + (car ? '<div class="card" style="margin-top:10px;padding:12px 14px">'
         +'<div style="font-weight:700;color:var(--gd);font-size:13px;margin-bottom:6px">🚚 ประวัติการย้ายสาขา</div>'
         +'<div id="branchHistBox" style="font-size:12px;color:var(--g400)">⏳ กำลังโหลด...</div>'
       +'</div>' : '')
@@ -13528,6 +13579,7 @@ function selectVH(serialNo){
       info.innerHTML = qrHtml + (car ? histHtml : '');
       if(car && typeof loadRentalHistoryForSerial==='function') loadRentalHistoryForSerial(car.SerialNo);
       if(car && typeof loadBranchHistoryForSerial==='function') loadBranchHistoryForSerial(car.SerialNo);
+      if(car && typeof loadVehiclePhotos==='function') loadVehiclePhotos(car.SerialNo);
       if(car && car.RentalStatus==='เช่าอยู่' && typeof loadVehicleRevenueHistory==='function') loadVehicleRevenueHistory(car.SerialNo);
 
       setTimeout(function(){
