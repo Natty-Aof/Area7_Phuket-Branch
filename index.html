@@ -1273,10 +1273,23 @@ textarea.fc{min-height:70px;resize:vertical;}
                 <option value="Other">อื่นๆ</option>
                 <option value="__blank__">ยังไม่ตั้งประเภท</option>
               </select>
+              <select class="fc" id="mVehFilterRental" style="width:auto" onchange="_mVehSelectAllFilteredMode=false;_mVehPage=0;renderMasterVehicles()">
+                <option value="">— สถานะเช่าทั้งหมด —</option>
+                <option value="ว่าง/พร้อมเช่า">🟢 ว่าง/พร้อมเช่า</option>
+                <option value="เช่าอยู่">🔵 เช่าอยู่</option>
+                <option value="สัมปทาน">🟣 สัมปทาน</option>
+                <option value="ระหว่างซ่อม/PM">🟡 ระหว่างซ่อม/PM</option>
+                <option value="ปิดใช้งาน">⚫ ปิดใช้งาน</option>
+                <option value="ขายขาด (อยู่ในประกัน)">🔧 ขายขาด (อยู่ในประกัน)</option>
+                <option value="DEMO ทดลองขับ">🚙 DEMO ทดลองขับ</option>
+                <option value="จอดโชว์">🏪 จอดโชว์</option>
+                <option value="ไม่ระบุสถานะ">❔ ไม่ระบุสถานะ</option>
+              </select>
               <button class="btn bo bsm" onclick="printVehicleList()">🖨️ พิมพ์รายการรถ</button>
               <button class="btn bp bsm" onclick="openAddCustomerModal()">➕ เพิ่มรถ/ลูกค้า</button>
             </div>
             <div id="mVehCount" style="font-size:12px;color:var(--g400);margin-top:8px"></div>
+            <div style="font-size:11px;color:var(--g400);margin-top:4px">ℹ️ <b>สถานะเช่า</b> = สถานะจริงของรถตอนนี้ (ตรงกับหน้า Carts Status Area 7) · <b>ประเภทการดูแล</b> = กลุ่มตารางตรวจเช็ค PM (เช่า/สัมปทาน/Warranty) ใช้คนละหน้าที่กัน</div>
           </div>
           <div class="card" style="padding:0;overflow:hidden">
             <div id="mVehList"><div class="tc tm" style="padding:24px">⏳ กำลังโหลด...</div></div>
@@ -3988,11 +4001,22 @@ function submitRentalStatusChange(serialNo){
     payload.warrantyAmpHoursLimit = document.getElementById('warrantyAmpHoursLimit').value;
     payload.pmIntervalMonths = pmInterval;
   }
+  var saveBtn = document.querySelector('#rentalStatusModal .mof .bgd');
+  if(saveBtn){ saveBtn.disabled = true; saveBtn.textContent = '⏳ กำลังบันทึก...'; }
   callAPI('setVehicleRentalStatus', payload).then(function(res){
     toast(res.message||'', res.success?'success':'error');
+    if(!res.success && saveBtn){ saveBtn.disabled = false; saveBtn.textContent = 'บันทึก'; }
     if(res.success){
       closeModal('rentalStatusModal');
       var m = document.getElementById('rentalStatusModal'); if(m) m.remove();
+      // ปิดหน้าต่าง "แก้ไขข้อมูลรถ" ที่ค้างอยู่ด้านล่างด้วย (เดิมค้างโชว์สถานะเก่า ทำให้ดูเหมือนยังไม่บันทึก)
+      var em = document.getElementById('vehEditModal'); if(em) em.remove();
+      // อัปเดตแถวในรายการทันที (ไม่ต้องรอโหลดใหม่)
+      if(typeof _mVehicles!=='undefined'){
+        var lv = _mVehicles.find(function(x){ return x.SerialNo===serialNo; });
+        if(lv){ lv.RentalStatus = newStatus; if(newCustomer || ['เช่าอยู่','สัมปทาน','ขายขาด (อยู่ในประกัน)'].indexOf(newStatus)<0) lv.Customer = newCustomer; }
+        if(typeof renderMasterVehicles==='function' && typeof curPage!=='undefined' && curPage==='master') renderMasterVehicles();
+      }
       if(typeof loadRentalHistoryForSerial==='function') loadRentalHistoryForSerial(serialNo);
       // ⚠️ แก้บั๊ก: เดิมรีเฟรชแค่ตาราง "ประวัติลูกค้า" ด้านล่าง แต่การ์ดสถานะเช่าด้านบนไม่ถูกรีเฟรชเลย
       // ยังโชว์ค่าเก่าจากแคชค้างอยู่ ทั้งที่บันทึกสำเร็จแล้วจริงๆ
@@ -6977,6 +7001,13 @@ function _initMVehBranchFilter(){
 var _mVehPage = 0;
 var _mVehPageSize = 200;
 // ── พิมพ์รายการรถ: พิมพ์ "ทุกคันที่ตรงกับตัวกรองตอนนี้" (ไม่ใช่แค่หน้าที่แสดง) เปิดหน้าต่างใหม่แล้วสั่งพิมพ์ให้ ──
+function _rentalChip(st){
+  var raw = String(st||'').trim(), label = raw || 'ไม่ระบุสถานะ';
+  var m = {'ว่าง/พร้อมเช่า':['🟢','#2e7d32'],'เช่าอยู่':['🔵','#1565c0'],'สัมปทาน':['🟣','#6a1b9a'],'ระหว่างซ่อม/PM':['🟡','#b26a00'],
+    'ปิดใช้งาน':['⚫','#555'],'ขายขาด (อยู่ในประกัน)':['🔧','#00695c'],'DEMO ทดลองขับ':['🚙','#e65100'],'จอดโชว์':['🏪','#795548'],'ไม่ระบุสถานะ':['❔','#c62828']};
+  var x = m[label] || ['•','#333'];
+  return '<span style="color:'+x[1]+';font-weight:700">'+x[0]+' '+label+'</span>';
+}
 function printVehicleList(){
   var rows = window._mVehFilteredAll;
   if(!rows || !rows.length){ if(typeof toast==='function') toast('ไม่มีรายการรถให้พิมพ์ค่ะ','err'); else alert('ไม่มีรายการรถให้พิมพ์ค่ะ'); return; }
@@ -7017,7 +7048,14 @@ function renderMasterVehicles(){
   var q = ((document.getElementById('mVehSearch')||{}).value||'').trim().toLowerCase();
   var careFilter = (document.getElementById('mVehFilterCareType')||{}).value||'';
   var branchFilter = (document.getElementById('mVehFilterBranch')||{}).value||'';
+  var rentalFilter = (document.getElementById('mVehFilterRental')||{}).value||'';
   var rows = _mVehicles;
+  if(rentalFilter){
+    rows = rows.filter(function(v){
+      var rs = String(v.RentalStatus||'').trim() || 'ไม่ระบุสถานะ';
+      return rs===rentalFilter;
+    });
+  }
   if(branchFilter){
     rows = rows.filter(function(v){ return (v.Branch||'PHUKET')===branchFilter; });
   }
@@ -7036,7 +7074,7 @@ function renderMasterVehicles(){
       return careFilter==='__blank__' ? !v.CareType : v.CareType===careFilter;
     });
   }
-  if(cnt) cnt.textContent = '🚙 ทั้งหมด '+_mVehicles.length+' คัน'+((q||careFilter||branchFilter)?' — ตรงกับตัวกรอง '+rows.length:'');
+  if(cnt) cnt.textContent = '🚙 ทั้งหมด '+_mVehicles.length+' คัน'+((q||careFilter||branchFilter||rentalFilter)?' — ตรงกับตัวกรอง '+rows.length:'');
 
   if(!rows.length){
     el.innerHTML = '<div class="tc tm" style="padding:24px">ไม่พบรถค่ะ</div>';
@@ -7071,7 +7109,7 @@ function renderMasterVehicles(){
   +'</div>';
   el.innerHTML = bulkBar + '<div class="tw"><table class="it" style="font-size:13px"><thead><tr>'
     +'<th></th><th>Serial No.</th><th>เลขรถ</th><th>รุ่น</th><th>ลูกค้า</th>'
-    +'<th>สถานที่</th><th>สาขา</th><th>สถานะ</th><th>ประเภทการดูแล</th><th></th></tr></thead><tbody>'
+    +'<th>สถานที่</th><th>สาขา</th><th>สถานะเช่า</th><th>สถานะใช้งาน</th><th>ประเภทการดูแล</th><th></th></tr></thead><tbody>'
     + shown.map(function(v){
       var inactive = String(v.Status||'Active').toLowerCase()==='inactive';
       var snEsc = encodeURIComponent(v.SerialNo);
@@ -7087,6 +7125,7 @@ function renderMasterVehicles(){
         +'<td style="font-size:12px">'+(v.Customer||'-')+'</td>'
         +'<td style="font-size:12px;color:var(--g400)">'+(v.Location||'-')+'</td>'
         +'<td style="font-size:11px;color:var(--g400)">'+branchLabel(v.Branch||'PHUKET')+'</td>'
+        +'<td style="font-size:12px;white-space:nowrap">'+_rentalChip(v.RentalStatus)+'</td>'
         +'<td>'+(inactive
             ? '<span style="color:#b71c1c;font-size:12px;font-weight:700">🚫 ปิดใช้งาน</span>'
             : '<span style="color:#2d6a4f;font-size:12px;font-weight:700">✓ ใช้งาน</span>')+'</td>'
@@ -7205,8 +7244,8 @@ function openVehicleEditModal(serialNo){
         +'<div class="fg"><label class="fl">📍 สถานที่ <span style="font-size:10px;color:var(--g400)">(แก้เพื่อโอนย้ายรถ)</span></label>'
           +'<input class="fc" id="veLocation" value="'+esc(v.Location)+'"></div>'
         +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
-          +'<div class="fg"><label class="fl">ประเภท</label><input class="fc" id="veType" value="'+esc(v.VehicleType)+'"></div>'
-          +'<div class="fg"><label class="fl">สถานะสัญญา</label><input class="fc" id="veStatusType" value="'+esc(v.StatusType)+'"></div>'
+          +'<div class="fg"><label class="fl">ประเภทรถ (ข้อความอิสระ)</label><input class="fc" id="veType" value="'+esc(v.VehicleType)+'"></div>'
+          +'<div class="fg"><label class="fl">สถานะสัญญา (ข้อความอิสระ)</label><input class="fc" id="veStatusType" value="'+esc(v.StatusType)+'"></div>'
         +'</div>'
         +'<div class="fg"><label class="fl">ระยะเวลา</label><input class="fc" id="vePeriod" value="'+esc(v.Period)+'"></div>'
         +'<div class="fg"><label class="fl">หมายเหตุ</label><input class="fc" id="veNote" value="'+esc(v.Note)+'"></div>'
