@@ -4112,6 +4112,11 @@ function loadVehiclePhotos(serialNo){
             +'<input type="file" accept="image/*" capture="environment" style="display:none" onchange="onVehiclePhotoPick(\''+sn+'\',\''+s.k+'\',this)"></label></div>';
         }).join('')
       +'</div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;padding:10px;border-radius:8px;background:'+(done===5?'#e8f5e9':'#f5f5f5')+'">'
+        +(done===5?'<div style="width:100%;font-weight:700;color:#2e7d32;font-size:13px">✅ คันนี้ถ่ายรูปครบ 5 รูปแล้ว — ไปคันต่อไปได้เลย</div>':'')
+        +'<button class="btn bp bsm" onclick="vhPhotoNext(\''+sn+'\')">⏭️ คันถัดไปที่ยังไม่ครบรูป</button>'
+        +'<button class="btn bo bsm" onclick="vhPhotoSearchOther()">🔍 ค้นหาคันอื่น</button>'
+      +'</div>'
       +'<div style="font-size:11px;color:var(--g400);margin-top:8px">💡 กดช่องที่ต้องการเพื่อถ่าย/เลือกรูป ระบบย่อขนาดให้อัตโนมัติ · อัปโหลดซ้ำจะแทนที่รูปที่โชว์ (รูปเก่าเก็บไว้ในระบบ)</div>';
   });
 }
@@ -4136,6 +4141,34 @@ function printVehiclePhotos(serialNo){
     if(!w) return toast('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ — กรุณาอนุญาต Pop-up ค่ะ','error');
     w.document.open(); w.document.write(html); w.document.close();
   });
+}
+// ไปคันถัดไปที่ยังถ่ายรูปไม่ครบ (ตามลำดับรายการรถของสาขา วนกลับมาต้นรายการได้) — ไม่ต้องกลับไปค้นหาใหม่
+function vhPhotoNext(snEsc){
+  var cur = decodeURIComponent(snEsc);
+  toast('กำลังหาคันถัดไป...','info');
+  Promise.all([loadVehiclesDB(), callAPI('getVehiclePhotoSummary', {})]).then(function(rs){
+    var list = (rs[0]||[]).filter(function(v){ return String(v.Status||'Active').toLowerCase()!=='inactive'; });
+    var counts = (rs[1] && rs[1].success) ? (rs[1].data||{}) : {};
+    window._vehPhotoCount = counts;
+    if(!list.length) return toast('ไม่พบรายการรถค่ะ','error');
+    var idx = list.findIndex(function(v){ return v.SerialNo===cur; });
+    var next = null;
+    for(var i=1;i<=list.length;i++){
+      var v = list[(Math.max(idx,-1)+i)%list.length];
+      if(v.SerialNo!==cur && (counts[v.SerialNo]||0)<5){ next = v; break; }
+    }
+    if(!next) return toast('🎉 รถทุกคันถ่ายรูปครบแล้วค่ะ','success');
+    window.scrollTo({top:0,behavior:'smooth'});
+    var sc = document.getElementById('content') || document.querySelector('.main'); if(sc && sc.scrollTo) sc.scrollTo({top:0,behavior:'smooth'});
+    selectVH(next.SerialNo);
+    toast('ไปคันถัดไป: '+next.SerialNo+(next.CarNo?' (เลขรถ '+next.CarNo+')':''),'success');
+  });
+}
+function vhPhotoSearchOther(){
+  var inp = document.getElementById('vhSearch');
+  window.scrollTo({top:0,behavior:'smooth'});
+  var sc = document.getElementById('content') || document.querySelector('.main'); if(sc && sc.scrollTo) sc.scrollTo({top:0,behavior:'smooth'});
+  if(inp){ inp.value=''; inp.focus(); if(typeof onVHSearch==='function') onVHSearch(); }
 }
 function onVehiclePhotoPick(snEsc, slot, input){
   var file = input.files && input.files[0]; if(!file) return;
