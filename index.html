@@ -1285,6 +1285,12 @@ textarea.fc{min-height:70px;resize:vertical;}
                 <option value="จอดโชว์">🏪 จอดโชว์</option>
                 <option value="ไม่ระบุสถานะ">❔ ไม่ระบุสถานะ</option>
               </select>
+              <select class="fc" id="mVehFilterPhoto" style="width:auto" onchange="_mVehSelectAllFilteredMode=false;_mVehPage=0;renderMasterVehicles()">
+                <option value="">— รูปรถทั้งหมด —</option>
+                <option value="incomplete">📷 รูปไม่ครบ 5 รูป</option>
+                <option value="none">❌ ยังไม่มีรูปเลย</option>
+                <option value="complete">✅ รูปครบ 5 รูป</option>
+              </select>
               <button class="btn bo bsm" onclick="printVehicleList()">🖨️ พิมพ์รายการรถ</button>
               <button class="btn bp bsm" onclick="openAddCustomerModal()">➕ เพิ่มรถ/ลูกค้า</button>
             </div>
@@ -2619,7 +2625,7 @@ function demoLogin(role){
 // ── API ──────────────────────────────────────────────────────
 // รายการ action ที่ผลลัพธ์ขึ้นกับสาขา — แนบ activeBranch (ตัวกรองสาขาที่ ผจก.เขต เลือกดูอยู่) ให้อัตโนมัติ
 // ผู้ใช้ทั่วไป (ไม่ใช่ ผจก.เขต) ไม่ได้รับผลจากตรงนี้ — backend กรองเป็นสาขาตัวเองอยู่แล้วเสมอ
-var BRANCH_SCOPED_ACTIONS = ['getRequisitions','getStockCardEntries','getVehicles','getInventoryBalance',
+var BRANCH_SCOPED_ACTIONS = ['getVehiclePhotoSummary','getRequisitions','getStockCardEntries','getVehicles','getInventoryBalance',
   'getStockTransfers','getDashboard','getReport','getSalesOrders','getInspections','getVehicleHistory',
   'getSpecialPartRequests','getCustomerBackorders','getExternalHoldings','getVehiclesRequiringPM','getPMDashboardSummary',
   'getTechStock','getSlowMovingParts','getVehiclePartAnalytics','getWarrantyPlan','getFleetStatusBoard','getConcessionRevenueList',
@@ -4109,6 +4115,28 @@ function loadVehiclePhotos(serialNo){
       +'<div style="font-size:11px;color:var(--g400);margin-top:8px">💡 กดช่องที่ต้องการเพื่อถ่าย/เลือกรูป ระบบย่อขนาดให้อัตโนมัติ · อัปโหลดซ้ำจะแทนที่รูปที่โชว์ (รูปเก่าเก็บไว้ในระบบ)</div>';
   });
 }
+function printVehiclePhotos(serialNo){
+  var v = (typeof _vehiclesDB!=='undefined' && _vehiclesDB.find(function(x){ return x.SerialNo===serialNo; }))
+       || (typeof _mVehicles!=='undefined' && _mVehicles.find(function(x){ return x.SerialNo===serialNo; })) || {};
+  callAPI('getVehiclePhotos', {serialNo:serialNo}).then(function(res){
+    if(!res || !res.success) return toast((res&&res.message)||'โหลดรูปไม่ได้ค่ะ','error');
+    var latest = (res.data&&res.data.latest)||{};
+    var esc = function(x){ return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+    var cells = VEH_PHOTO_SLOTS.map(function(s){
+      var r = latest[s.k];
+      return '<div class="c"><div class="t">'+s.label+'</div>'+(r?'<img src="'+r.PhotoUrl+'"><div class="d">'+esc(String(r.UploadedAt||'').slice(0,10))+' · '+esc(String(r.UploadedBy||'').split('@')[0])+'</div>':'<div class="e">ไม่มีรูป</div>')+'</div>';
+    }).join('');
+    var html = '<!doctype html><html><head><meta charset="utf-8"><title>รูปรถ '+esc(serialNo)+'</title><style>'
+      +'@page{size:A4;margin:10mm}body{font-family:Sarabun,Tahoma,Arial,sans-serif;font-size:12px;color:#111}h1{font-size:16px;color:#1a4a2e;margin:0 0 4px}'
+      +'.m{margin-bottom:10px;color:#444}.g{display:grid;grid-template-columns:1fr 1fr;gap:10px}.c{border:1px solid #999;padding:6px;text-align:center;page-break-inside:avoid}'
+      +'.t{font-weight:700;margin-bottom:4px}img{width:100%;height:230px;object-fit:contain;background:#f5f5f5}.e{height:230px;display:flex;align-items:center;justify-content:center;color:#c62828}.d{font-size:10px;color:#666;margin-top:3px}'
+      +'</style></head><body><h1>รูปรถ — Beyond Green</h1><div class="m">Serial No.: <b>'+esc(serialNo)+'</b> | เลขรถ: '+esc(v.CarNo||'-')+' | รุ่น: '+esc(v.Model||'-')+' | ลูกค้า: '+esc(v.Customer||'-')+' | สาขา: '+esc(branchLabel(v.Branch||'PHUKET'))+'</div>'
+      +'<div class="g">'+cells+'</div><script>window.onload=function(){var im=document.images,n=im.length,d=0;function go(){setTimeout(function(){window.print();},300);}if(!n)return go();for(var i=0;i<n;i++){im[i].onload=im[i].onerror=function(){if(++d>=n)go();};if(im[i].complete&&++d>=n)go();}};<\/script></body></html>';
+    var w = window.open('','_blank');
+    if(!w) return toast('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ — กรุณาอนุญาต Pop-up ค่ะ','error');
+    w.document.open(); w.document.write(html); w.document.close();
+  });
+}
 function onVehiclePhotoPick(snEsc, slot, input){
   var file = input.files && input.files[0]; if(!file) return;
   var serialNo = decodeURIComponent(snEsc);
@@ -4120,6 +4148,7 @@ function onVehiclePhotoPick(snEsc, slot, input){
     callAPI('saveVehiclePhoto', {serialNo:serialNo, slot:slot, base64:b64}).then(function(res){
       toast((res&&res.message)||'', res&&res.success?'success':'error');
       loadVehiclePhotos(serialNo);
+      if(res&&res.success && window._vehPhotoCount){ var c=window._vehPhotoCount; c[serialNo]=Math.max(c[serialNo]||0, 0); callAPI('getVehiclePhotoSummary',{}).then(function(r2){ if(r2&&r2.success) window._vehPhotoCount=r2.data||{}; }); }
     });
   }, {maxW:1280, maxH:1280, maxBytes:350*1024});
 }
@@ -7020,6 +7049,11 @@ function loadMasterVehicles(){
     _mVehicles = (res && res.success) ? (res.data||[]) : [];
     _initMVehBranchFilter();
     renderMasterVehicles();
+    // โหลดสรุปจำนวนรูปรถต่อคัน (ใช้กับคอลัมน์ "รูป" และตัวกรองรูปไม่ครบ) แล้ววาดตารางใหม่
+    callAPI('getVehiclePhotoSummary', {}).then(function(r2){
+      window._vehPhotoCount = (r2 && r2.success) ? (r2.data||{}) : {};
+      renderMasterVehicles();
+    });
   });
 }
 // ── ตั้งตัวเลือกสาขาในดรอปดาวน์ + ค่าเริ่มต้น = สาขาตัวเอง (ผจก.เขตเริ่มที่ "ทุกสาขา") — รันครั้งแรกที่โหลดหน้าเท่านั้น ──
@@ -7094,7 +7128,15 @@ function renderMasterVehicles(){
   var careFilter = (document.getElementById('mVehFilterCareType')||{}).value||'';
   var branchFilter = (document.getElementById('mVehFilterBranch')||{}).value||'';
   var rentalFilter = (document.getElementById('mVehFilterRental')||{}).value||'';
+  var photoFilter = (document.getElementById('mVehFilterPhoto')||{}).value||'';
   var rows = _mVehicles;
+  if(photoFilter){
+    var pc = window._vehPhotoCount||{};
+    rows = rows.filter(function(v){
+      var n = pc[String(v.SerialNo||'').trim()]||0;
+      return photoFilter==='complete' ? n>=5 : photoFilter==='none' ? n===0 : n<5;
+    });
+  }
   if(rentalFilter){
     rows = rows.filter(function(v){
       var rs = String(v.RentalStatus||'').trim() || 'ไม่ระบุสถานะ';
@@ -7119,7 +7161,7 @@ function renderMasterVehicles(){
       return careFilter==='__blank__' ? !v.CareType : v.CareType===careFilter;
     });
   }
-  if(cnt) cnt.textContent = '🚙 ทั้งหมด '+_mVehicles.length+' คัน'+((q||careFilter||branchFilter||rentalFilter)?' — ตรงกับตัวกรอง '+rows.length:'');
+  if(cnt) cnt.textContent = '🚙 ทั้งหมด '+_mVehicles.length+' คัน'+((q||careFilter||branchFilter||rentalFilter||photoFilter)?' — ตรงกับตัวกรอง '+rows.length:'');
 
   if(!rows.length){
     el.innerHTML = '<div class="tc tm" style="padding:24px">ไม่พบรถค่ะ</div>';
@@ -7154,7 +7196,7 @@ function renderMasterVehicles(){
   +'</div>';
   el.innerHTML = bulkBar + '<div class="tw"><table class="it" style="font-size:13px"><thead><tr>'
     +'<th></th><th>Serial No.</th><th>เลขรถ</th><th>รุ่น</th><th>ลูกค้า</th>'
-    +'<th>สถานที่</th><th>สาขา</th><th>สถานะเช่า</th><th>สถานะใช้งาน</th><th>ประเภทการดูแล</th><th></th></tr></thead><tbody>'
+    +'<th>สถานที่</th><th>สาขา</th><th>สถานะเช่า</th><th>รูปรถ</th><th>สถานะใช้งาน</th><th>ประเภทการดูแล</th><th></th></tr></thead><tbody>'
     + shown.map(function(v){
       var inactive = String(v.Status||'Active').toLowerCase()==='inactive';
       var snEsc = encodeURIComponent(v.SerialNo);
@@ -7171,6 +7213,7 @@ function renderMasterVehicles(){
         +'<td style="font-size:12px;color:var(--g400)">'+(v.Location||'-')+'</td>'
         +'<td style="font-size:11px;color:var(--g400)">'+branchLabel(v.Branch||'PHUKET')+'</td>'
         +'<td style="font-size:12px;white-space:nowrap">'+_rentalChip(v.RentalStatus)+'</td>'
+        +'<td style="font-size:12px;white-space:nowrap">'+(function(){ var n=(window._vehPhotoCount||{})[String(v.SerialNo||'').trim()]||0; return n>=5?'<span style="color:#2e7d32;font-weight:700">✅ 5/5</span>':'<span style="color:'+(n?'#e65100':'#c62828')+';font-weight:700">📷 '+n+'/5</span>'; })()+'</td>'
         +'<td>'+(inactive
             ? '<span style="color:#b71c1c;font-size:12px;font-weight:700">🚫 ปิดใช้งาน</span>'
             : '<span style="color:#2d6a4f;font-size:12px;font-weight:700">✓ ใช้งาน</span>')+'</td>'
@@ -13564,7 +13607,8 @@ function selectVH(serialNo){
       + (car ? '<div class="card" style="margin-top:10px;padding:12px 14px">'
         +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:6px">'
           +'<div style="font-weight:700;color:var(--gd);font-size:13px">📷 รูปรถ (Serial Number + 4 ด้าน)</div>'
-          +'<div id="vhPhotoProgress" style="font-size:11px;color:var(--g400)"></div></div>'
+          +'<div style="display:flex;gap:8px;align-items:center"><div id="vhPhotoProgress" style="font-size:11px;color:var(--g400)"></div>'
+          +'<button class="btn bo bsm" style="font-size:11px" onclick="printVehiclePhotos(\''+car.SerialNo+'\')">🖨️ พิมพ์ใบรูปรถ</button></div></div>'
         +'<div id="vhPhotoBox" style="font-size:12px;color:var(--g400)">⏳ กำลังโหลด...</div>'
       +'</div>' : '')
       + (car ? '<div class="card" style="margin-top:10px;padding:12px 14px">'
