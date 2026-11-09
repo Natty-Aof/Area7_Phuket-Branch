@@ -2626,7 +2626,7 @@ function demoLogin(role){
 // ── API ──────────────────────────────────────────────────────
 // รายการ action ที่ผลลัพธ์ขึ้นกับสาขา — แนบ activeBranch (ตัวกรองสาขาที่ ผจก.เขต เลือกดูอยู่) ให้อัตโนมัติ
 // ผู้ใช้ทั่วไป (ไม่ใช่ ผจก.เขต) ไม่ได้รับผลจากตรงนี้ — backend กรองเป็นสาขาตัวเองอยู่แล้วเสมอ
-var BRANCH_SCOPED_ACTIONS = ['getVehiclePhotoSummary','getRequisitions','getStockCardEntries','getVehicles','getInventoryBalance',
+var BRANCH_SCOPED_ACTIONS = ['getVehiclePhotoLinks','getVehiclePhotoSummary','getRequisitions','getStockCardEntries','getVehicles','getInventoryBalance',
   'getStockTransfers','getDashboard','getReport','getSalesOrders','getInspections','getVehicleHistory',
   'getSpecialPartRequests','getCustomerBackorders','getExternalHoldings','getVehiclesRequiringPM','getPMDashboardSummary',
   'getTechStock','getSlowMovingParts','getVehiclePartAnalytics','getWarrantyPlan','getFleetStatusBoard','getConcessionRevenueList',
@@ -4205,6 +4205,59 @@ function printVehicleHistoryPage(){
   var w = window.open('','_blank');
   if(!w) return toast('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ — กรุณาอนุญาต Pop-up ค่ะ','error');
   w.document.open(); w.document.write(html); w.document.close();
+}
+// ── รายงาน Serial + รูปรถ (รวมทุกคันในโครงการ/รุ่นที่เลือก) เป็น PDF (พิมพ์/Save as PDF) หรือ Excel (CSV พร้อมลิงก์รูป) ──
+function vhExportReport(tab, fmt){
+  var vehicles = (tab===2 ? window._vhProjVehicles : window._vhModelVehicles) || [];
+  var title = (tab===2 ? window._vhProjTitle : window._vhModelTitle) || 'รายงานรถ';
+  if(!vehicles.length) return toast('ไม่มีรถให้ทำรายงานค่ะ','error');
+  var snList = vehicles.map(function(v){ return v.SerialNo; });
+  toast('กำลังรวบรวมรูป '+snList.length+' คัน...','info');
+  callAPI('getVehiclePhotoLinks', {serials:snList}).then(function(res){
+    if(!res || !res.success) return toast((res&&res.message)||'ดึงรูปไม่ได้ค่ะ','error');
+    var links = res.data || {};
+    var slots = VEH_PHOTO_SLOTS;
+    var plain = title.replace(/^[^\wก-๙]+/,'').trim();
+    if(fmt==='csv'){
+      var q = function(x){ return '"'+String(x==null?'':x).replace(/"/g,'""')+'"'; };
+      var head = ['ลำดับ','Serial No.','เลขรถ','รุ่น','ลูกค้า','สถานที่','สาขา','สถานะเช่า','จำนวนรูป (จาก 5)'].concat(slots.map(function(s){ return 'ลิงก์รูป '+s.label.replace(/^\S+\s/,''); }));
+      var lines = [head.map(q).join(',')];
+      vehicles.forEach(function(v,i){
+        var L = links[v.SerialNo]||{}; var n = slots.filter(function(s){ return L[s.k]; }).length;
+        lines.push([i+1, v.SerialNo, v.CarNo||'', v.Model||'', v.Customer||'', v.Location||'', branchLabel(v.Branch||'PHUKET'), String(v.RentalStatus||'').trim()||'ไม่ระบุสถานะ', n]
+          .concat(slots.map(function(s){ return L[s.k] ? (L[s.k].DriveUrl||L[s.k].PhotoUrl) : ''; })).map(q).join(','));
+      });
+      var blob = new Blob(['﻿'+lines.join('\r\n')], {type:'text/csv;charset=utf-8'});
+      var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = 'รายงานรถ_'+plain.slice(0,40)+'_'+new Date().toISOString().slice(0,10)+'.csv';
+      document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },500);
+      return toast('ดาวน์โหลดไฟล์ Excel แล้วค่ะ','success');
+    }
+    // PDF: 1 คัน = 1 บล็อก (ข้อมูล + รูป 5 ช่อง) ประมาณ 3 คัน/หน้า A4
+    var esc = function(x){ return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+    var now = new Date();
+    var stamp = now.toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'})+' '+now.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+    var blocks = vehicles.map(function(v,i){
+      var L = links[v.SerialNo]||{}; var n = slots.filter(function(s){ return L[s.k]; }).length;
+      return '<div class="b"><div class="h"><b>'+(i+1)+'. Serial: '+esc(v.SerialNo)+'</b> &nbsp;|&nbsp; เลขรถ: '+esc(v.CarNo||'-')+' &nbsp;|&nbsp; รุ่น: '+esc(v.Model||'-')
+        +' &nbsp;|&nbsp; ลูกค้า: '+esc(v.Customer||'-')+' &nbsp;|&nbsp; สถานะ: '+esc(String(v.RentalStatus||'').trim()||'ไม่ระบุสถานะ')
+        +' <span class="'+(n===5?'ok':'no')+'">รูป '+n+'/5</span></div><div class="g">'
+        +slots.map(function(s){ var r=L[s.k]; return '<div class="c"><div class="t">'+s.label+'</div>'+(r?'<img src="'+r.PhotoUrl+'">':'<div class="e">ไม่มีรูป</div>')+'</div>'; }).join('')
+        +'</div></div>';
+    }).join('');
+    var html = '<!doctype html><html><head><meta charset="utf-8"><title>รายงาน Serial + รูปรถ</title><style>'
+      +'@page{size:A4;margin:8mm}body{font-family:Sarabun,Tahoma,Arial,sans-serif;font-size:10px;color:#111;margin:0}'
+      +'h1{font-size:15px;color:#1a4a2e;margin:0 0 2px}.m{color:#555;margin-bottom:8px;font-size:10px}'
+      +'.b{border:1px solid #888;padding:4px 6px;margin-bottom:6px;page-break-inside:avoid}.h{margin-bottom:3px}.ok{color:#2e7d32;font-weight:700}.no{color:#c62828;font-weight:700}'
+      +'.g{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}.c{text-align:center}.t{font-size:9px;font-weight:700;margin-bottom:1px}'
+      +'img{width:100%;height:78px;object-fit:cover;border:1px solid #ccc}.e{height:78px;border:1px dashed #bbb;display:flex;align-items:center;justify-content:center;color:#c62828;font-size:9px}'
+      +'</style></head><body><h1>รายงาน Serial + รูปรถ — Beyond Green</h1><div class="m">'+esc(title)+' | รวม '+vehicles.length+' คัน | พิมพ์เมื่อ '+esc(stamp)+'</div>'
+      +blocks+'<script>window.onload=function(){var im=document.images,n=im.length,d=0,fired=false;function go(){if(fired)return;fired=true;setTimeout(function(){window.print();},400);}if(!n)return go();for(var i=0;i<n;i++){if(im[i].complete){d++;}else{im[i].onload=im[i].onerror=function(){if(++d>=n)go();};}}if(d>=n)go();setTimeout(go,15000);};<\/script></body></html>';
+    var w = window.open('','_blank');
+    if(!w) return toast('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ — กรุณาอนุญาต Pop-up ค่ะ','error');
+    w.document.open(); w.document.write(html); w.document.close();
+    toast('เปิดหน้ารายงานแล้ว — เลือก "บันทึกเป็น PDF" ในหน้าต่างพิมพ์ได้เลยค่ะ','success');
+  });
 }
 function onVehiclePhotoPick(snEsc, slot, input){
   var file = input.files && input.files[0]; if(!file) return;
@@ -13990,8 +14043,14 @@ function renderVHProjResult(vehicles, title){
     if(!groups[loc]) groups[loc] = [];
     groups[loc].push(v);
   });
+  window._vhProjVehicles = vehicles; window._vhProjTitle = title;
   box.innerHTML = '<div class="card" style="padding:10px 14px;margin-bottom:10px">'
-    +'<div style="font-size:13px;font-weight:700;margin-bottom:10px;color:#1a237e">'+title+' — พบ '+vehicles.length+' คัน</div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">'
+      +'<div style="font-size:13px;font-weight:700;color:#1a237e">'+title+' — พบ '+vehicles.length+' คัน</div>'
+      +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
+        +'<button class="btn bp bsm" style="font-size:11px" onclick="vhExportReport(2,\'pdf\')">📄 รายงาน Serial + รูปรถ (PDF)</button>'
+        +'<button class="btn bo bsm" style="font-size:11px" onclick="vhExportReport(2,\'csv\')">📊 ดาวน์โหลด Excel</button>'
+      +'</div></div>'
     +Object.keys(groups).map(function(loc){
       var grp = groups[loc];
       var cust = grp[0].Customer||'';
