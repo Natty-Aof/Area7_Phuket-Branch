@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta name="robots" content="noindex,nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>แคตตาล็อกรถตามสภาพ — Beyond Green</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d1f17; --bg2:#13291f; --card:#183326; --line:#2a4a3a; --ink:#eef5f0; --mute:#9db8a9;
+  --acc:#7fd19b; --acc2:#c9a54a; --rent:#6cb6e8; --warn:#e8a25c; --bad:#e07a6c;
+  --r:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans Thai",system-ui,sans-serif;font-size:15px}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+header{position:sticky;top:0;z-index:20;background:rgba(13,31,23,.96);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.hwrap{max-width:1200px;margin:0 auto;padding:12px 16px 10px}
+.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{font-weight:700;font-size:18px;letter-spacing:.2px}
+.brand small{display:block;font-weight:400;font-size:12px;color:var(--mute)}
+.roles{margin-left:auto;display:flex;background:var(--bg2);border:1px solid var(--line);border-radius:999px;padding:3px}
+.roles button{border:0;background:none;padding:6px 12px;border-radius:999px;font-size:13px;color:var(--mute)}
+.roles button.on{background:var(--acc);color:#0d1f17;font-weight:600}
+.kpis{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.kpi{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:6px 12px;font-size:12px;color:var(--mute)}
+.kpi b{display:block;font-size:18px;color:var(--ink)}
+.kpi.g b{color:var(--acc)}
+.tools{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center}
+.tools input[type=search]{flex:1;min-width:180px;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--bg2);border-radius:999px;padding:5px 11px;font-size:13px;color:var(--mute)}
+.chip.on{border-color:var(--acc);color:var(--acc);background:rgba(127,209,155,.1)}
+main{max-width:1200px;margin:0 auto;padding:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:transform .12s,border-color .12s}
+.card:hover{transform:translateY(-2px);border-color:var(--acc)}
+.ph{aspect-ratio:4/3;background:#0f2419;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.ph img{width:100%;height:100%;object-fit:cover}
+.noimg{color:var(--mute);font-size:12px;text-align:center;padding:10px}
+.noimg svg{display:block;margin:0 auto 6px;opacity:.5}
+.ph .cnt{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.6);border-radius:6px;font-size:11px;padding:2px 6px}
+.cb{padding:12px 14px 14px;display:flex;flex-direction:column;gap:6px;flex:1}
+.cn{font-weight:700;font-size:16px;line-height:1.25}
+.cat{font-size:12px;color:var(--mute)}
+.avail{display:flex;align-items:baseline;gap:6px}
+.avail b{font-size:26px;color:var(--acc);line-height:1}
+.avail.zero b{color:var(--bad)}
+.tags{display:flex;gap:5px;flex-wrap:wrap}
+.tag{font-size:11.5px;border-radius:6px;padding:2px 7px;font-weight:600}
+.t-sale{background:rgba(201,165,74,.16);color:var(--acc2)}
+.t-rent{background:rgba(108,182,232,.15);color:var(--rent)}
+.t-hold{background:rgba(224,122,108,.15);color:var(--bad)}
+.t-mute{background:rgba(157,184,169,.12);color:var(--mute);font-weight:500}
+.price{font-size:13.5px;margin-top:auto;padding-top:6px;border-top:1px dashed var(--line)}
+.price div{display:flex;justify-content:space-between;gap:8px}
+.price .lbl{color:var(--mute)}
+.price .v{font-weight:600}
+.price .na{color:var(--mute);font-weight:400;font-style:italic}
+.empty{padding:40px;text-align:center;color:var(--mute)}
+/* sheet */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:40;display:none}
+.ov.on{display:block}
+.sheet{position:fixed;z-index:41;top:0;right:0;bottom:0;width:min(760px,100%);background:var(--bg);border-left:1px solid var(--line);overflow-y:auto;transform:translateX(100%);transition:transform .22s}
+.sheet.on{transform:none}
+.sh{position:sticky;top:0;background:rgba(13,31,23,.97);border-bottom:1px solid var(--line);padding:12px 16px;display:flex;gap:10px;align-items:center;z-index:2}
+.sh h2{margin:0;font-size:19px;flex:1}
+.btn{border:1px solid var(--line);background:var(--bg2);border-radius:10px;padding:7px 12px;font-size:13.5px}
+.btn.pri{background:var(--acc);color:#0d1f17;border-color:var(--acc);font-weight:600}
+.btn.gold{background:var(--acc2);color:#1a1405;border-color:var(--acc2);font-weight:600}
+.btn.sm{padding:4px 9px;font-size:12.5px}
+.btn.dng{color:var(--bad)}
+.sbody{padding:16px;display:flex;flex-direction:column;gap:16px}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.gal .g{position:relative;aspect-ratio:4/3;border-radius:10px;overflow:hidden;background:#0f2419;border:1px solid var(--line)}
+.gal img{width:100%;height:100%;object-fit:cover;cursor:zoom-in}
+.gal .x{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.7);border:0;border-radius:6px;color:#fff;font-size:12px;padding:2px 7px}
+.hero{aspect-ratio:16/9;border-radius:12px;overflow:hidden;background:#0f2419;border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
+.hero img{width:100%;height:100%;object-fit:cover;cursor:zoom-in}
+.box{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.box h3{margin:0 0 10px;font-size:15px;display:flex;align-items:center;gap:8px}
+.box h3 .sp{flex:1}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.st{background:var(--bg2);border-radius:10px;padding:8px 10px;font-size:12px;color:var(--mute)}
+.st b{display:block;font-size:20px;color:var(--ink)}
+.st.g b{color:var(--acc)}
+.bigp{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.bigp .p{background:var(--bg2);border-radius:10px;padding:10px 12px}
+.bigp .p .l{font-size:12px;color:var(--mute)}
+.bigp .p .n{font-size:20px;font-weight:700}
+.bigp .p.s .n{color:var(--acc2)} .bigp .p.r .n{color:var(--rent)}
+.frm{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.frm label{font-size:12px;color:var(--mute);display:flex;flex-direction:column;gap:4px}
+.frm input,.frm select,.frm textarea,.inp{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:7px 9px;width:100%}
+.frm .full{grid-column:1/-1}
+.units{display:flex;flex-direction:column;gap:10px}
+.unit{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px;display:grid;grid-template-columns:96px 1fr;gap:10px}
+.unit .uph{aspect-ratio:4/3;border-radius:8px;overflow:hidden;background:#0f2419;display:flex;align-items:center;justify-content:center}
+.unit .uph img{width:100%;height:100%;object-fit:cover;cursor:zoom-in}
+.unit .ut{font-weight:600}
+.unit .um{font-size:12.5px;color:var(--mute)}
+.unit .uact{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.grade{display:inline-block;min-width:22px;text-align:center;border-radius:6px;font-weight:700;font-size:12px;padding:1px 6px;margin-right:4px}
+.gA{background:#2f6b45;color:#d6f5e0}.gB{background:#6b5a2f;color:#f5ead6}.gC{background:#6b3a2f;color:#f5ddd6}
+.note{font-size:12.5px;color:var(--mute)}
+.warnbox{background:rgba(232,162,92,.1);border:1px solid rgba(232,162,92,.35);color:#f2c896;border-radius:10px;padding:10px 12px;font-size:13px}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#0a1712;border:1px solid var(--acc);color:var(--ink);padding:10px 16px;border-radius:10px;z-index:90;font-size:14px;display:none;max-width:90vw}
+.toast.on{display:block}.toast.err{border-color:var(--bad)}
+/* present */
+.pres{position:fixed;inset:0;background:#06100b;z-index:80;display:none;flex-direction:column}
+.pres.on{display:flex}
+.pimg{flex:1;position:relative;display:flex;align-items:center;justify-content:center;min-height:0}
+.pimg img{max-width:100%;max-height:100%;object-fit:contain}
+.pnav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.12);border:0;color:#fff;font-size:28px;width:48px;height:48px;border-radius:50%}
+.pnav.l{left:12px}.pnav.r{right:12px}
+.pdots{position:absolute;bottom:10px;left:0;right:0;text-align:center;font-size:12px;color:#cfe}
+.pinfo{padding:18px 22px 22px;background:linear-gradient(0deg,#0d1f17,#0b1a13);border-top:1px solid var(--line)}
+.pinfo h1{margin:0;font-size:clamp(22px,4vw,34px)}
+.pinfo .row{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;align-items:stretch}
+.pinfo .pp{background:rgba(255,255,255,.05);border-radius:12px;padding:10px 16px}
+.pinfo .pp .l{font-size:13px;color:var(--mute)}
+.pinfo .pp .n{font-size:clamp(20px,3.2vw,28px);font-weight:700}
+.pinfo .pp.s .n{color:var(--acc2)}.pinfo .pp.r .n{color:var(--rent)}.pinfo .pp.a .n{color:var(--acc)}
+.pclose{position:absolute;top:12px;right:12px;z-index:3}
+.lb{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:95;display:none;align-items:center;justify-content:center}
+.lb.on{display:flex}.lb img{max-width:96vw;max-height:94vh}
+.foot{max-width:1200px;margin:0 auto;padding:6px 16px 30px;color:var(--mute);font-size:12px}
+.spec{display:grid;grid-template-columns:minmax(120px,38%) 1fr;gap:6px 12px;font-size:14px}
+.spec .k{color:var(--mute)}.spec .v{font-weight:500}
+.gal .cap{position:absolute;left:4px;bottom:4px;background:rgba(0,0,0,.65);border-radius:5px;font-size:11px;padding:1px 6px}
+.defs{display:flex;flex-direction:column;gap:8px}
+.def{display:grid;grid-template-columns:84px 1fr;gap:10px;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:8px}
+.def.fixed{opacity:.6}
+.def .dph{aspect-ratio:1;border-radius:8px;overflow:hidden;background:#0f2419;display:flex;align-items:center;justify-content:center}
+.def .dph img{width:100%;height:100%;object-fit:cover;cursor:zoom-in}
+.t-ok{background:rgba(127,209,155,.15);color:var(--acc)}
+.t-warn{background:rgba(232,162,92,.15);color:var(--warn)}
+.lv-minor{background:rgba(157,184,169,.15);color:var(--mute)}.lv-mid{background:rgba(232,162,92,.15);color:var(--warn)}.lv-major{background:rgba(224,122,108,.18);color:var(--bad)}
+textarea.paste{min-height:140px;font-family:ui-monospace,monospace;font-size:12px}
+@media(max-width:560px){.roles{margin-left:0;width:100%}.roles button{flex:1}.bigp{grid-template-columns:1fr}.grid{grid-template-columns:1fr 1fr;gap:10px}.cn{font-size:14px}.avail b{font-size:22px}.cb{padding:10px}}
+</style>
+</head>
+<body>
+<header><div class="hwrap">
+  <div class="top">
+    <div class="brand">แคตตาล็อกรถตามสภาพ<small id="asof">Beyond Green · กำลังโหลดข้อมูล…</small></div>
+    <div class="roles" id="roles" style="display:none"></div>
+  </div>
+  <div class="kpis" id="kpis"></div>
+  <div class="tools">
+    <input type="search" id="q" placeholder="ค้นหารุ่น เช่น Precedent, 4 ที่นั่ง, Carryall">
+    <div class="chips" id="cats"></div>
+  </div>
+  <div class="tools"><div class="chips" id="offers"></div><div class="chips" id="sorts" style="margin-left:auto"></div></div>
+</div></header>
+
+<main>
+  <div id="accPanel" style="display:none;margin-bottom:16px"></div>
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" style="display:none"></div>
+</main>
+<div class="foot">ตัวอย่างสำหรับนำเสนอ (Demo) · ตัวเลขสต๊อกจริงจากรายงาน HQ ณ 8 พ.ย. 2569 · ราคาขายและรถรายคันเป็นข้อมูลทดสอบ · รูปจาก Club Car</div>
+
+<div class="ov" id="ov"></div>
+<aside class="sheet" id="sheet"></aside>
+<div class="pres" id="pres"></div>
+<div class="lb" id="lb"><img id="lbimg" alt=""></div>
+<div class="toast" id="toast"></div>
+
+
+<script>
+(() => {
+const S = { db:null, assets:null, models:{}, units:{}, meta:{}, role:"sales", q:"", cat:"all", offer:"all", sort:"order", open:null, loaded:false };
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const n = v => Number(v) || 0;
+const fmt = v => n(v).toLocaleString("th-TH");
+const baht = v => n(v) ? "฿" + fmt(v) : "";
+const img = id => "img/" + encodeURIComponent(id) + ".jpg";
+const CATS = [["all","ทั้งหมด"],["2","2 ที่นั่ง"],["4","4 ที่นั่ง"],["6","6–8 ที่นั่ง"],["util","อเนกประสงค์/บรรทุก"],["other","อื่นๆ"]];
+const OFFERS = {both:"ขาย / เช่า", sale:"ขายเท่านั้น", rent:"เช่าเท่านั้น", hold:"ยังไม่เปิดขาย/เช่า"};
+const USTATUS = {ready:"พร้อมส่งมอบ", repair:"รอซ่อม/เตรียมรถ", reserved:"จองแล้ว", sold:"ขาย/ปล่อยเช่าแล้ว"};
+const LOCS = ["คลัง (สำนักงาน)","รถฝากจอด","Global House","สาขาภูเก็ต","สาขาสมุย","สาขาหาดใหญ่","สาขากระบี่","อื่นๆ"];
+const noImg = (t="ยังไม่มีรูป") => `<div class="noimg"><svg width="46" height="34" viewBox="0 0 46 34" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="38" height="18" rx="3"/><path d="M8 22v6M38 22v6M2 4h42"/><circle cx="12" cy="29" r="3"/><circle cx="34" cy="29" r="3"/></svg>${t}</div>`;
+
+function catOf(name){
+  const u = (name||"").toUpperCase();
+  if (u.includes("CARRYALL")) return "util";
+  if (u.includes("2+2")) return "4";
+  const m = u.match(/(\d)\s*SEATER/); if(!m) return "other";
+  const s = +m[1]; return s===2?"2":s===4?"4":s>=6?"6":"other";
+}
+const catLabel = c => (CATS.find(x=>x[0]===c)||[,"อื่นๆ"])[1];
+function slug(name){
+  let s = String(name).replace(/ชุดยกสูง/g," lifted ").replace(/โฉมใหม่/g," new ").toLowerCase().replace(/\+/g,"p");
+  const rest = s.replace(/[a-z0-9\s-]/g,"");
+  s = s.replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+  if (rest.trim()) { let h=0; for (const ch of rest) h=(h*31+ch.charCodeAt(0))>>>0; s += "-" + h.toString(36); }
+  return s || "m-" + Date.now().toString(36);
+}
+function toast(msg, err){ const t=$("#toast"); t.textContent=msg; t.className="toast on"+(err?" err":""); clearTimeout(t._h); t._h=setTimeout(()=>t.className="toast",2600); }
+function dbErr(e){ console.error(e); toast(e && e.code==="invalid_argument" ? "บันทึกไม่ได้ — บัญชีนี้ไม่มีสิทธิ์แก้ไข" : "บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง", true); }
+
+// --- derived
+function unitsOf(id){ return Object.values(S.units).filter(u=>u.modelId===id).sort((a,b)=>(a.serial||"").localeCompare(b.serial||"")); }
+function photoList(u){ return (u&&u.photos||[]).map(p=>typeof p==="string"?{id:p,tag:""}:p).filter(p=>p&&p.id); }
+function photosOf(m){ const ps=[...(m.photos||[])]; for(const u of unitsOf(m._id)) for(const p of photoList(u)) ps.push(p.id); return ps; }
+const TAGS=["ด้านหน้า","ด้านหลัง","ด้านซ้าย","ด้านขวา","เบาะ/ห้องโดยสาร","หน้าปัด/พวงมาลัย","แบตเตอรี่","ชาร์จเจอร์","ยาง/ล้อ","หลังคา","อื่นๆ"];
+const LEVELS={minor:"เล็กน้อย",mid:"ปานกลาง",major:"ต้องซ่อม"};
+function priceOfUnit(u,m){ return n(u.salePrice)||n(m.salePriceMin)||0; }
+function batSummary(u){ return [u.batType, u.voltage, u.batCount&&(u.batCount+" ลูก"), u.batSpec, u.batYear&&("ติดตั้งปี "+u.batYear), u.batHealth&&("สุขภาพ "+u.batHealth+"%")].filter(Boolean).join(" · "); }
+function offerOf(m){ return m.offer || "both"; }
+function canSale(m){ const o=offerOf(m); return o==="both"||o==="sale"; }
+function canRent(m){ const o=offerOf(m); return o==="both"||o==="rent"; }
+function salePriceText(m){
+  const a=n(m.salePriceMin), b=n(m.salePriceMax);
+  if(!a&&!b) return "";
+  if(a&&b&&a!==b) return baht(a)+" – "+baht(b);
+  return baht(a||b);
+}
+function rentText(m){ return n(m.rentPrice) ? baht(m.rentPrice)+" /เดือน" : ""; }
+
+// --- header
+function renderHead(){
+  $("#asof").textContent = "Beyond Green · ข้อมูล ณ " + (S.meta.asOf || "—");
+  const ms = Object.values(S.models);
+  const tot = ms.reduce((a,m)=>a+n(m.total),0), po = ms.reduce((a,m)=>a+n(m.poTotal),0), av = ms.reduce((a,m)=>a+n(m.avail),0);
+  const priced = ms.filter(m=>n(m.avail)>0 && (salePriceText(m)||rentText(m))).length, withAvail = ms.filter(m=>n(m.avail)>0).length;
+  const withPh = ms.filter(m=>n(m.avail)>0 && photosOf(m).length).length;
+  $("#kpis").innerHTML = `
+    <div class="kpi g"><b>${fmt(av)}</b>คัน ขาย/เช่าได้</div>
+    <div class="kpi"><b>${fmt(po)}</b>คัน มี PO แล้ว</div>
+    <div class="kpi"><b>${fmt(tot)}</b>คัน สต๊อกทั้งหมด</div>
+    ${S.role!=="sales"?`<div class="kpi"><b>${priced}/${withAvail}</b>รุ่นที่ใส่ราคาแล้ว</div><div class="kpi"><b>${withPh}/${withAvail}</b>รุ่นที่มีรูปแล้ว</div>`:""}`;
+  $("#cats").innerHTML = CATS.map(([k,l])=>`<button class="chip ${S.cat===k?"on":""}" data-cat="${k}">${l}</button>`).join("");
+  $("#offers").innerHTML = [["all","ขาย+เช่า ทั้งหมด"],["sale","ขายได้"],["rent","เช่าได้"]].map(([k,l])=>`<button class="chip ${S.offer===k?"on":""}" data-offer="${k}">${l}</button>`).join("");
+  $("#sorts").innerHTML = [["order","เรียงตามรายงาน"],["avail","คงเหลือมากสุด"]].map(([k,l])=>`<button class="chip ${S.sort===k?"on":""}" data-sort="${k}">${l}</button>`).join("");
+}
+
+// --- grid
+function renderGrid(){
+  let ms = Object.values(S.models);
+  const q = S.q.trim().toLowerCase();
+  if (q) ms = ms.filter(m => (m.name+" "+catLabel(m.cat)+" "+(m.desc||"")).toLowerCase().includes(q));
+  if (S.cat!=="all") ms = ms.filter(m=>m.cat===S.cat);
+  if (S.offer==="sale") ms = ms.filter(canSale);
+  if (S.offer==="rent") ms = ms.filter(canRent);
+  if (S.role==="sales") ms = ms.filter(m=>n(m.avail)>0 && offerOf(m)!=="hold");
+  ms.sort(S.sort==="avail" ? (a,b)=>n(b.avail)-n(a.avail) : (a,b)=>n(a.order)-n(b.order));
+  const g=$("#grid"), e=$("#empty");
+  if (!S.loaded){ g.innerHTML=""; e.style.display="block"; e.textContent="กำลังโหลดข้อมูล…"; return; }
+  if (!ms.length){ g.innerHTML=""; e.style.display="block"; e.textContent = Object.keys(S.models).length ? "ไม่พบรุ่นที่ตรงกับตัวกรอง" : "ยังไม่มีข้อมูลสต๊อก — ไปที่โหมด 'บัญชี' เพื่อวางตารางสต๊อก"; return; }
+  e.style.display="none";
+  g.innerHTML = ms.map(m=>{
+    const ps = photosOf(m), us = unitsOf(m._id), o = offerOf(m);
+    const st = salePriceText(m), rt = rentText(m);
+    return `<article class="card" data-open="${esc(m._id)}">
+      <div class="ph">${ps.length?`<img loading="lazy" src="${img(ps[0])}" alt="">`:noImg()}${ps.length>1?`<span class="cnt">${ps.length} รูป</span>`:""}</div>
+      <div class="cb">
+        <div class="cn">${esc(m.name)}</div>
+        <div class="cat">${catLabel(m.cat)}${us.length?` · ลงข้อมูลรายคัน ${us.length} คัน`:""}</div>
+        <div class="avail ${n(m.avail)?"":"zero"}"><b>${fmt(m.avail)}</b><span class="note">คันพร้อมขาย/เช่า</span></div>
+        <div class="tags">${o==="hold"?`<span class="tag t-hold">ยังไม่เปิด</span>`:""}${canSale(m)?`<span class="tag t-sale">ขายได้</span>`:""}${canRent(m)?`<span class="tag t-rent">เช่าได้</span>`:""}${n(m.consign)?`<span class="tag t-mute">ฝากจอด ${fmt(m.consign)}</span>`:""}</div>
+        <div class="price">
+          ${canSale(m)?`<div><span class="lbl">ราคาขาย</span><span class="v">${st||'<span class="na">สอบถามบัญชี</span>'}</span></div>`:""}
+          ${canRent(m)?`<div><span class="lbl">ค่าเช่า</span><span class="v">${rt||'<span class="na">เซลล์เสนอตามเรตเช่า</span>'}</span></div>`:""}
+        </div>
+      </div></article>`;
+  }).join("");
+}
+
+// --- accounting panel (stock import)
+function renderAccPanel(){
+  const p=$("#accPanel");
+  if (S.role!=="acc"){ p.style.display="none"; return; }
+  p.style.display="block";
+  p.innerHTML = `<div class="box"><h3>อัปเดตสต๊อกจากรายงาน HQ<span class="sp"></span><button class="btn sm" id="tglImp">แสดง/ซ่อน</button></h3>
+    <div id="impBody" style="display:none">
+      <p class="note" style="margin-top:0">คัดลอกตารางจาก Excel (ไม่ต้องมีหัวตาราง และไม่ต้องมีแถว Grand Total) ลำดับคอลัมน์: รุ่นรถ · สต๊อกคงเหลือ · PO ขาย · PO เช่า · PO สัมปทาน · PO รวม · คลัง(สำนักงาน) · รถฝากจอด · Global House · คงเหลือรวม — ราคา รูป และข้อมูลรายคันที่มีอยู่จะยังคงอยู่</p>
+      <div class="frm"><label>ข้อมูล ณ วันที่<input id="impDate" value="${esc(S.meta.asOf||"")}" placeholder="เช่น 8 พ.ย. 2569"></label></div>
+      <textarea class="inp paste" id="impText" placeholder="PRECEDENT 2 SEATER\t522\t15\t183\t92\t290\t52\t180\t\t232"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px;align-items:center"><button class="btn pri" id="impGo">ตรวจสอบและนำเข้า</button><span class="note" id="impMsg"></span></div>
+    </div></div>`;
+}
+function parseStock(txt){
+  const rows=[], errs=[];
+  txt.split(/\r?\n/).forEach((line,i)=>{
+    if(!line.trim()) return;
+    const c = line.split("\t"); if (c.length<2){ errs.push(`แถว ${i+1}: ไม่ใช่ข้อมูลที่คั่นด้วย Tab`); return; }
+    const name=c[0].trim(); if(!name || /grand\s*total/i.test(name) || name==="รุ่นรถ") return;
+    const v = k => n(String(c[k]||"").replace(/,/g,""));
+    const r = {name,total:v(1),poSale:v(2),poRent:v(3),poCon:v(4),poTotal:v(5),wh:v(6),consign:v(7),gh:v(8),avail:v(9)};
+    if (c.length<10) r.avail = r.total - r.poTotal;
+    rows.push(r);
+  });
+  return {rows,errs};
+}
+async function doImport(){
+  const {rows,errs}=parseStock($("#impText").value), msg=$("#impMsg");
+  if (errs.length){ msg.textContent=errs.slice(0,3).join(" · "); return; }
+  if (!rows.length){ msg.textContent="ไม่พบข้อมูล"; return; }
+  if (!S.db){ msg.textContent="ฐานข้อมูลไม่พร้อม"; return; }
+  msg.textContent=`กำลังนำเข้า ${rows.length} รุ่น…`;
+  try{
+    const seen=new Set();
+    for (let i=0;i<rows.length;i++){
+      const r=rows[i], id=slug(r.name); seen.add(id);
+      const ref=S.db.collection("models").doc(id), ex=S.models[id];
+      const body={...r,cat:catOf(r.name),order:i};
+      if (ex) await ref.update(body); else await ref.set({...body,offer:"both",photos:[]});
+    }
+    for (const id of Object.keys(S.models)) if(!seen.has(id) && (n(S.models[id].total)||n(S.models[id].avail))) await S.db.collection("models").doc(id).update({total:0,poSale:0,poRent:0,poCon:0,poTotal:0,wh:0,consign:0,gh:0,avail:0});
+    const d=$("#impDate").value.trim(); if(d) await S.db.doc("meta/info").set({...S.meta,asOf:d});
+    msg.textContent=`นำเข้าแล้ว ${rows.length} รุ่น`; toast("อัปเดตสต๊อกเรียบร้อย");
+  }catch(e){ dbErr(e); msg.textContent=""; }
+}
+
+// --- detail sheet
+function openModel(id){ S.open=id; S.unit=null; S.editing=null; try{ history.replaceState(null,"","#m-"+id); }catch(_){ } renderSheet(); $("#sheet").classList.add("on"); $("#ov").classList.add("on"); }
+function closeSheet(){ S.open=null; S.unit=null; S.editing=null; $("#sheet").classList.remove("on"); $("#ov").classList.remove("on"); try{ history.replaceState(null,"",location.pathname+location.search); }catch(_){ } }
+function renderSheet(){
+  const m=S.models[S.open]; const sh=$("#sheet");
+  if(!m){ sh.innerHTML=""; return; }
+  if(S.unit && S.units[S.unit]) return renderUnit(S.units[S.unit], m);
+  const ps=photosOf(m), us=unitsOf(m._id), o=offerOf(m), R=S.role;
+  const st=salePriceText(m), rt=rentText(m);
+  const unitHtml = us.length ? us.map(u=>unitCard(u,m)).join("") : `<div class="note">ยังไม่มีข้อมูลรายคัน${R==="cm"?" — กด “เพิ่มรถรายคัน” เพื่อลงเลขรถ สภาพ และรูป":" (ฝ่าย CM กำลังลงข้อมูล)"}</div>`;
+  sh.innerHTML = `
+  <div class="sh"><button class="btn" data-act="close">✕</button><h2>${esc(m.name)}</h2>
+    ${n(m.avail)&&o!=="hold"?`<button class="btn gold" data-act="present">เปิดให้ลูกค้าดู</button>`:""}</div>
+  <div class="sbody">
+    <div class="hero">${ps.length?`<img src="${img(ps[0])}" data-lb="${esc(ps[0])}" alt="">`:noImg(R==="cm"?"ยังไม่มีรูป — อัปโหลดด้านล่าง":"ยังไม่มีรูป — รอฝ่าย CM อัปโหลด")}</div>
+    ${ps.length>1?`<div class="gal">${ps.slice(1).map(p=>`<div class="g"><img loading="lazy" src="${img(p)}" data-lb="${esc(p)}" alt=""></div>`).join("")}</div>`:""}
+
+    <div class="box"><h3>ขาย / เช่า<span class="sp"></span><span class="tag ${o==="hold"?"t-hold":"t-mute"}">${OFFERS[o]}</span></h3>
+      <div class="bigp">
+        ${canSale(m)?`<div class="p s"><div class="l">ราคาขาย (ต่อคัน)</div><div class="n">${st||"—"}</div>${!st?'<div class="note">ยังไม่ได้ตั้งราคา — สอบถามบัญชี</div>':""}</div>`:""}
+        ${canRent(m)?`<div class="p r"><div class="l">ค่าเช่า</div><div class="n">${rt||"เช่าได้"}</div>${!rt?'<div class="note">เซลล์เสนอราคาเช่าตามเรตปัจจุบัน</div>':""}</div>`:""}
+      </div>
+      ${m.priceNote?`<p class="note" style="margin:10px 0 0">${esc(m.priceNote)}</p>`:""}
+      ${R==="acc"?`<hr style="border:0;border-top:1px dashed var(--line);margin:14px 0">
+      <div class="frm">
+        <label>เปิดให้<select id="fOffer">${Object.entries(OFFERS).map(([k,l])=>`<option value="${k}" ${o===k?"selected":""}>${l}</option>`).join("")}</select></label>
+        <label>ราคาขายต่ำสุด (บาท)<input id="fSmin" inputmode="numeric" value="${n(m.salePriceMin)||""}"></label>
+        <label>ราคาขายสูงสุด (บาท)<input id="fSmax" inputmode="numeric" value="${n(m.salePriceMax)||""}"></label>
+        <label>ค่าเช่า/เดือน (ไม่บังคับ)<input id="fRent" inputmode="numeric" value="${n(m.rentPrice)||""}"></label>
+        <label class="full">หมายเหตุราคา (เซลล์เห็น)<input id="fPnote" value="${esc(m.priceNote||"")}" placeholder="เช่น ราคารวม VAT, เช่าขั้นต่ำ 12 เดือน, ไม่รวมค่าขนส่ง"></label>
+      </div><div style="margin-top:10px"><button class="btn pri" data-act="savePrice">บันทึกราคา</button></div>`:""}
+    </div>
+
+    <div class="box"><h3>สต๊อกรุ่นนี้</h3>
+      <div class="stats">
+        <div class="st g"><b>${fmt(m.avail)}</b>คงเหลือ ขาย/เช่าได้</div>
+        <div class="st"><b>${fmt(m.wh)}</b>อยู่ที่คลัง (สำนักงาน)</div>
+        <div class="st"><b>${fmt(m.consign)}</b>รถฝากจอด</div>
+        ${n(m.gh)?`<div class="st"><b>${fmt(m.gh)}</b>Global House</div>`:""}
+      </div>
+      <p class="note" style="margin:10px 0 0">สต๊อกทั้งหมด ${fmt(m.total)} คัน · มี PO แล้ว ${fmt(m.poTotal)} คัน${n(m.poTotal)?` (ขาย ${fmt(m.poSale)} · เช่า ${fmt(m.poRent)} · สัมปทาน ${fmt(m.poCon)})`:""}</p>
+    </div>
+
+    ${m.desc||R==="cm"?`<div class="box"><h3>รายละเอียดรุ่น</h3>${R==="cm"?`<textarea class="inp" id="fDesc" rows="3" placeholder="จุดเด่น สเปก การใช้งานที่เหมาะ (เซลล์และลูกค้าเห็น)">${esc(m.desc||"")}</textarea><div style="margin-top:8px"><button class="btn pri" data-act="saveDesc">บันทึก</button></div>`:`<div style="white-space:pre-wrap">${esc(m.desc)}</div>`}</div>`:""}
+
+    ${R==="cm"?`<div class="box"><h3>รูปตัวแทนรุ่น<span class="sp"></span><button class="btn pri sm" data-act="upModel">+ อัปโหลดรูป</button></h3>
+      ${(m.photos||[]).length?`<div class="gal">${m.photos.map(p=>`<div class="g"><img src="${img(p)}" data-lb="${esc(p)}" alt=""><button class="x" data-act="delMPhoto" data-p="${esc(p)}">ลบ</button></div>`).join("")}</div>`:`<div class="note">ยังไม่มีรูป ถ่ายรอบคัน (หน้า ข้าง หลัง เบาะ แผงหน้าปัด) จะช่วยให้ลูกค้าตัดสินใจได้เร็ว</div>`}
+    </div>`:""}
+
+    <div class="box"><h3>รถรายคัน (${us.length}${n(m.avail)?` / ${fmt(m.avail)}`:""})<span class="sp"></span>${R==="cm"?`<button class="btn pri sm" data-act="addUnit">+ เพิ่มรถรายคัน</button>`:""}</h3>
+      <div id="unitForm"></div>
+      <div class="units">${unitHtml}</div>
+    </div>
+  </div>`;
+}
+function unitCard(u,m){
+  const ps=photoList(u), offer=u.offer||offerOf(m), defs=(u.defects||[]).filter(d=>!d.fixed);
+  const sp=n(u.salePrice)?baht(u.salePrice):"";
+  return `<div class="unit" data-unit="${esc(u._id)}" style="cursor:pointer">
+    <div class="uph">${ps.length?`<img src="${img(ps[0].id)}" alt="">`:noImg("")}</div>
+    <div>
+      <div class="ut">${u.grade?`<span class="grade g${esc(u.grade)}">${esc(u.grade)}</span>`:""}${esc(u.serial||"ไม่ระบุเลขรถ")} <span class="note" style="font-weight:400">›</span></div>
+      <div class="um">${[u.year&&("ปี "+esc(u.year)), u.color&&esc(u.color), u.location&&esc(u.location)].filter(Boolean).join(" · ")}</div>
+      ${batSummary(u)?`<div class="um">🔋 ${esc(batSummary(u))}</div>`:""}
+      <div class="tags" style="margin-top:4px"><span class="tag ${u.status==="ready"?"t-ok":u.status==="repair"?"t-mute":"t-hold"}">${USTATUS[u.status]||"—"}</span>
+        ${(offer==="both"||offer==="sale")?`<span class="tag t-sale">ขาย ${sp||"(ราคาตามรุ่น)"}</span>`:""}${(offer==="both"||offer==="rent")?`<span class="tag t-rent">เช่าได้</span>`:""}
+        <span class="tag t-mute">${ps.length} รูป</span>${defs.length?`<span class="tag t-warn">ตำหนิ ${defs.length} จุด</span>`:`<span class="tag t-mute">ไม่มีตำหนิที่แจ้ง</span>`}</div>
+    </div></div>`;
+}
+function specRows(rows){ const r=rows.filter(x=>x[1]!==undefined&&x[1]!==null&&String(x[1]).trim()!==""); return r.length?`<div class="spec">${r.map(([k,v])=>`<div class="k">${k}</div><div class="v">${esc(v)}</div>`).join("")}</div>`:`<div class="note">ยังไม่ได้กรอก</div>`; }
+function renderUnit(u,m){
+  const R=S.role, ps=photoList(u), defs=u.defects||[], offer=u.offer||offerOf(m), sh=$("#sheet");
+  const sp=n(u.salePrice)?baht(u.salePrice):(salePriceText(m)?salePriceText(m)+" (ราคาตามรุ่น)":"");
+  const open=defs.filter(d=>!d.fixed);
+  sh.innerHTML=`
+  <div class="sh"><button class="btn" data-act="backModel">‹ ${esc(m.name)}</button><h2 style="font-size:16px">${u.grade?`<span class="grade g${esc(u.grade)}">${esc(u.grade)}</span>`:""}${esc(u.serial||"ไม่ระบุเลขรถ")}</h2>
+    <button class="btn gold" data-act="presentUnit">เปิดให้ลูกค้าดู</button></div>
+  <div class="sbody">
+    ${S.editing==="unit"?unitFormHtml(u):""}
+    <div class="hero">${ps.length?`<img src="${img(ps[0].id)}" data-lb="${esc(ps[0].id)}" alt="">`:noImg(R==="cm"?"ยังไม่มีรูป — อัปโหลดด้านล่าง":"ยังไม่มีรูปรถคันนี้")}</div>
+    <div class="box"><h3>รูปรถคันนี้ (${ps.length})<span class="sp"></span>${R==="cm"?`<select class="inp" id="phTag" style="width:auto;padding:4px 8px">${TAGS.map(t=>`<option>${t}</option>`).join("")}</select><button class="btn pri sm" data-act="upUnit">+ อัปโหลด</button>`:""}</h3>
+      ${ps.length?`<div class="gal">${ps.map((p,i)=>`<div class="g"><img loading="lazy" src="${img(p.id)}" data-lb="${esc(p.id)}" alt="">${p.tag?`<span class="cap">${esc(p.tag)}</span>`:""}${R==="cm"?`<button class="x" data-act="delUPhoto" data-i="${i}">ลบ</button>`:""}</div>`).join("")}</div>`:`<div class="note">${R==="cm"?"ควรถ่ายอย่างน้อย: ด้านหน้า หลัง ซ้าย ขวา เบาะ หน้าปัด แบตเตอรี่ และทุกจุดที่มีตำหนิ — เลือกมุมก่อนกดอัปโหลด":"ยังไม่มีรูป"}</div>`}
+    </div>
+
+    <div class="box"><h3>ราคา<span class="sp"></span><span class="tag ${u.status==="ready"?"t-ok":"t-hold"}">${USTATUS[u.status]||"—"}</span></h3>
+      <div class="bigp">
+        ${(offer==="both"||offer==="sale")?`<div class="p s"><div class="l">ราคาขายคันนี้</div><div class="n">${sp||"—"}</div></div>`:""}
+        ${(offer==="both"||offer==="rent")?`<div class="p r"><div class="l">ค่าเช่า</div><div class="n">${n(u.rentPrice)?baht(u.rentPrice)+" /เดือน":"เช่าได้"}</div>${n(u.rentPrice)?"":'<div class="note">เซลล์เสนอตามเรตเช่า</div>'}</div>`:""}
+      </div>
+      ${R==="acc"?`<div class="uact" style="align-items:center;margin-top:10px"><input class="inp" style="width:140px" placeholder="ราคาขายคันนี้" inputmode="numeric" id="usP" value="${n(u.salePrice)||""}"><input class="inp" style="width:140px" placeholder="ค่าเช่า (ถ้ามี)" inputmode="numeric" id="urP" value="${n(u.rentPrice)||""}"><button class="btn sm pri" data-act="saveUnitPrice">บันทึกราคา</button></div>`:""}
+    </div>
+
+    <div class="box"><h3>ข้อมูลรถ<span class="sp"></span>${R==="cm"&&S.editing!=="unit"?`<button class="btn sm" data-act="editUnit">แก้ไขข้อมูล</button>`:""}</h3>
+      ${specRows([["รุ่น",m.name],["เลขรถ / Serial",u.serial],["ปีผลิต",u.year],["สี",u.color],["ระบบขับเคลื่อน",u.power],["ระบบมอเตอร์",u.motor],["ชั่วโมงใช้งาน / ไมล์",u.hours],["สภาพยาง",u.tires],["อุปกรณ์ติดรถ",u.accessories],["จัดเก็บที่",u.location],["เกรดสภาพ",u.grade&&(u.grade+" — "+({A:"ดีมาก",B:"ดี มีรอยใช้งาน",C:"ต้องซ่อม/ปรับสภาพ"}[u.grade]||""))],["สภาพโดยรวม",u.note]])}
+    </div>
+
+    <div class="box"><h3>🔋 แบตเตอรี่</h3>
+      ${specRows([["ชนิดแบต",u.batType],["แรงดันระบบ",u.voltage],["ยี่ห้อ/รุ่นแบต",u.batBrand],["จำนวนลูก",u.batCount],["สเปกต่อลูก",u.batSpec],["ปีที่ติดตั้ง/เปลี่ยน",u.batYear],["สุขภาพแบต",u.batHealth&&(u.batHealth+" %")],["วิ่งได้ต่อการชาร์จ",u.range&&(u.range+" กม. (โดยประมาณ)")],["ชาร์จเจอร์",u.charger]])}
+    </div>
+
+    <div class="box"><h3>ตำหนิ / จุดที่ต้องแจ้งลูกค้า (${open.length})<span class="sp"></span>${R==="cm"?`<button class="btn pri sm" data-act="addDefect">+ เพิ่มตำหนิ</button>`:""}</h3>
+      ${S.editing==="defect"?defectFormHtml(defs[S.defIdx]):""}
+      ${defs.length?`<div class="defs">${defs.map((d,i)=>`<div class="def ${d.fixed?"fixed":""}">
+        <div class="dph">${d.photo?`<img src="${img(d.photo)}" data-lb="${esc(d.photo)}" alt="">`:noImg("")}</div>
+        <div><div class="ut"><span class="tag lv-${esc(d.level||"minor")}">${LEVELS[d.level]||"เล็กน้อย"}</span> ${esc(d.part||"")}${d.fixed?` <span class="tag t-ok">ซ่อมแล้ว</span>`:""}</div>
+        <div class="um" style="white-space:pre-wrap">${esc(d.detail||"")}</div>
+        ${R==="cm"?`<div class="uact"><button class="btn sm" data-act="editDefect" data-i="${i}">แก้ไข</button><button class="btn sm" data-act="defPhoto" data-i="${i}">${d.photo?"เปลี่ยนรูป":"+ รูป"}</button><button class="btn sm" data-act="toggleFixed" data-i="${i}">${d.fixed?"ยังไม่ซ่อม":"ซ่อมแล้ว"}</button><button class="btn sm dng" data-act="delDefect" data-i="${i}">ลบ</button></div>`:""}</div></div>`).join("")}</div>`:`<div class="note">${R==="cm"?"ยังไม่ได้บันทึกตำหนิ — ใส่ทุกจุดพร้อมรูป เพื่อให้เซลล์แจ้งลูกค้าได้ตรงไปตรงมา":"ยังไม่มีการบันทึกตำหนิ"}</div>`}
+    </div>
+    ${R==="cm"?`<div><button class="btn dng" data-act="delUnit">ลบรถคันนี้</button></div>`:""}
+  </div>`;
+}
+function unitFormHtml(u){
+  u=u||{}; const sel=(id,opts,v)=>`<select id="${id}">${opts.map(x=>`<option ${v===x?"selected":""}>${x}</option>`).join("")}</select>`;
+  return `<div class="box" style="background:var(--bg2);border-color:var(--acc)"><h3>${u._id?"แก้ไขข้อมูลรถ":"เพิ่มรถรายคัน"}</h3><div class="frm">
+    <label>เลขรถ / Serial<input id="uSerial" value="${esc(u.serial||"")}"></label>
+    <label>ปีผลิต<input id="uYear" value="${esc(u.year||"")}" inputmode="numeric"></label>
+    <label>สี<input id="uColor" value="${esc(u.color||"")}"></label>
+    <label>ระบบขับเคลื่อน${sel("uPower",["","ไฟฟ้า","น้ำมัน"],u.power)}</label>
+    <label>ระบบมอเตอร์${sel("uMotor",["","DC","AC"],u.motor)}</label>
+    <label>ชั่วโมงใช้งาน / ไมล์<input id="uHours" value="${esc(u.hours||"")}"></label>
+    <label>สภาพยาง<input id="uTires" value="${esc(u.tires||"")}" placeholder="เช่น ดอกเหลือ 70%"></label>
+    <label>เกรดสภาพ<select id="uGrade">${["","A","B","C"].map(x=>`<option ${u.grade===x?"selected":""} value="${x}">${x?x+(x==="A"?" — ดีมาก":x==="B"?" — ดี มีรอยใช้งาน":" — ต้องซ่อม/ปรับสภาพ"):"—"}</option>`).join("")}</select></label>
+    <label>จัดเก็บที่${sel("uLoc",["",...LOCS],u.location)}</label>
+    <label>สถานะ<select id="uStatus">${Object.entries(USTATUS).map(([k,l])=>`<option value="${k}" ${(u.status||"ready")===k?"selected":""}>${l}</option>`).join("")}</select></label>
+    <label>เปิดให้<select id="uOffer"><option value="">ตามรุ่น</option>${["both","sale","rent"].map(k=>`<option value="${k}" ${u.offer===k?"selected":""}>${OFFERS[k]}</option>`).join("")}</select></label>
+    <label class="full">อุปกรณ์ติดรถ<input id="uAcc" value="${esc(u.accessories||"")}" placeholder="เช่น ผ้าใบกันฝน, ไฟหน้า LED, กระจกหน้า, ที่วางถุงกอล์ฟ"></label>
+    <label class="full">สภาพโดยรวม<input id="uNote" value="${esc(u.note||"")}" placeholder="สรุปสั้นๆ ที่เซลล์ใช้เล่าให้ลูกค้าฟัง"></label>
+  </div>
+  <h3 style="margin-top:14px">🔋 แบตเตอรี่</h3><div class="frm">
+    <label>ชนิดแบต${sel("bType",["","ตะกั่ว-กรด (Lead-acid)","ลิเธียม (Lithium)","AGM","ไม่มี (รถน้ำมัน)"],u.batType)}</label>
+    <label>แรงดันระบบ${sel("bVolt",["","36V","48V","72V"],u.voltage)}</label>
+    <label>ยี่ห้อ/รุ่นแบต<input id="bBrand" value="${esc(u.batBrand||"")}"></label>
+    <label>จำนวนลูก<input id="bCount" value="${esc(u.batCount||"")}" inputmode="numeric"></label>
+    <label>สเปกต่อลูก<input id="bSpec" value="${esc(u.batSpec||"")}" placeholder="เช่น 8V 170Ah"></label>
+    <label>ปีที่ติดตั้ง/เปลี่ยน<input id="bYear" value="${esc(u.batYear||"")}" inputmode="numeric"></label>
+    <label>สุขภาพแบต (%)<input id="bHealth" value="${esc(u.batHealth||"")}" inputmode="numeric"></label>
+    <label>วิ่งได้ต่อชาร์จ (กม.)<input id="bRange" value="${esc(u.range||"")}" inputmode="numeric"></label>
+    <label>ชาร์จเจอร์${sel("bChg",["","มี (แยก)","ชาร์จในตัวรถ","ไม่มี"],u.charger)}</label>
+  </div>
+  <div style="margin-top:12px;display:flex;gap:8px"><button class="btn pri" data-act="saveUnit">บันทึก</button><button class="btn" data-act="cancelEdit">ยกเลิก</button></div></div>`;
+}
+function defectFormHtml(d){
+  d=d||{};
+  return `<div class="box" style="background:var(--bg2);border-color:var(--acc);margin-bottom:10px"><div class="frm">
+    <label>จุด/ชิ้นส่วน<input id="dPart" value="${esc(d.part||"")}" placeholder="เช่น กันชนหน้า, เบาะหลัง"></label>
+    <label>ระดับ<select id="dLevel">${Object.entries(LEVELS).map(([k,l])=>`<option value="${k}" ${(d.level||"minor")===k?"selected":""}>${l}</option>`).join("")}</select></label>
+    <label class="full">รายละเอียด<textarea id="dDetail" rows="2" placeholder="เช่น รอยถลอกยาว 10 ซม. ไม่ทะลุ">${esc(d.detail||"")}</textarea></label>
+  </div><div style="margin-top:10px;display:flex;gap:8px"><button class="btn pri" data-act="saveDefect">บันทึก</button><button class="btn" data-act="cancelEdit">ยกเลิก</button></div>
+  <div class="note" style="margin-top:6px">บันทึกแล้วกด “+ รูป” ที่ตำหนิเพื่อแนบรูปจุดนั้น</div></div>`;
+}
+
+// --- photos
+async function resize(file){
+  try{
+    const bmp = await createImageBitmap(file);
+    const k = Math.min(1, 1600/Math.max(bmp.width,bmp.height));
+    const c = document.createElement("canvas"); c.width=Math.round(bmp.width*k); c.height=Math.round(bmp.height*k);
+    c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);
+    return await new Promise(r=>c.toBlob(b=>r(b||file),"image/jpeg",0.82));
+  }catch(_){ return file; }
+}
+let pickCb=null;
+function pickFiles(cb){ if(!S.assets){ toast("บัญชีนี้อัปโหลดรูปไม่ได้ (ต้องเป็น Contributor ขึ้นไป)",true); return; } pickCb=cb; const f=$("#fileIn"); f.value=""; f.click(); }
+$("#fileIn").addEventListener("change", async e=>{
+  const files=[...e.target.files]; if(!files.length||!pickCb) return;
+  const cb=pickCb; pickCb=null; const ids=[];
+  for (let i=0;i<files.length;i++){
+    toast(`กำลังอัปโหลดรูป ${i+1}/${files.length}…`);
+    try{ const b=await resize(files[i]); const r=await S.assets.upload(b); ids.push(r.id); }catch(err){ console.error(err); toast("อัปโหลดรูปไม่สำเร็จ",true); }
+  }
+  if (ids.length){ try{ await cb(ids); toast(`เพิ่มรูปแล้ว ${ids.length} รูป`); }catch(err){ dbErr(err); } }
+});
+
+// --- presentation (customer view)
+let P={list:[],i:0,m:null};
+function present(id){
+  const m=S.models[id]; if(!m) return;
+  P={list:photosOf(m),i:0,m,u:null};
+  renderPres(); $("#pres").classList.add("on");
+}
+function presentUnit(uid){
+  const u=S.units[uid], m=S.models[u.modelId]; if(!u||!m) return;
+  P={list:photoList(u).map(p=>p.id),caps:photoList(u).map(p=>p.tag),i:0,m,u};
+  renderPres(); $("#pres").classList.add("on");
+}
+function renderPres(){
+  if(P.u) return renderPresUnit();
+  const m=P.m, st=salePriceText(m), rt=rentText(m), L=P.list;
+  $("#pres").innerHTML = `
+    <button class="btn pclose" data-act="pclose">✕ ปิด</button>
+    <div class="pimg">${L.length?`<img src="${img(L[P.i])}" alt="">`:noImg()}
+      ${L.length>1?`<button class="pnav l" data-act="pprev">‹</button><button class="pnav r" data-act="pnext">›</button><div class="pdots">${P.i+1} / ${L.length}</div>`:""}</div>
+    <div class="pinfo"><h1>${esc(m.name)}</h1>
+      ${m.desc?`<div class="note" style="margin-top:4px;font-size:14px;white-space:pre-wrap">${esc(m.desc)}</div>`:""}
+      <div class="row">
+        <div class="pp a"><div class="l">พร้อมส่งมอบ</div><div class="n">${fmt(m.avail)} คัน</div></div>
+        ${canSale(m)&&st?`<div class="pp s"><div class="l">ราคาขาย</div><div class="n">${st}</div></div>`:""}
+        ${canRent(m)?`<div class="pp r"><div class="l">ค่าเช่า</div><div class="n">${rt||"เช่าได้"}</div></div>`:""}
+      </div>
+      ${m.priceNote?`<div class="note" style="margin-top:8px">${esc(m.priceNote)}</div>`:""}
+    </div>`;
+}
+function renderPresUnit(){
+  const u=P.u, m=P.m, L=P.list, offer=u.offer||offerOf(m), defs=(u.defects||[]).filter(d=>!d.fixed);
+  const sp=n(u.salePrice)?baht(u.salePrice):salePriceText(m);
+  $("#pres").innerHTML = `
+    <button class="btn pclose" data-act="pclose">✕ ปิด</button>
+    <div class="pimg">${L.length?`<img src="${img(L[P.i])}" alt="">`:noImg()}
+      ${L.length>1?`<button class="pnav l" data-act="pprev">‹</button><button class="pnav r" data-act="pnext">›</button>`:""}
+      ${L.length?`<div class="pdots">${P.caps[P.i]?esc(P.caps[P.i])+" · ":""}${P.i+1} / ${L.length}</div>`:""}</div>
+    <div class="pinfo" style="max-height:48vh;overflow:auto"><h1>${esc(m.name)} ${u.grade?`<span class="grade g${esc(u.grade)}" style="font-size:16px;vertical-align:middle">เกรด ${esc(u.grade)}</span>`:""}</h1>
+      <div class="note" style="font-size:14px;margin-top:4px">${[u.serial&&("เลขรถ "+esc(u.serial)),u.year&&("ปี "+esc(u.year)),u.color&&esc(u.color),u.hours&&("ใช้งาน "+esc(u.hours))].filter(Boolean).join(" · ")}</div>
+      <div class="row">
+        ${(offer==="both"||offer==="sale")&&sp?`<div class="pp s"><div class="l">ราคาขาย</div><div class="n">${sp}</div></div>`:""}
+        ${(offer==="both"||offer==="rent")?`<div class="pp r"><div class="l">ค่าเช่า</div><div class="n">${n(u.rentPrice)?baht(u.rentPrice)+" /เดือน":"เช่าได้"}</div></div>`:""}
+        ${batSummary(u)?`<div class="pp"><div class="l">🔋 แบตเตอรี่</div><div style="font-size:15px;font-weight:600;margin-top:4px">${esc(batSummary(u))}${u.range?`<br>วิ่งได้ ~${esc(u.range)} กม./ชาร์จ`:""}</div></div>`:""}
+      </div>
+      ${u.note||u.accessories?`<div style="margin-top:10px;font-size:14px">${u.note?esc(u.note):""}${u.accessories?`<div class="note">อุปกรณ์: ${esc(u.accessories)}</div>`:""}</div>`:""}
+      ${defs.length?`<div style="margin-top:12px"><b>ตำหนิที่แจ้ง (${defs.length})</b><ul style="margin:6px 0 0;padding-left:18px">${defs.map(d=>`<li><span class="tag lv-${esc(d.level||"minor")}">${LEVELS[d.level]||"เล็กน้อย"}</span> ${esc(d.part||"")} — ${esc(d.detail||"")}</li>`).join("")}</ul></div>`:""}
+    </div>`;
+}
+let tx=null;
+$("#pres").addEventListener("touchstart",e=>{tx=e.touches[0].clientX},{passive:true});
+$("#pres").addEventListener("touchend",e=>{ if(tx==null||P.list.length<2) return; const dx=e.changedTouches[0].clientX-tx; if(Math.abs(dx)>40){ P.i=(P.i+(dx<0?1:-1)+P.list.length)%P.list.length; renderPres(); } tx=null; });
+
+// --- events
+document.addEventListener("click", async e=>{
+  const t=e.target.closest("[data-act],[data-open],[data-cat],[data-offer],[data-sort],[data-r],[data-lb],[data-unit]");
+  if(!t) return;
+  if (t.dataset.unit && !e.target.closest("[data-act],[data-lb]")){ S.unit=t.dataset.unit; S.editing=null; renderSheet(); $("#sheet").scrollTop=0; return; }
+  if (t.dataset.r){ S.role=t.dataset.r; document.querySelectorAll("#roles button").forEach(b=>b.classList.toggle("on",b===t)); render(); return; }
+  if (t.dataset.cat){ S.cat=t.dataset.cat; render(); return; }
+  if (t.dataset.offer){ S.offer=t.dataset.offer; render(); return; }
+  if (t.dataset.sort){ S.sort=t.dataset.sort; render(); return; }
+  if (t.dataset.open){ openModel(t.dataset.open); return; }
+  if (t.dataset.lb && !t.dataset.act){ $("#lbimg").src=img(t.dataset.lb); $("#lb").classList.add("on"); return; }
+  const a=t.dataset.act, m=S.models[S.open], col=S.db&&S.db.collection("models");
+  try{
+  switch(a){
+    case "close": closeSheet(); break;
+    case "present": present(S.open); break;
+    case "pclose": $("#pres").classList.remove("on"); break;
+    case "pprev": P.i=(P.i-1+P.list.length)%P.list.length; renderPres(); break;
+    case "pclose2": break;
+    case "pnext": P.i=(P.i+1)%P.list.length; renderPres(); break;
+    case "savePrice":
+      await col.doc(m._id).update({offer:$("#fOffer").value, salePriceMin:n($("#fSmin").value.replace(/,/g,"")), salePriceMax:n($("#fSmax").value.replace(/,/g,"")), rentPrice:n($("#fRent").value.replace(/,/g,"")), priceNote:$("#fPnote").value.trim()});
+      toast("บันทึกราคาแล้ว"); break;
+    case "saveDesc": await col.doc(m._id).update({desc:$("#fDesc").value.trim()}); toast("บันทึกแล้ว"); break;
+    case "upModel": { const id=m._id; pickFiles(async ids=>{ const cur=S.models[id].photos||[]; await col.doc(id).update({photos:[...cur,...ids]}); }); break; }
+    case "delMPhoto": { const p=t.dataset.p; await col.doc(m._id).update({photos:(m.photos||[]).filter(x=>x!==p)}); toast("ลบรูปออกจากรุ่นแล้ว"); break; }
+    case "addUnit": {
+      const ref=S.db.collection("units").doc();
+      await ref.set({modelId:m._id,serial:"",status:"ready",offer:"",photos:[],defects:[],salePrice:0,rentPrice:0,updatedAt:new Date().toISOString()});
+      S.unit=ref.id; S.editing="unit"; S.units[ref.id]=S.units[ref.id]||{_id:ref.id,modelId:m._id,photos:[],defects:[],status:"ready"}; renderSheet(); break;
+    }
+    case "backModel": S.unit=null; S.editing=null; renderSheet(); $("#sheet").scrollTop=0; break;
+    case "editUnit": S.editing="unit"; renderSheet(); $("#sheet").scrollTop=0; break;
+    case "cancelEdit": S.editing=null; renderSheet(); break;
+    case "saveUnit": {
+      const v=id=>{const el=$("#"+id); return el?el.value.trim():"";};
+      const body={serial:v("uSerial"),year:v("uYear"),color:v("uColor"),power:v("uPower"),motor:v("uMotor"),hours:v("uHours"),tires:v("uTires"),grade:v("uGrade"),location:v("uLoc"),status:v("uStatus"),offer:v("uOffer"),accessories:v("uAcc"),note:v("uNote"),
+        batType:v("bType"),voltage:v("bVolt"),batBrand:v("bBrand"),batCount:v("bCount"),batSpec:v("bSpec"),batYear:v("bYear"),batHealth:v("bHealth"),range:v("bRange"),charger:v("bChg"),updatedAt:new Date().toISOString()};
+      await S.db.collection("units").doc(S.unit).update(body); S.editing=null; renderSheet(); toast("บันทึกข้อมูลรถแล้ว"); break;
+    }
+    case "upUnit": { const uid=S.unit, tag=($("#phTag")||{}).value||""; pickFiles(async ids=>{ const cur=photoList(S.units[uid]); await S.db.collection("units").doc(uid).update({photos:[...cur,...ids.map(id=>({id,tag}))]}); }); break; }
+    case "delUPhoto": { const u=S.units[S.unit], ps=photoList(u); ps.splice(+t.dataset.i,1); await S.db.collection("units").doc(u._id).update({photos:ps}); break; }
+    case "addDefect": S.editing="defect"; S.defIdx=-1; renderSheet(); break;
+    case "editDefect": S.editing="defect"; S.defIdx=+t.dataset.i; renderSheet(); break;
+    case "saveDefect": {
+      const u=S.units[S.unit], defs=[...(u.defects||[])], i=S.defIdx;
+      const d={...(i>=0?defs[i]:{}), part:$("#dPart").value.trim(), level:$("#dLevel").value, detail:$("#dDetail").value.trim()};
+      if(i>=0) defs[i]=d; else defs.push({...d,fixed:false,photo:""});
+      await S.db.collection("units").doc(u._id).update({defects:defs}); S.editing=null; renderSheet(); toast("บันทึกตำหนิแล้ว"); break;
+    }
+    case "toggleFixed": { const u=S.units[S.unit], defs=[...(u.defects||[])], i=+t.dataset.i; defs[i]={...defs[i],fixed:!defs[i].fixed}; await S.db.collection("units").doc(u._id).update({defects:defs}); break; }
+    case "delDefect": {
+      if (t.dataset.confirm!=="1"){ t.dataset.confirm="1"; t.textContent="กดอีกครั้งเพื่อยืนยัน"; break; }
+      const u=S.units[S.unit], defs=[...(u.defects||[])]; defs.splice(+t.dataset.i,1); await S.db.collection("units").doc(u._id).update({defects:defs}); break;
+    }
+    case "defPhoto": { const uid=S.unit, i=+t.dataset.i; pickFiles(async ids=>{ const defs=[...(S.units[uid].defects||[])]; defs[i]={...defs[i],photo:ids[0]}; await S.db.collection("units").doc(uid).update({defects:defs}); }); break; }
+    case "presentUnit": presentUnit(S.unit); break;
+    case "delUnit": {
+      if (t.dataset.confirm!=="1"){ t.dataset.confirm="1"; t.textContent="กดอีกครั้งเพื่อยืนยันการลบ"; setTimeout(()=>{ if(t.isConnected){ t.dataset.confirm=""; t.textContent="ลบรถคันนี้"; } },3000); break; }
+      await S.db.collection("units").doc(S.unit).delete(); S.unit=null; S.editing=null; renderSheet(); toast("ลบรถแล้ว"); break;
+    }
+    case "saveUnitPrice": await S.db.collection("units").doc(S.unit).update({salePrice:n($("#usP").value.replace(/,/g,"")), rentPrice:n($("#urP").value.replace(/,/g,""))}); toast("บันทึกราคารายคันแล้ว"); break;
+  }
+  }catch(err){ dbErr(err); }
+});
+$("#ov").addEventListener("click",closeSheet);
+$("#lb").addEventListener("click",()=>$("#lb").classList.remove("on"));
+$("#q").addEventListener("input",e=>{S.q=e.target.value; renderGrid();});
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"){ if($("#lb").classList.contains("on")) $("#lb").classList.remove("on"); else if($("#pres").classList.contains("on")) $("#pres").classList.remove("on"); else closeSheet(); }
+  if($("#pres").classList.contains("on")&&P.list.length>1){ if(e.key==="ArrowRight"){P.i=(P.i+1)%P.list.length;renderPres();} if(e.key==="ArrowLeft"){P.i=(P.i-1+P.list.length)%P.list.length;renderPres();} }
+});
+document.addEventListener("click",e=>{ if(e.target.id==="tglImp"){ const b=$("#impBody"); b.style.display=b.style.display==="none"?"block":"none"; } if(e.target.id==="impGo") doImport(); });
+
+function render(){ renderHead(); renderAccPanel(); renderGrid(); if(S.open && !S.editing) renderSheet(); }
+render();
+
+const DATA={"models": {"precedent-2-seater": {"name": "PRECEDENT 2 SEATER", "cat": "2", "order": 0, "total": 522, "poSale": 15, "poRent": 183, "poCon": 92, "poTotal": 290, "wh": 52, "consign": 180, "gh": 0, "avail": 232, "photos": ["1MIf", "1VVl", "1iaw"], "salePriceMin": 129000, "salePriceMax": 159000, "rentPrice": 0, "offer": "both", "priceNote": "ราคาขายเป็นราคาทดสอบ · รูปเป็นรูป Club Car รุ่นใกล้เคียง (ตัวอย่าง)", "_id": "precedent-2-seater"}, "ds-2-seater": {"name": "DS 2 SEATER", "cat": "2", "order": 1, "total": 161, "poSale": 1, "poRent": 0, "poCon": 0, "poTotal": 1, "wh": 67, "consign": 93, "gh": 0, "avail": 160, "photos": ["1MIf", "1VVl", "1iaw"], "salePriceMin": 89000, "salePriceMax": 109000, "rentPrice": 0, "offer": "both", "priceNote": "ราคาขายเป็นราคาทดสอบ · รูปเป็นรูป Club Car รุ่นใกล้เคียง (ตัวอย่าง)", "_id": "ds-2-seater"}, "tempo-2-seater": {"name": "TEMPO 2 SEATER", "cat": "2", "order": 2, "total": 220, "poSale": 0, "poRent": 57, "poCon": 40, "poTotal": 97, "wh": 88, "consign": 35, "gh": 0, "avail": 123, "photos": ["1MIf", "1iaw", "1VVl"], "salePriceMin": 149000, "salePriceMax": 179000, "rentPrice": 0, "offer": "both", "priceNote": "ราคาขายเป็นราคาทดสอบ", "_id": "tempo-2-seater"}, "precedent-4-seater": {"name": "PRECEDENT 4 SEATER", "cat": "4", "order": 3, "total": 106, "poSale": 0, "poRent": 19, "poCon": 0, "poTotal": 19, "wh": 82, "consign": 5, "gh": 0, "avail": 87, "photos": ["1wnl", "11zE", "1qn0"], "salePriceMin": 169000, "salePriceMax": 199000, "rentPrice": 0, "offer": "both", "priceNote": "ราคาขายเป็นราคาทดสอบ · รูปเป็นรูป Club Car รุ่นใกล้เคียง (ตัวอย่าง)", "_id": "precedent-4-seater"}, "ds-4-seater": {"name": "DS 4 SEATER", "cat": "4", "order": 4, "total": 49, "poSale": 0, "poRent": 0, "poCon": 0, "poTotal": 0, "wh": 44, "consign": 1, "gh": 4, "avail": 49, "photos": ["1wnl", "11zE", "1qn0"], "salePriceMin": 119000, "salePriceMax": 139000, "rentPrice": 0, "offer": "both", "priceNote": "ราคาขายเป็นราคาทดสอบ · รูปเป็นรูป Club Car รุ่นใกล้เคียง (ตัวอย่าง)", "_id": "ds-4-seater"}, "villager-6-seater": {"name": "VILLAGER 6 SEATER", "cat": "6", "order": 5, "total": 49, "poSale": 0, "poRent": 1, "poCon": 0, "poTotal": 1, "wh": 46, "consign": 2, "gh": 0, "avail": 48, "photos": ["1TYT", "1inQ"], "salePriceMin": 229000, "salePriceMax": 259000, "rentPrice": 0, "offer": "both", "priceNote": "ราคาขายเป็นราคาทดสอบ · รูปเป็นรูป Club Car รุ่นใกล้เคียง (ตัวอย่าง)", "_id": "villager-6-seater"}, "ds-6-seater": {"name": "DS 6 SEATER", "cat": "6", "order": 6, "total": 47, "poSale": 0, "poRent": 2, "poCon": 0, "poTotal": 2, "wh": 44, "consign": 1, "gh": 0, "avail": 45, "photos": ["1TYT", "1inQ"], "salePriceMin": 169000, "salePriceMax": 189000, "rentPrice": 0, "offer": "both", "priceNote": "ราคาขายเป็นราคาทดสอบ · รูปเป็นรูป Club Car รุ่นใกล้เคียง (ตัวอย่าง)", "_id": "ds-6-seater"}, "precedent-6-seater": {"name": "PRECEDENT 6 SEATER", "cat": "6", "order": 7, "total": 67, "poSale": 1, "poRent": 24, "poCon": 0, "poTotal": 25, "wh": 37, "consign": 5, "gh": 0, "avail": 42, "photos": ["1TYT", "1inQ"], "salePriceMin": 219000, "salePriceMax": 249000, "rentPrice": 0, "offer": "both", "priceNote": "ราคาขายเป็นราคาทดสอบ · รูปเป็นรูป Club Car รุ่นใกล้เคียง (ตัวอย่าง)", "_id": "precedent-6-seater"}, "carryall-500": {"name": "CARRYALL 500", "cat": "util", "order": 8, "total": 20, "poSale": 0, "poRent": 3, "poCon": 0, "poTotal": 3, "wh": 17, "consign": 0, "gh": 0, "avail": 17, "photos": ["1Knz"], "salePriceMin": 189000, "salePriceMax": 0, "rentPrice": 0, "offer": "both", "priceNote": "ราคาขายเป็นราคาทดสอบ", "_id": "carryall-500"}, "carryall-700": {"name": "CARRYALL 700", "cat": "util", "order": 9, "total": 16, "poSale": 0, "poRent": 1, "poCon": 0, "poTotal": 1, "wh": 15, "consign": 0, "gh": 0, "avail": 15, "photos": ["1Oug"], "salePriceMin": 219000, "salePriceMax": 0, "rentPrice": 0, "offer": "both", "priceNote": "ราคาขายเป็นราคาทดสอบ", "_id": "carryall-700"}, "carryall-2": {"name": "CARRYALL 2", "cat": "util", "order": 10, "total": 13, "poSale": 0, "poRent": 0, "poCon": 0, "poTotal": 0, "wh": 13, "consign": 0, "gh": 0, "avail": 13, "photos": ["1Oug", "1Knz"], "salePriceMin": 129000, "salePriceMax": 0, "rentPrice": 0, "offer": "sale", "priceNote": "ราคาขายเป็นราคาทดสอบ · รูปเป็นรูป Club Car รุ่นใกล้เคียง (ตัวอย่าง)", "_id": "carryall-2"}, "precedent-4-seater-vip": {"name": "PRECEDENT 4 SEATER VIP", "cat": "4", "order": 11, "total": 9, "poSale": 0, "poRent": 0, "poCon": 0, "poTotal": 0, "wh": 8, "consign": 1, "gh": 0, "avail": 9, "photos": ["1wnl", "1qn0"], "salePriceMin": 219000, "salePriceMax": 239000, "rentPrice": 0, "offer": "both", "priceNote": "ราคาขายเป็นราคาทดสอบ", "_id": "precedent-4-seater-vip"}, "transporter-6-seater": {"name": "TRANSPORTER 6 SEATER", "cat": "6", "order": 12, "total": 9, "poSale": 0, "poRent": 0, "poCon": 0, "poTotal": 0, "wh": 9, "consign": 0, "gh": 0, "avail": 9, "photos": ["1TYT", "1inQ"], "salePriceMin": 199000, "salePriceMax": 0, "rentPrice": 0, "offer": "both", "priceNote": "ราคาขายเป็นราคาทดสอบ · รูปเป็นรูป Club Car รุ่นใกล้เคียง (ตัวอย่าง)", "_id": "transporter-6-seater"}, "tempo-4-seater": {"name": "TEMPO 4 SEATER", "cat": "4", "order": 13, "total": 8, "poSale": 0, "poRent": 3, "poCon": 0, "poTotal": 3, "wh": 5, "consign": 0, "gh": 0, "avail": 5, "photos": ["1wnl", "11zE", "1qn0"], "salePriceMin": 199000, "salePriceMax": 229000, "rentPrice": 0, "offer": "both", "priceNote": "ราคาขายเป็นราคาทดสอบ · รูปเป็นรูป Club Car รุ่นใกล้เคียง (ตัวอย่าง)", "_id": "tempo-4-seater"}, "transporter-4-seater": {"name": "TRANSPORTER 4 SEATER", "cat": "4", "order": 14, "total": 5, "poSale": 0, "poRent": 0, "poCon": 0, "poTotal": 0, "wh": 5, "consign": 0, "gh": 0, "avail": 5, "photos": ["1wnl", "11zE", "1qn0"], "salePriceMin": 159000, "salePriceMax": 0, "rentPrice": 0, "offer": "both", "priceNote": "ราคาขายเป็นราคาทดสอบ · รูปเป็นรูป Club Car รุ่นใกล้เคียง (ตัวอย่าง)", "_id": "transporter-4-seater"}, "carryall-295": {"name": "CARRYALL 295", "cat": "util", "order": 15, "total": 3, "poSale": 0, "poRent": 0, "poCon": 0, "poTotal": 0, "wh": 3, "consign": 0, "gh": 0, "avail": 3, "photos": ["1Oug", "1Knz"], "salePriceMin": 149000, "salePriceMax": 0, "rentPrice": 0, "offer": "both", "priceNote": "ราคาขายเป็นราคาทดสอบ · รูปเป็นรูป Club Car รุ่นใกล้เคียง (ตัวอย่าง)", "_id": "carryall-295"}, "carryall-6": {"name": "CARRYALL 6", "cat": "util", "order": 16, "total": 3, "poSale": 0, "poRent": 0, "poCon": 0, "poTotal": 0, "wh": 3, "consign": 0, "gh": 0, "avail": 3, "photos": ["1Oug", "1Knz"], "salePriceMin": 179000, "salePriceMax": 0, "rentPrice": 0, "offer": "both", "priceNote": "ราคาขายเป็นราคาทดสอบ · รูปเป็นรูป Club Car รุ่นใกล้เคียง (ตัวอย่าง)", "_id": "carryall-6"}, "tempo-2p2-seater": {"name": "TEMPO 2+2 SEATER", "cat": "4", "order": 17, "total": 2, "poSale": 0, "poRent": 0, "poCon": 0, "poTotal": 0, "wh": 2, "consign": 0, "gh": 0, "avail": 2, "photos": ["11zE"], "salePriceMin": 209000, "salePriceMax": 0, "rentPrice": 0, "offer": "both", "priceNote": "ราคาขายเป็นราคาทดสอบ", "_id": "tempo-2p2-seater"}, "transender": {"name": "TRANSENDER", "cat": "other", "order": 18, "total": 2, "poSale": 0, "poRent": 0, "poCon": 0, "poTotal": 0, "wh": 2, "consign": 0, "gh": 0, "avail": 2, "photos": ["1wnl"], "salePriceMin": 159000, "salePriceMax": 0, "rentPrice": 0, "offer": "sale", "priceNote": "ราคาขายเป็นราคาทดสอบ · รูปเป็นรูป Club Car รุ่นใกล้เคียง (ตัวอย่าง)", "_id": "transender"}, "villager-8-seater": {"name": "VILLAGER 8 SEATER", "cat": "6", "order": 19, "total": 4, "poSale": 0, "poRent": 3, "poCon": 0, "poTotal": 3, "wh": 1, "consign": 0, "gh": 0, "avail": 1, "photos": ["1TYT", "1inQ"], "salePriceMin": 289000, "salePriceMax": 0, "rentPrice": 0, "offer": "both", "priceNote": "ราคาขายเป็นราคาทดสอบ", "_id": "villager-8-seater"}, "carryall": {"name": "CARRYALL", "cat": "util", "order": 20, "total": 1, "poSale": 0, "poRent": 0, "poCon": 0, "poTotal": 0, "wh": 1, "consign": 0, "gh": 0, "avail": 1, "photos": ["1Oug", "1Knz"], "salePriceMin": 99000, "salePriceMax": 0, "rentPrice": 0, "offer": "sale", "priceNote": "ราคาขายเป็นราคาทดสอบ · รูปเป็นรูป Club Car รุ่นใกล้เคียง (ตัวอย่าง)", "_id": "carryall"}, "carryall-1": {"name": "CARRYALL 1", "cat": "util", "order": 21, "total": 1, "poSale": 0, "poRent": 0, "poCon": 0, "poTotal": 0, "wh": 1, "consign": 0, "gh": 0, "avail": 1, "photos": ["1Oug", "1Knz"], "salePriceMin": 89000, "salePriceMax": 0, "rentPrice": 0, "offer": "sale", "priceNote": "ราคาขายเป็นราคาทดสอบ · รูปเป็นรูป Club Car รุ่นใกล้เคียง (ตัวอย่าง)", "_id": "carryall-1"}, "ds-4-seater-lifted": {"name": "DS 4 SEATER ชุดยกสูง", "cat": "4", "order": 22, "total": 1, "poSale": 0, "poRent": 0, "poCon": 0, "poTotal": 0, "wh": 1, "consign": 0, "gh": 0, "avail": 1, "photos": ["1wnl", "11zE", "1qn0"], "salePriceMin": 149000, "salePriceMax": 0, "rentPrice": 0, "offer": "both", "priceNote": "ราคาขายเป็นราคาทดสอบ · รูปเป็นรูป Club Car รุ่นใกล้เคียง (ตัวอย่าง)", "_id": "ds-4-seater-lifted"}, "precedent-2p2-seater": {"name": "PRECEDENT 2+2 SEATER", "cat": "4", "order": 23, "total": 1, "poSale": 0, "poRent": 0, "poCon": 0, "poTotal": 0, "wh": 1, "consign": 0, "gh": 0, "avail": 1, "photos": ["1wnl", "11zE", "1qn0"], "salePriceMin": 189000, "salePriceMax": 0, "rentPrice": 0, "offer": "both", "priceNote": "ราคาขายเป็นราคาทดสอบ · รูปเป็นรูป Club Car รุ่นใกล้เคียง (ตัวอย่าง)", "_id": "precedent-2p2-seater"}, "tempo-4-seater-vip": {"name": "TEMPO 4 SEATER VIP", "cat": "4", "order": 24, "total": 1, "poSale": 0, "poRent": 0, "poCon": 0, "poTotal": 0, "wh": 1, "consign": 0, "gh": 0, "avail": 1, "photos": ["1wnl", "11zE", "1qn0"], "salePriceMin": 249000, "salePriceMax": 0, "rentPrice": 0, "offer": "both", "priceNote": "ราคาขายเป็นราคาทดสอบ · รูปเป็นรูป Club Car รุ่นใกล้เคียง (ตัวอย่าง)", "_id": "tempo-4-seater-vip"}, "tempo-4-seater-lifted": {"name": "TEMPO 4 SEATER ชุดยกสูง", "cat": "4", "order": 25, "total": 1, "poSale": 0, "poRent": 0, "poCon": 0, "poTotal": 0, "wh": 1, "consign": 0, "gh": 0, "avail": 1, "photos": ["1wnl", "11zE", "1qn0"], "salePriceMin": 239000, "salePriceMax": 0, "rentPrice": 0, "offer": "both", "priceNote": "ราคาขายเป็นราคาทดสอบ · รูปเป็นรูป Club Car รุ่นใกล้เคียง (ตัวอย่าง)", "_id": "tempo-4-seater-lifted"}, "villager-8-seater-new": {"name": "VILLAGER 8 SEATER โฉมใหม่", "cat": "6", "order": 26, "total": 1, "poSale": 0, "poRent": 0, "poCon": 0, "poTotal": 0, "wh": 1, "consign": 0, "gh": 0, "avail": 1, "photos": ["1TYT", "1inQ"], "salePriceMin": 349000, "salePriceMax": 0, "rentPrice": 0, "offer": "rent", "priceNote": "ราคาขายเป็นราคาทดสอบ", "_id": "villager-8-seater-new"}}, "units": {"test-1": {"batCount": "1", "batHealth": "95", "batSpec": "48V 105Ah", "batType": "ลิเธียม (Lithium)", "batYear": "2567", "charger": "มี (แยก)", "color": "ขาว", "defects": [], "grade": "A", "hours": "2,400 ชม.", "location": "คลัง (สำนักงาน)", "modelId": "precedent-2-seater", "motor": "DC", "note": "ตัวอย่าง: สภาพดีมาก เปลี่ยนแบตลิเธียมแล้ว", "offer": "both", "photos": [], "power": "ไฟฟ้า", "range": "55", "rentPrice": 0, "salePrice": 159000, "serial": "TEST-P2-001", "status": "ready", "updatedAt": "2026-11-09T09:00:00Z", "voltage": "48V", "year": "2565", "_id": "test-1"}, "test-2": {"batCount": "6", "batHealth": "75", "batSpec": "8V 170Ah", "batType": "ตะกั่ว-กรด (Lead-acid)", "batYear": "2565", "charger": "มี (แยก)", "color": "เขียว", "defects": [{"detail": "ตัวอย่าง: รอยใช้งานที่กันชนหน้า", "fixed": false, "level": "minor", "part": "กันชนหน้า", "photo": ""}], "grade": "B", "hours": "4,100 ชม.", "location": "รถฝากจอด", "modelId": "precedent-2-seater", "motor": "DC", "note": "ตัวอย่าง: มีรอยใช้งานที่กันชนหน้า", "offer": "both", "photos": [], "power": "ไฟฟ้า", "range": "40", "rentPrice": 0, "salePrice": 139000, "serial": "TEST-P2-002", "status": "ready", "updatedAt": "2026-11-09T09:00:00Z", "voltage": "48V", "year": "2563", "_id": "test-2"}, "test-3": {"batCount": "6", "batHealth": "45", "batSpec": "8V 170Ah", "batType": "ตะกั่ว-กรด (Lead-acid)", "batYear": "2562", "charger": "ไม่มี", "color": "ขาว", "defects": [{"detail": "ตัวอย่าง: เบาะฉีกขาด ต้องเปลี่ยนใหม่", "fixed": false, "level": "major", "part": "เบาะหน้า", "photo": ""}, {"detail": "ตัวอย่าง: แบตเสื่อม ต้องเปลี่ยนทั้งชุด", "fixed": false, "level": "major", "part": "แบตเตอรี่", "photo": ""}], "grade": "C", "hours": "6,800 ชม.", "location": "คลัง (สำนักงาน)", "modelId": "precedent-2-seater", "motor": "DC", "note": "ตัวอย่าง: รอเปลี่ยนเบาะและแบต", "offer": "sale", "photos": [], "power": "ไฟฟ้า", "range": "20", "rentPrice": 0, "salePrice": 119000, "serial": "TEST-P2-003", "status": "repair", "updatedAt": "2026-11-09T09:00:00Z", "voltage": "48V", "year": "2561", "_id": "test-3"}, "test-4": {"accessories": "กระจกหน้าพับได้, ไฟหน้า LED, ที่วางถุงกอล์ฟ, ผ้าใบกันฝน", "batBrand": "ตัวอย่าง", "batCount": "1", "batHealth": "92", "batSpec": "48V 105Ah", "batType": "ลิเธียม (Lithium)", "batYear": "2566", "charger": "ชาร์จในตัวรถ", "color": "ขาว", "defects": [{"detail": "ตัวอย่าง: รอยถลอกยาวประมาณ 8 ซม. ไม่แตก", "fixed": false, "level": "minor", "part": "กันชนหน้า", "photo": ""}, {"detail": "ตัวอย่าง: หนังเบาะมีรอยขาด 3 ซม. ที่มุมขวา", "fixed": false, "level": "mid", "part": "เบาะคนขับ", "photo": ""}, {"detail": "ตัวอย่าง: ไฟเบรกซ้ายไม่ติด — เปลี่ยนหลอดแล้ว", "fixed": true, "level": "major", "part": "ไฟเบรกหลัง", "photo": ""}], "grade": "A", "hours": "1,850 ชม.", "location": "คลัง (สำนักงาน)", "modelId": "tempo-2-seater", "motor": "AC", "note": "ตัวอย่าง: รถสนามกอล์ฟ ใช้งานน้อย ระบบไฟปกติ พร้อมใช้งาน", "offer": "both", "photos": [{"id": "1MIf", "tag": "ด้านหน้า"}, {"id": "1iaw", "tag": "ด้านข้าง"}, {"id": "1VVl", "tag": "อื่นๆ"}], "power": "ไฟฟ้า", "range": "60", "rentPrice": 0, "salePrice": 165000, "serial": "TEST-T2-001", "status": "ready", "tires": "ดอกเหลือ 70%", "updatedAt": "2026-11-09T09:00:00Z", "voltage": "48V", "year": "2564", "_id": "test-4"}, "demo-5": {"accessories": "กระจกหน้าพับได้, ไฟหน้า LED, ที่วางถุงกอล์ฟ, ผ้าใบกันฝน", "batBrand": "ตัวอย่าง", "batCount": "1", "batHealth": "92", "batSpec": "48V 105Ah", "batType": "ลิเธียม (Lithium)", "batYear": "2566", "charger": "ชาร์จในตัวรถ", "color": "ขาว", "defects": [], "grade": "A", "hours": "1,850 ชม.", "location": "คลัง (สำนักงาน)", "modelId": "precedent-4-seater-vip", "motor": "AC", "note": "ตัวอย่าง: VIP เบาะหนัง สภาพสวย", "offer": "both", "photos": [{"id": "1wnl", "tag": "ด้านหน้า"}], "power": "ไฟฟ้า", "range": "60", "rentPrice": 0, "salePrice": 229000, "serial": "DEMO-P4V-001", "status": "ready", "tires": "ดอกเหลือ 70%", "updatedAt": "2026-11-09T09:00:00Z", "voltage": "48V", "year": "2565", "_id": "demo-5"}, "demo-6": {"accessories": "กระจกหน้าพับได้, ไฟหน้า LED, ที่วางถุงกอล์ฟ, ผ้าใบกันฝน", "batBrand": "ตัวอย่าง", "batCount": "1", "batHealth": "92", "batSpec": "48V 105Ah", "batType": "ลิเธียม (Lithium)", "batYear": "2566", "charger": "ชาร์จในตัวรถ", "color": "ดำ", "defects": [{"detail": "ตัวอย่าง: รอยขีดข่วนที่บังโคลนหลัง", "fixed": false, "level": "minor", "part": "บังโคลนหลัง", "photo": ""}], "grade": "B", "hours": "1,850 ชม.", "location": "คลัง (สำนักงาน)", "modelId": "precedent-4-seater-vip", "motor": "AC", "note": "ตัวอย่าง: มีรอยใช้งานเล็กน้อย", "offer": "both", "photos": [{"id": "1qn0", "tag": "ด้านข้าง"}], "power": "ไฟฟ้า", "range": "60", "rentPrice": 0, "salePrice": 215000, "serial": "DEMO-P4V-002", "status": "ready", "tires": "ดอกเหลือ 70%", "updatedAt": "2026-11-09T09:00:00Z", "voltage": "48V", "year": "2564", "_id": "demo-6"}, "demo-7": {"accessories": "กระจกหน้าพับได้, ไฟหน้า LED, ที่วางถุงกอล์ฟ, ผ้าใบกันฝน", "batBrand": "ตัวอย่าง", "batCount": "1", "batHealth": "92", "batSpec": "48V 105Ah", "batType": "ลิเธียม (Lithium)", "batYear": "2566", "charger": "ชาร์จในตัวรถ", "color": "ขาว", "defects": [], "grade": "A", "hours": "1,850 ชม.", "location": "คลัง (สำนักงาน)", "modelId": "villager-8-seater", "motor": "AC", "note": "ตัวอย่าง: รถรับส่ง 8 ที่นั่ง พร้อมใช้งาน", "offer": "both", "photos": [{"id": "1TYT", "tag": "ด้านหน้า"}, {"id": "1inQ", "tag": "ด้านข้าง"}], "power": "ไฟฟ้า", "range": "60", "rentPrice": 0, "salePrice": 289000, "serial": "DEMO-V8-001", "status": "ready", "tires": "ดอกเหลือ 70%", "updatedAt": "2026-11-09T09:00:00Z", "voltage": "48V", "year": "2565", "_id": "demo-7"}, "demo-8": {"accessories": "กระบะเทท้าย, หลังคา", "batBrand": "ตัวอย่าง", "batCount": "1", "batHealth": "92", "batSpec": "48V 105Ah", "batType": "ลิเธียม (Lithium)", "batYear": "2566", "charger": "ชาร์จในตัวรถ", "color": "เขียว", "defects": [], "grade": "B", "hours": "1,850 ชม.", "location": "คลัง (สำนักงาน)", "modelId": "carryall-700", "motor": "AC", "note": "ตัวอย่าง: กระบะท้ายเทได้", "offer": "both", "photos": [{"id": "1Oug", "tag": "ด้านข้าง"}], "power": "ไฟฟ้า", "range": "60", "rentPrice": 0, "salePrice": 219000, "serial": "DEMO-CA7-001", "status": "ready", "tires": "ดอกเหลือ 70%", "updatedAt": "2026-11-09T09:00:00Z", "voltage": "48V", "year": "2563", "_id": "demo-8"}}, "meta": {"asOf": "8 พ.ย. 2569"}};
+S.models=DATA.models; S.units=DATA.units; S.meta=DATA.meta; S.loaded=true;
+{ const h=location.hash.replace(/^#m-/,""); render(); if(h&&S.models[h]) openModel(h); }
+})();
+</script>
+</body>
+</html>
