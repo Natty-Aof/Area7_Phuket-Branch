@@ -261,7 +261,7 @@ function renderGrid(){
       <div class="ph">${ps.length?`<img loading="lazy" src="${img(ps[0])}" alt="">`:noImg()}${ps.length>1?`<span class="cnt">${ps.length} รูป</span>`:""}</div>
       <div class="cb">
         <div class="cn">${esc(m.name)}</div>
-        <div class="cat">${catLabel(m.cat)}</div>${us.length?`<div style="margin-top:6px"><span style="display:inline-block;background:rgba(214,178,94,.18);color:#e6c77a;border:1px solid rgba(214,178,94,.5);border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600">📋 ดูสเปก/แบต/ตำหนิ ${us.length} คัน</span></div>`:""}
+        <div class="cat">${catLabel(m.cat)}${us.length?` · ลงข้อมูลรายคัน ${us.length} คัน`:""}</div>
         <div class="avail ${n(m.avail)?"":"zero"}"><b>${fmt(m.avail)}</b><span class="note">คันพร้อมขาย/เช่า</span></div>
         <div class="tags">${o==="hold"?`<span class="tag t-hold">ยังไม่เปิด</span>`:""}${canSale(m)?`<span class="tag t-sale">ขายได้</span>`:""}${canRent(m)?`<span class="tag t-rent">เช่าได้</span>`:""}${n(m.consign)?`<span class="tag t-mute">ฝากจอด ${fmt(m.consign)}</span>`:""}</div>
         <div class="price">
@@ -332,7 +332,6 @@ function renderSheet(){
   <div class="sh"><button class="btn" data-act="close">✕</button><h2>${esc(m.name)}</h2>
     ${n(m.avail)&&o!=="hold"?`<button class="btn gold" data-act="present">เปิดให้ลูกค้าดู</button>`:""}</div>
   <div class="sbody">
-    ${us.length?`<button class="btn gold" style="width:100%;margin-bottom:12px;font-size:15px;padding:12px" onclick="document.getElementById('unitsBox').scrollIntoView({behavior:'smooth',block:'start'})">🔍 ดูรถรายคัน — สเปก · แบตเตอรี่ · ตำหนิ (${us.length} คัน) ↓</button>`:""}
     <div class="hero">${ps.length?`<img src="${img(ps[0])}" data-lb="${esc(ps[0])}" alt="">`:noImg(R==="cm"?"ยังไม่มีรูป — อัปโหลดด้านล่าง":"ยังไม่มีรูป — รอฝ่าย CM อัปโหลด")}</div>
     ${ps.length>1?`<div class="gal">${ps.slice(1).map(p=>`<div class="g"><img loading="lazy" src="${img(p)}" data-lb="${esc(p)}" alt=""></div>`).join("")}</div>`:""}
 
@@ -368,7 +367,7 @@ function renderSheet(){
       ${(m.photos||[]).length?`<div class="gal">${m.photos.map(p=>`<div class="g"><img src="${img(p)}" data-lb="${esc(p)}" alt=""><button class="x" data-act="delMPhoto" data-p="${esc(p)}">ลบ</button></div>`).join("")}</div>`:`<div class="note">ยังไม่มีรูป ถ่ายรอบคัน (หน้า ข้าง หลัง เบาะ แผงหน้าปัด) จะช่วยให้ลูกค้าตัดสินใจได้เร็ว</div>`}
     </div>`:""}
 
-    <div class="box" id="unitsBox" style="scroll-margin-top:70px"><h3>รถรายคัน — กดที่คันเพื่อดูสเปก/ตำหนิ (${us.length}${n(m.avail)?` / ${fmt(m.avail)}`:""})<span class="sp"></span>${R==="cm"?`<button class="btn pri sm" data-act="addUnit">+ เพิ่มรถรายคัน</button>`:""}</h3>
+    <div class="box"><h3>รถรายคัน (${us.length}${n(m.avail)?` / ${fmt(m.avail)}`:""})<span class="sp"></span>${R==="cm"?`<button class="btn pri sm" data-act="addUnit">+ เพิ่มรถรายคัน</button>`:""}</h3>
       <div id="unitForm"></div>
       <div class="units">${unitHtml}</div>
     </div>
