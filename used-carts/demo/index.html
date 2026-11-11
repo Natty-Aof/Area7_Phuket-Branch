@@ -374,7 +374,7 @@ function renderSheet(){
   </div>`;
 }
 // ---- การจอง (เดโม: เก็บในเครื่องผู้ใช้)
-const RSV_DAYS=7, RSV_KEY="bg-rsv-demo-v1", DAY=86400000;
+const RSV_DAYS=7, RSV_KEY="bg-rsv-demo-v1", DAY=86400000, RSV_API="https://script.google.com/macros/s/AKfycbznNTjsowwaFRhJ_2VwXxWdni4cBcyCYtbtngBOcipXwUF3ASrbP0oFhQ_ZsGCCrE6xaQ/exec";
 let RSV={};
 (function(){ const now=Date.now();
   const seed={"demo-precedent-4-seater-1":{by:"เซลล์ภูเก็ต A",cust:"รีสอร์ท ก.",at:now-2*DAY,exp:now+5*DAY},
@@ -404,9 +404,20 @@ function rsvBox(u){ const r=rsvOf(u._id);
     <div class="uact" style="flex-wrap:wrap;gap:8px"><input class="inp" id="rsvBy" style="flex:1;min-width:140px" placeholder="ชื่อเซลล์ผู้จอง"><input class="inp" id="rsvCust" style="flex:1;min-width:140px" placeholder="ชื่อลูกค้า / หน่วยงาน">
     <button class="btn gold" data-rsv="make">🔒 จองคันนี้ ${RSV_DAYS} วัน</button></div>${rule}</div>`;
 }
-document.addEventListener("click",e=>{ const t=e.target.closest("[data-rsv]"); if(!t) return; const id=S.unit; if(!id) return; const a=t.dataset.rsv;
-  if(a==="make"){ const by=($("#rsvBy").value||"").trim(), cust=($("#rsvCust").value||"").trim(); if(!by){ toast("กรอกชื่อเซลล์ก่อนจอง",true); $("#rsvBy").focus(); return; }
-    const now=Date.now(); RSV[id]={by,cust,at:now,exp:now+RSV_DAYS*DAY}; toast("จองแล้ว — หมดอายุ "+dTH(RSV[id].exp)); }
+let rsvBusy=false;
+async function rsvCall(params){ const q=new URLSearchParams(params).toString(); const r=await fetch(RSV_API+"?"+q,{cache:"no-store"}); return r.json(); }
+function rsvApply(d){ if(d&&d.rsv){ RSV=d.rsv; if(S.loaded){ renderGrid(); if(S.open&&!document.activeElement?.closest?.("#sheet input")) renderSheet(); } } }
+async function rsvPull(){ if(!RSV_API.startsWith("http")||rsvBusy) return; try{ rsvApply(await rsvCall({a:"list"})); }catch(e){ console.warn(e); } }
+if(RSV_API.startsWith("http")){ setTimeout(rsvPull,300); setInterval(rsvPull,15000); document.addEventListener("visibilitychange",()=>{ if(!document.hidden) rsvPull(); }); }
+document.addEventListener("click",async e=>{ const t=e.target.closest("[data-rsv]"); if(!t) return; const id=S.unit; if(!id) return; const a=t.dataset.rsv;
+  let by="",cust="";
+  if(a==="make"){ by=($("#rsvBy").value||"").trim(); cust=($("#rsvCust").value||"").trim(); if(!by){ toast("กรอกชื่อเซลล์ก่อนจอง",true); $("#rsvBy").focus(); return; } }
+  if(RSV_API.startsWith("http")){
+    rsvBusy=true; t.disabled=true; t.textContent="กำลังบันทึก…";
+    try{ const d=await rsvCall({a,id,by,cust}); rsvBusy=false; if(!d.ok&&d.msg==="taken"){ toast("รถคันนี้เพิ่งถูกเซลล์คนอื่นจองไปแล้ว",true); } else toast(a==="make"?"จองแล้ว — ทุกคนเห็นทันที":a==="close"?"บันทึกปิดการขายแล้ว":"ยกเลิกการจองแล้ว"); rsvApply(d); renderSheet(); }
+    catch(err){ rsvBusy=false; console.error(err); toast("เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง",true); renderSheet(); }
+    return; }
+  if(a==="make"){ const now=Date.now(); RSV[id]={by,cust,at:now,exp:now+RSV_DAYS*DAY}; toast("จองแล้ว — หมดอายุ "+dTH(RSV[id].exp)); }
   if(a==="cancel"){ delete RSV[id]; toast("ยกเลิกการจองแล้ว"); }
   if(a==="close"){ RSV[id]={...RSV[id],closed:true}; toast("บันทึกปิดการขายแล้ว"); }
   saveRsv(); renderSheet(); renderGrid(); });
