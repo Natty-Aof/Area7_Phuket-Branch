@@ -67,10 +67,6 @@ Screens:
                   Fill: =If(varCat=ThisItem.Value, RGBA(127,209,155,0.12), RGBA(19,41,31,1))
                   BorderColor: =If(varCat=ThisItem.Value, RGBA(127,209,155,1), RGBA(42,74,58,1))
                   BorderThickness: =1
-                  RadiusTopLeft: =20
-                  RadiusTopRight: =20
-                  RadiusBottomLeft: =20
-                  RadiusBottomRight: =20
                   OnSelect: =Set(varCat, ThisItem.Value)
       - galModels:
           Control: Gallery@2.15.0
@@ -88,7 +84,7 @@ Screens:
               =Filter('แคตตาล็อกรถตามสภาพ – รุ่นรถ', 'คงเหลือขาย/เช่าได้' > 0 && 'เปิดให้'.Value <> "ยังไม่เปิด" && (varCat = "ทั้งหมด" || 'หมวด'.Value = varCat))
           Children:
             - lblCardBg:
-                Control: Label@2.5.1
+                Control: Image@2.2.3
                 Properties:
                   X: =0
                   Y: =0
@@ -101,8 +97,6 @@ Screens:
                   RadiusTopRight: =16
                   RadiusBottomLeft: =16
                   RadiusBottomRight: =16
-                  Text: |-
-                    =""
                   OnSelect: =Set(varModel, ThisItem); Navigate(scrModel, ScreenTransition.Cover)
             - imgCard:
                 Control: Image@2.2.3
@@ -253,10 +247,6 @@ Screens:
                   Height: =96
                   Fill: =RGBA(24,51,38,1)
                   PaddingLeft: =16
-                  RadiusTopLeft: =12
-                  RadiusTopRight: =12
-                  RadiusBottomLeft: =12
-                  RadiusBottomRight: =12
                   Size: =20
                   FontWeight: =FontWeight.Bold
                   Color: =RGBA(224,192,112,1)
@@ -271,10 +261,6 @@ Screens:
                   Height: =120
                   Fill: =RGBA(24,51,38,1)
                   PaddingLeft: =16
-                  RadiusTopLeft: =12
-                  RadiusTopRight: =12
-                  RadiusBottomLeft: =12
-                  RadiusBottomRight: =12
                   Size: =14
                   Color: =Color.White
                   Text: |-
@@ -320,7 +306,7 @@ Screens:
               =Filter('แคตตาล็อกรถตามสภาพ – รถรายคัน', 'รุ่น'.Id = varModel.ID && 'สถานะ'.Value <> "ขาย/ปล่อยเช่าแล้ว")
           Children:
             - lblUnitBg:
-                Control: Label@2.5.1
+                Control: Image@2.2.3
                 Properties:
                   X: =10
                   Y: =0
@@ -333,8 +319,6 @@ Screens:
                   RadiusTopRight: =12
                   RadiusBottomLeft: =12
                   RadiusBottomRight: =12
-                  Text: |-
-                    =""
                   OnSelect: =Set(varUnit, ThisItem); Navigate(scrUnit, ScreenTransition.Cover)
             - imgUnit:
                 Control: Image@2.2.3
@@ -434,10 +418,6 @@ Screens:
             FontWeight: =FontWeight.Bold
             Color: =RGBA(26,20,5,1)
             Fill: =RGBA(201,165,74,1)
-            RadiusTopLeft: =10
-            RadiusTopRight: =10
-            RadiusBottomLeft: =10
-            RadiusBottomRight: =10
             Text: |-
               ="เปิดให้ลูกค้าดู"
             OnSelect: |-
@@ -498,10 +478,6 @@ Screens:
                   Size: =28
                   Color: =Color.White
                   Fill: =RGBA(0,0,0,0.4)
-                  RadiusTopLeft: =30
-                  RadiusTopRight: =30
-                  RadiusBottomLeft: =30
-                  RadiusBottomRight: =30
                   Text: |-
                     ="‹"
                   Visible: =CountRows(colPhotos) > 1
@@ -517,10 +493,6 @@ Screens:
                   Size: =28
                   Color: =Color.White
                   Fill: =RGBA(0,0,0,0.4)
-                  RadiusTopLeft: =30
-                  RadiusTopRight: =30
-                  RadiusBottomLeft: =30
-                  RadiusBottomRight: =30
                   Text: |-
                     ="›"
                   Visible: =CountRows(colPhotos) > 1
@@ -546,10 +518,6 @@ Screens:
                   Height: =96
                   Fill: =RGBA(24,51,38,1)
                   PaddingLeft: =16
-                  RadiusTopLeft: =12
-                  RadiusTopRight: =12
-                  RadiusBottomLeft: =12
-                  RadiusBottomRight: =12
                   Size: =20
                   FontWeight: =FontWeight.Bold
                   Color: =RGBA(224,192,112,1)
@@ -577,10 +545,6 @@ Screens:
                   Fill: =RGBA(24,51,38,1)
                   PaddingLeft: =16
                   PaddingTop: =10
-                  RadiusTopLeft: =12
-                  RadiusTopRight: =12
-                  RadiusBottomLeft: =12
-                  RadiusBottomRight: =12
                   Size: =13
                   Color: =Color.White
                   VerticalAlign: =VerticalAlign.Top
@@ -608,10 +572,6 @@ Screens:
                   Fill: =RGBA(24,51,38,1)
                   PaddingLeft: =16
                   PaddingTop: =10
-                  RadiusTopLeft: =12
-                  RadiusTopRight: =12
-                  RadiusBottomLeft: =12
-                  RadiusBottomRight: =12
                   Size: =13
                   Color: =Color.White
                   VerticalAlign: =VerticalAlign.Top
@@ -639,10 +599,6 @@ Screens:
                   Fill: =RGBA(24,51,38,1)
                   PaddingLeft: =16
                   PaddingTop: =10
-                  RadiusTopLeft: =12
-                  RadiusTopRight: =12
-                  RadiusBottomLeft: =12
-                  RadiusBottomRight: =12
                   Size: =13
                   Color: =Color.White
                   VerticalAlign: =VerticalAlign.Top
@@ -694,10 +650,6 @@ Screens:
             FontWeight: =FontWeight.Bold
             Color: =RGBA(26,20,5,1)
             Fill: =RGBA(201,165,74,1)
-            RadiusTopLeft: =10
-            RadiusTopRight: =10
-            RadiusBottomLeft: =10
-            RadiusBottomRight: =10
             Text: |-
               ="เปิดให้ลูกค้าดู"
             OnSelect: |-
@@ -739,10 +691,6 @@ Screens:
             Size: =32
             Color: =Color.White
             Fill: =RGBA(255,255,255,0.14)
-            RadiusTopLeft: =35
-            RadiusTopRight: =35
-            RadiusBottomLeft: =35
-            RadiusBottomRight: =35
             Text: |-
               ="‹"
             Visible: =CountRows(colPresent) > 1
@@ -758,10 +706,6 @@ Screens:
             Size: =32
             Color: =Color.White
             Fill: =RGBA(255,255,255,0.14)
-            RadiusTopLeft: =35
-            RadiusTopRight: =35
-            RadiusBottomLeft: =35
-            RadiusBottomRight: =35
             Text: |-
               ="›"
             Visible: =CountRows(colPresent) > 1
@@ -822,10 +766,6 @@ Screens:
             Size: =14
             Color: =Color.White
             Fill: =RGBA(0,0,0,0.5)
-            RadiusTopLeft: =10
-            RadiusTopRight: =10
-            RadiusBottomLeft: =10
-            RadiusBottomRight: =10
             Text: |-
               ="✕ ปิด"
             OnSelect: =Back()
