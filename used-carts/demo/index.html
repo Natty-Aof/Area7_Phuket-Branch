@@ -141,6 +141,14 @@ main{max-width:1200px;margin:0 auto;padding:16px}
 .lv-minor{background:rgba(157,184,169,.15);color:var(--mute)}.lv-mid{background:rgba(232,162,92,.15);color:var(--warn)}.lv-major{background:rgba(224,122,108,.18);color:var(--bad)}
 textarea.paste{min-height:140px;font-family:ui-monospace,monospace;font-size:12px}
 @media(max-width:560px){.roles{margin-left:0;width:100%}.roles button{flex:1}.bigp{grid-template-columns:1fr}.grid{grid-template-columns:1fr 1fr;gap:10px}.cn{font-size:14px}.avail b{font-size:22px}.cb{padding:10px}}
+
+.brand{font-size:24px}.brand small{font-size:15px;margin-top:2px}
+.kpis{gap:10px}.kpi{font-size:15px;padding:8px 16px;border-radius:12px}.kpi b{font-size:26px}
+.kpi.rv{border-color:rgba(214,178,94,.55);cursor:pointer}.kpi.rv b{color:#e6c77a}.kpi.rv.on{background:rgba(214,178,94,.14)}
+.tools input[type=search]{font-size:16px;padding:11px 14px}
+.chip{font-size:15px;padding:7px 15px}
+.chip.rv.on{border-color:#d6b25e;color:#e6c77a;background:rgba(214,178,94,.14)}
+@media(max-width:560px){.brand{font-size:20px}.kpi{flex:1;min-width:30%;padding:8px 10px;font-size:13px}.kpi b{font-size:22px}.chip{font-size:14px;padding:7px 12px}}
 </style>
 </head>
 <body>
@@ -234,9 +242,10 @@ function renderHead(){
     <div class="kpi g"><b>${fmt(av)}</b>คัน ขาย/เช่าได้</div>
     <div class="kpi"><b>${fmt(po)}</b>คัน มี PO แล้ว</div>
     <div class="kpi"><b>${fmt(tot)}</b>คัน สต๊อกทั้งหมด</div>
+    <div class="kpi rv ${S.offer==="rsv"?"on":""}" data-offer="rsv"><b>${rsvTotal()}</b>🔒 คัน กำลังจอง</div>
     ${S.role!=="sales"?`<div class="kpi"><b>${priced}/${withAvail}</b>รุ่นที่ใส่ราคาแล้ว</div><div class="kpi"><b>${withPh}/${withAvail}</b>รุ่นที่มีรูปแล้ว</div>`:""}`;
   $("#cats").innerHTML = CATS.map(([k,l])=>`<button class="chip ${S.cat===k?"on":""}" data-cat="${k}">${l}</button>`).join("");
-  $("#offers").innerHTML = [["all","ขาย+เช่า ทั้งหมด"],["sale","ขายได้"],["rent","เช่าได้"]].map(([k,l])=>`<button class="chip ${S.offer===k?"on":""}" data-offer="${k}">${l}</button>`).join("");
+  $("#offers").innerHTML = [["all","ขาย+เช่า ทั้งหมด"],["sale","ขายได้"],["rent","เช่าได้"],["rsv","🔒 กำลังจอง"]].map(([k,l])=>`<button class="chip ${k==="rsv"?"rv ":""}${S.offer===k?"on":""}" data-offer="${k}">${l}</button>`).join("");
   $("#sorts").innerHTML = [["order","เรียงตามรายงาน"],["avail","คงเหลือมากสุด"]].map(([k,l])=>`<button class="chip ${S.sort===k?"on":""}" data-sort="${k}">${l}</button>`).join("");
 }
 
@@ -248,11 +257,12 @@ function renderGrid(){
   if (S.cat!=="all") ms = ms.filter(m=>m.cat===S.cat);
   if (S.offer==="sale") ms = ms.filter(canSale);
   if (S.offer==="rent") ms = ms.filter(canRent);
+  if (S.offer==="rsv") ms = ms.filter(m=>rsvCount(unitsOf(m._id)).a>0);
   if (S.role==="sales") ms = ms.filter(m=>n(m.avail)>0 && offerOf(m)!=="hold");
   ms.sort(S.sort==="avail" ? (a,b)=>n(b.avail)-n(a.avail) : (a,b)=>n(a.order)-n(b.order));
   const g=$("#grid"), e=$("#empty");
   if (!S.loaded){ g.innerHTML=""; e.style.display="block"; e.textContent="กำลังโหลดข้อมูล…"; return; }
-  if (!ms.length){ g.innerHTML=""; e.style.display="block"; e.textContent = Object.keys(S.models).length ? "ไม่พบรุ่นที่ตรงกับตัวกรอง" : "ยังไม่มีข้อมูลสต๊อก — ไปที่โหมด 'บัญชี' เพื่อวางตารางสต๊อก"; return; }
+  if (!ms.length){ g.innerHTML=""; e.style.display="block"; e.textContent = S.offer==="rsv" ? "ตอนนี้ยังไม่มีรถที่กำลังจอง" : Object.keys(S.models).length ? "ไม่พบรุ่นที่ตรงกับตัวกรอง" : "ยังไม่มีข้อมูลสต๊อก — ไปที่โหมด 'บัญชี' เพื่อวางตารางสต๊อก"; return; }
   e.style.display="none";
   g.innerHTML = ms.map(m=>{
     const ps = photosOf(m), us = unitsOf(m._id), o = offerOf(m);
@@ -390,6 +400,7 @@ function rsvTag(u){ const r=rsvOf(u._id); if(!r) return "";
   if(r.state==="active") return `<span class="tag" style="background:rgba(214,178,94,.18);color:#e6c77a;border:1px solid rgba(214,178,94,.45)">🔒 จองโดย ${esc(r.by)} · เหลือ ${r.left} วัน</span>`;
   if(r.state==="closed") return `<span class="tag t-ok">✅ ปิดการขายแล้ว (${esc(r.by)})</span>`;
   return ""; }
+function rsvTotal(){ return Object.keys(RSV).filter(k=>S.units[k]&&(rsvOf(k)||{}).state==="active").length; }
 function rsvCount(us){ let a=0,c=0; us.forEach(u=>{const r=rsvOf(u._id); if(r&&r.state==="active")a++; if(r&&r.state==="closed")c++;}); return {a,c,free:us.length-a-c}; }
 function rsvBox(u){ const r=rsvOf(u._id);
   const rule=`<div class="note" style="margin-top:8px">กติกา: จองได้ครั้งละ ${RSV_DAYS} วัน — ถ้ายังปิดการขายไม่ได้ ระบบปลดการจองให้อัตโนมัติ รถกลับมาว่างให้เซลล์คนอื่น</div>`;
@@ -406,7 +417,7 @@ function rsvBox(u){ const r=rsvOf(u._id);
 }
 let rsvBusy=false;
 async function rsvCall(params){ const q=new URLSearchParams(params).toString(); const r=await fetch(RSV_API+"?"+q,{cache:"no-store"}); return r.json(); }
-function rsvApply(d){ if(d&&d.rsv){ RSV=d.rsv; if(S.loaded){ renderGrid(); if(S.open&&!document.activeElement?.closest?.("#sheet input")) renderSheet(); } } }
+function rsvApply(d){ if(d&&d.rsv){ RSV=d.rsv; if(S.loaded){ renderHead(); renderGrid(); if(S.open&&!document.activeElement?.closest?.("#sheet input")) renderSheet(); } } }
 async function rsvPull(){ if(!RSV_API.startsWith("http")||rsvBusy) return; try{ rsvApply(await rsvCall({a:"list"})); }catch(e){ console.warn(e); } }
 if(RSV_API.startsWith("http")){ setTimeout(rsvPull,300); setInterval(rsvPull,15000); document.addEventListener("visibilitychange",()=>{ if(!document.hidden) rsvPull(); }); }
 document.addEventListener("click",async e=>{ const t=e.target.closest("[data-rsv]"); if(!t) return; const id=S.unit; if(!id) return; const a=t.dataset.rsv;
@@ -420,7 +431,7 @@ document.addEventListener("click",async e=>{ const t=e.target.closest("[data-rsv
   if(a==="make"){ const now=Date.now(); RSV[id]={by,cust,at:now,exp:now+RSV_DAYS*DAY}; toast("จองแล้ว — หมดอายุ "+dTH(RSV[id].exp)); }
   if(a==="cancel"){ delete RSV[id]; toast("ยกเลิกการจองแล้ว"); }
   if(a==="close"){ RSV[id]={...RSV[id],closed:true}; toast("บันทึกปิดการขายแล้ว"); }
-  saveRsv(); renderSheet(); renderGrid(); });
+  saveRsv(); renderHead(); renderSheet(); renderGrid(); });
 
 function unitCard(u,m){
   const ps=photoList(u), offer=u.offer||offerOf(m), defs=(u.defects||[]).filter(d=>!d.fixed);
