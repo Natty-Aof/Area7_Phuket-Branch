@@ -261,7 +261,7 @@ function renderGrid(){
       <div class="ph">${ps.length?`<img loading="lazy" src="${img(ps[0])}" alt="">`:noImg()}${ps.length>1?`<span class="cnt">${ps.length} รูป</span>`:""}</div>
       <div class="cb">
         <div class="cn">${esc(m.name)}</div>
-        <div class="cat">${catLabel(m.cat)}${us.length?` · ลงข้อมูลรายคัน ${us.length} คัน`:""}</div>
+        <div class="cat">${catLabel(m.cat)}${us.length?` · ลงข้อมูลรายคัน ${us.length} คัน`:""}${rsvCount(us).a?` · <span style="color:#e6c77a">🔒 จองอยู่ ${rsvCount(us).a} คัน</span>`:""}</div>
         <div class="avail ${n(m.avail)?"":"zero"}"><b>${fmt(m.avail)}</b><span class="note">คันพร้อมขาย/เช่า</span></div>
         <div class="tags">${o==="hold"?`<span class="tag t-hold">ยังไม่เปิด</span>`:""}${canSale(m)?`<span class="tag t-sale">ขายได้</span>`:""}${canRent(m)?`<span class="tag t-rent">เช่าได้</span>`:""}${n(m.consign)?`<span class="tag t-mute">ฝากจอด ${fmt(m.consign)}</span>`:""}</div>
         <div class="price">
@@ -367,12 +367,50 @@ function renderSheet(){
       ${(m.photos||[]).length?`<div class="gal">${m.photos.map(p=>`<div class="g"><img src="${img(p)}" data-lb="${esc(p)}" alt=""><button class="x" data-act="delMPhoto" data-p="${esc(p)}">ลบ</button></div>`).join("")}</div>`:`<div class="note">ยังไม่มีรูป ถ่ายรอบคัน (หน้า ข้าง หลัง เบาะ แผงหน้าปัด) จะช่วยให้ลูกค้าตัดสินใจได้เร็ว</div>`}
     </div>`:""}
 
-    <div class="box"><h3>รถรายคัน (${us.length}${n(m.avail)?` / ${fmt(m.avail)}`:""})<span class="sp"></span>${R==="cm"?`<button class="btn pri sm" data-act="addUnit">+ เพิ่มรถรายคัน</button>`:""}</h3>
+    <div class="box"><h3>รถรายคัน (${us.length}${n(m.avail)?` / ${fmt(m.avail)}`:""})${us.length?` · ว่าง ${rsvCount(us).free} · <span style="color:#e6c77a">จองอยู่ ${rsvCount(us).a}</span>`:""}<span class="sp"></span>${R==="cm"?`<button class="btn pri sm" data-act="addUnit">+ เพิ่มรถรายคัน</button>`:""}</h3>
       <div id="unitForm"></div>
       <div class="units">${unitHtml}</div>
     </div>
   </div>`;
 }
+// ---- การจอง (เดโม: เก็บในเครื่องผู้ใช้)
+const RSV_DAYS=7, RSV_KEY="bg-rsv-demo-v1", DAY=86400000;
+let RSV={};
+(function(){ const now=Date.now();
+  const seed={"demo-precedent-4-seater-1":{by:"เซลล์ภูเก็ต A",cust:"รีสอร์ท ก.",at:now-2*DAY,exp:now+5*DAY},
+              "demo-ds-2-seater-1":{by:"เซลล์สมุย B",cust:"สนามกอล์ฟ ข.",at:now-6*DAY,exp:now+1*DAY-3600000},
+              "test-2":{by:"เซลล์กระบี่ C",cust:"โรงแรม ค.",at:now-9*DAY,exp:now-2*DAY}};
+  let saved=null; try{ saved=JSON.parse(localStorage.getItem(RSV_KEY)||"null"); }catch(_){}
+  RSV = saved || seed;
+})();
+function saveRsv(){ try{ localStorage.setItem(RSV_KEY,JSON.stringify(RSV)); }catch(_){} }
+function rsvOf(id){ const r=RSV[id]; if(!r) return null; if(r.closed) return {...r,state:"closed"}; if(Date.now()>r.exp) return {...r,state:"expired"}; return {...r,state:"active",left:Math.ceil((r.exp-Date.now())/DAY)}; }
+const dTH = t => new Date(t).toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"2-digit"});
+function rsvTag(u){ const r=rsvOf(u._id); if(!r) return "";
+  if(r.state==="active") return `<span class="tag" style="background:rgba(214,178,94,.18);color:#e6c77a;border:1px solid rgba(214,178,94,.45)">🔒 จองโดย ${esc(r.by)} · เหลือ ${r.left} วัน</span>`;
+  if(r.state==="closed") return `<span class="tag t-ok">✅ ปิดการขายแล้ว (${esc(r.by)})</span>`;
+  return ""; }
+function rsvCount(us){ let a=0,c=0; us.forEach(u=>{const r=rsvOf(u._id); if(r&&r.state==="active")a++; if(r&&r.state==="closed")c++;}); return {a,c,free:us.length-a-c}; }
+function rsvBox(u){ const r=rsvOf(u._id);
+  const rule=`<div class="note" style="margin-top:8px">กติกา: จองได้ครั้งละ ${RSV_DAYS} วัน — ถ้ายังปิดการขายไม่ได้ ระบบปลดการจองให้อัตโนมัติ รถกลับมาว่างให้เซลล์คนอื่น</div>`;
+  if(r&&r.state==="active") return `<div class="box" style="border-color:rgba(214,178,94,.55)"><h3>🔒 รถคันนี้ถูกจองแล้ว</h3>
+    <div class="spec"><div class="k">เซลล์ผู้จอง</div><div class="v">${esc(r.by)}</div><div class="k">ลูกค้า</div><div class="v">${esc(r.cust||"—")}</div>
+    <div class="k">จองเมื่อ</div><div class="v">${dTH(r.at)}</div><div class="k">หมดอายุ</div><div class="v"><b style="color:${r.left<=1?"var(--bad)":"#e6c77a"}">${dTH(r.exp)} (เหลือ ${r.left} วัน)</b></div></div>
+    <div class="uact" style="margin-top:10px"><button class="btn pri sm" data-rsv="close">✅ ปิดการขายได้แล้ว</button><button class="btn sm" data-rsv="cancel">ยกเลิกการจอง</button></div>${rule}</div>`;
+  if(r&&r.state==="closed") return `<div class="box"><h3>✅ ปิดการขายแล้ว</h3><div class="note">โดย ${esc(r.by)} · ลูกค้า ${esc(r.cust||"—")} — รอบัญชีออก PO แล้วรถจะย้ายไปกลุ่ม "มี PO แล้ว"</div><div class="uact" style="margin-top:8px"><button class="btn sm" data-rsv="cancel">ล้าง (เดโม)</button></div></div>`;
+  const exp = r&&r.state==="expired" ? `<div class="note" style="color:var(--warn);margin-bottom:8px">⏰ การจองของ ${esc(r.by)} ครบ ${RSV_DAYS} วันแล้ว ปิดการขายไม่ทัน — ระบบปลดการจองให้แล้ว รถคันนี้ว่าง</div>`:"";
+  if(u.status==="sold") return "";
+  return `<div class="box"><h3>จองรถคันนี้</h3>${exp}
+    <div class="uact" style="flex-wrap:wrap;gap:8px"><input class="inp" id="rsvBy" style="flex:1;min-width:140px" placeholder="ชื่อเซลล์ผู้จอง"><input class="inp" id="rsvCust" style="flex:1;min-width:140px" placeholder="ชื่อลูกค้า / หน่วยงาน">
+    <button class="btn gold" data-rsv="make">🔒 จองคันนี้ ${RSV_DAYS} วัน</button></div>${rule}</div>`;
+}
+document.addEventListener("click",e=>{ const t=e.target.closest("[data-rsv]"); if(!t) return; const id=S.unit; if(!id) return; const a=t.dataset.rsv;
+  if(a==="make"){ const by=($("#rsvBy").value||"").trim(), cust=($("#rsvCust").value||"").trim(); if(!by){ toast("กรอกชื่อเซลล์ก่อนจอง",true); $("#rsvBy").focus(); return; }
+    const now=Date.now(); RSV[id]={by,cust,at:now,exp:now+RSV_DAYS*DAY}; toast("จองแล้ว — หมดอายุ "+dTH(RSV[id].exp)); }
+  if(a==="cancel"){ delete RSV[id]; toast("ยกเลิกการจองแล้ว"); }
+  if(a==="close"){ RSV[id]={...RSV[id],closed:true}; toast("บันทึกปิดการขายแล้ว"); }
+  saveRsv(); renderSheet(); renderGrid(); });
+
 function unitCard(u,m){
   const ps=photoList(u), offer=u.offer||offerOf(m), defs=(u.defects||[]).filter(d=>!d.fixed);
   const sp=n(u.salePrice)?baht(u.salePrice):"";
@@ -382,7 +420,7 @@ function unitCard(u,m){
       <div class="ut">${u.grade?`<span class="grade g${esc(u.grade)}">${esc(u.grade)}</span>`:""}${esc(u.serial||"ไม่ระบุเลขรถ")} <span class="note" style="font-weight:400">›</span></div>
       <div class="um">${[u.year&&("ปี "+esc(u.year)), u.color&&esc(u.color), u.location&&esc(u.location)].filter(Boolean).join(" · ")}</div>
       ${batSummary(u)?`<div class="um">🔋 ${esc(batSummary(u))}</div>`:""}
-      <div class="tags" style="margin-top:4px"><span class="tag ${u.status==="ready"?"t-ok":u.status==="repair"?"t-mute":"t-hold"}">${USTATUS[u.status]||"—"}</span>
+      <div class="tags" style="margin-top:4px">${rsvTag(u)}<span class="tag ${u.status==="ready"?"t-ok":u.status==="repair"?"t-mute":"t-hold"}">${USTATUS[u.status]||"—"}</span>
         ${(offer==="both"||offer==="sale")?`<span class="tag t-sale">ขาย ${sp||"(ราคาตามรุ่น)"}</span>`:""}${(offer==="both"||offer==="rent")?`<span class="tag t-rent">เช่าได้</span>`:""}
         <span class="tag t-mute">${ps.length} รูป</span>${defs.length?`<span class="tag t-warn">ตำหนิ ${defs.length} จุด</span>`:`<span class="tag t-mute">ไม่มีตำหนิที่แจ้ง</span>`}</div>
     </div></div>`;
@@ -402,6 +440,7 @@ function renderUnit(u,m){
       ${ps.length?`<div class="gal">${ps.map((p,i)=>`<div class="g"><img loading="lazy" src="${img(p.id)}" data-lb="${esc(p.id)}" alt="">${p.tag?`<span class="cap">${esc(p.tag)}</span>`:""}${R==="cm"?`<button class="x" data-act="delUPhoto" data-i="${i}">ลบ</button>`:""}</div>`).join("")}</div>`:`<div class="note">${R==="cm"?"ควรถ่ายอย่างน้อย: ด้านหน้า หลัง ซ้าย ขวา เบาะ หน้าปัด แบตเตอรี่ และทุกจุดที่มีตำหนิ — เลือกมุมก่อนกดอัปโหลด":"ยังไม่มีรูป"}</div>`}
     </div>
 
+    ${rsvBox(u)}
     <div class="box"><h3>ราคา<span class="sp"></span><span class="tag ${u.status==="ready"?"t-ok":"t-hold"}">${USTATUS[u.status]||"—"}</span></h3>
       <div class="bigp">
         ${(offer==="both"||offer==="sale")?`<div class="p s"><div class="l">ราคาขายคันนี้</div><div class="n">${sp||"—"}</div></div>`:""}
