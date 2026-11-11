@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>แคตตาล็อกรถตามสภาพ — Beyond Green</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
+<style>
+:root{--bg:#0d1f17;--bg2:#13291f;--card:#183326;--line:#2a4a3a;--ink:#eef5f0;--mute:#9db8a9;--acc:#7fd19b;--acc2:#c9a54a;--gold:#e0c070;--rent:#6cb6e8;--warn:#e8a25c;--bad:#e07a6c;--r:14px}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans Thai",system-ui,sans-serif;font-size:15px}
+button,input{font:inherit;color:inherit}button{cursor:pointer}
+a{color:var(--acc)}
+header{position:sticky;top:0;z-index:20;background:rgba(13,31,23,.96);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.hwrap{max-width:1200px;margin:0 auto;padding:12px 16px 10px}
+.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{font-weight:700;font-size:18px}.brand small{display:block;font-weight:400;font-size:12px;color:var(--mute)}
+.who{margin-left:auto;display:flex;gap:8px;align-items:center;font-size:12px;color:var(--mute)}
+.kpis{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.kpi{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:6px 12px;font-size:12px;color:var(--mute)}
+.kpi b{display:block;font-size:18px;color:var(--ink)}.kpi.g b{color:var(--acc)}
+.tools{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center}
+.tools input{flex:1;min-width:180px;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--bg2);border-radius:999px;padding:5px 11px;font-size:13px;color:var(--mute)}
+.chip.on{border-color:var(--acc);color:var(--acc);background:rgba(127,209,155,.1)}
+main{max-width:1200px;margin:0 auto;padding:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:transform .12s,border-color .12s}
+.card:hover{transform:translateY(-2px);border-color:var(--acc)}
+.ph{aspect-ratio:4/3;background:#0f2419;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.ph img{width:100%;height:100%;object-fit:cover}
+.noimg{color:var(--mute);font-size:12px;text-align:center;padding:10px}
+.noimg svg{display:block;margin:0 auto 6px;opacity:.5}
+.cnt{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.6);border-radius:6px;font-size:11px;padding:2px 6px}
+.cb{padding:12px 14px 14px;display:flex;flex-direction:column;gap:6px;flex:1}
+.cn{font-weight:700;font-size:16px;line-height:1.25}.cat{font-size:12px;color:var(--mute)}
+.avail{display:flex;align-items:baseline;gap:6px}.avail b{font-size:26px;color:var(--acc);line-height:1}
+.tags{display:flex;gap:5px;flex-wrap:wrap}
+.tag{font-size:11.5px;border-radius:6px;padding:2px 7px;font-weight:600}
+.t-sale{background:rgba(201,165,74,.16);color:var(--gold)}.t-rent{background:rgba(108,182,232,.15);color:var(--rent)}
+.t-hold{background:rgba(224,122,108,.15);color:var(--bad)}.t-mute{background:rgba(157,184,169,.12);color:var(--mute);font-weight:500}
+.t-ok{background:rgba(127,209,155,.15);color:var(--acc)}.t-warn{background:rgba(232,162,92,.15);color:var(--warn)}
+.lv-เล็กน้อย{background:rgba(157,184,169,.15);color:var(--mute)}.lv-ปานกลาง{background:rgba(232,162,92,.15);color:var(--warn)}.lv-ต้องซ่อม{background:rgba(224,122,108,.18);color:var(--bad)}
+.price{font-size:13.5px;margin-top:auto;padding-top:6px;border-top:1px dashed var(--line)}
+.price div{display:flex;justify-content:space-between;gap:8px}.price .lbl{color:var(--mute)}.price .v{font-weight:600;color:var(--gold)}
+.na{color:var(--mute);font-weight:400;font-style:italic}
+.empty{padding:40px;text-align:center;color:var(--mute)}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:40;display:none}.ov.on{display:block}
+.sheet{position:fixed;z-index:41;top:0;right:0;bottom:0;width:min(760px,100%);background:var(--bg);border-left:1px solid var(--line);overflow-y:auto;transform:translateX(100%);transition:transform .22s}
+.sheet.on{transform:none}
+.sh{position:sticky;top:0;background:rgba(13,31,23,.97);border-bottom:1px solid var(--line);padding:12px 16px;display:flex;gap:10px;align-items:center;z-index:2}
+.sh h2{margin:0;font-size:18px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btn{border:1px solid var(--line);background:var(--bg2);border-radius:10px;padding:7px 12px;font-size:13.5px;white-space:nowrap}
+.btn.pri{background:var(--acc);color:#0d1f17;border-color:var(--acc);font-weight:600}
+.btn.gold{background:var(--acc2);color:#1a1405;border-color:var(--acc2);font-weight:600}
+.sbody{padding:16px;display:flex;flex-direction:column;gap:16px}
+.hero{aspect-ratio:16/10;border-radius:12px;overflow:hidden;background:#0f2419;border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
+.hero img{width:100%;height:100%;object-fit:cover;cursor:zoom-in}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.gal .g{position:relative;aspect-ratio:4/3;border-radius:10px;overflow:hidden;background:#0f2419;border:1px solid var(--line)}
+.gal img{width:100%;height:100%;object-fit:cover;cursor:zoom-in}
+.cap{position:absolute;left:4px;bottom:4px;background:rgba(0,0,0,.65);border-radius:5px;font-size:11px;padding:1px 6px}
+.box{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.box h3{margin:0 0 10px;font-size:15px;display:flex;align-items:center;gap:8px}.box h3 .sp{flex:1}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.st{background:var(--bg2);border-radius:10px;padding:8px 10px;font-size:12px;color:var(--mute)}.st b{display:block;font-size:20px;color:var(--ink)}.st.g b{color:var(--acc)}
+.bigp{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.bigp .p{background:var(--bg2);border-radius:10px;padding:10px 12px}.bigp .l{font-size:12px;color:var(--mute)}.bigp .n{font-size:20px;font-weight:700}
+.bigp .s .n{color:var(--gold)}.bigp .r .n{color:var(--rent)}
+.spec{display:grid;grid-template-columns:minmax(120px,38%) 1fr;gap:6px 12px;font-size:14px}.spec .k{color:var(--mute)}.spec .v{font-weight:500;white-space:pre-wrap}
+.units{display:flex;flex-direction:column;gap:10px}
+.unit{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px;display:grid;grid-template-columns:100px 1fr;gap:10px;cursor:pointer}
+.unit:hover{border-color:var(--acc)}
+.uph{aspect-ratio:4/3;border-radius:8px;overflow:hidden;background:#0f2419;display:flex;align-items:center;justify-content:center}.uph img{width:100%;height:100%;object-fit:cover}
+.ut{font-weight:600}.um{font-size:12.5px;color:var(--mute)}
+.grade{display:inline-block;min-width:22px;text-align:center;border-radius:6px;font-weight:700;font-size:12px;padding:1px 6px;margin-right:4px}
+.gA{background:#2f6b45;color:#d6f5e0}.gB{background:#6b5a2f;color:#f5ead6}.gC{background:#6b3a2f;color:#f5ddd6}
+.defs{display:flex;flex-direction:column;gap:8px}
+.def{display:grid;grid-template-columns:84px 1fr;gap:10px;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:8px}.def.fixed{opacity:.6}
+.dph{aspect-ratio:1;border-radius:8px;overflow:hidden;background:#0f2419;display:flex;align-items:center;justify-content:center}.dph img{width:100%;height:100%;object-fit:cover;cursor:zoom-in}
+.note{font-size:12.5px;color:var(--mute)}
+.pres{position:fixed;inset:0;background:#06100b;z-index:80;display:none;flex-direction:column}.pres.on{display:flex}
+.pimg{flex:1;position:relative;display:flex;align-items:center;justify-content:center;min-height:0}
+.pimg img{max-width:100%;max-height:100%;object-fit:contain}
+.pnav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.14);border:0;color:#fff;font-size:30px;width:52px;height:52px;border-radius:50%}
+.pnav.l{left:12px}.pnav.r{right:12px}
+.pdots{position:absolute;bottom:10px;left:0;right:0;text-align:center;font-size:13px;color:#cfe}
+.pinfo{padding:18px 22px 22px;background:linear-gradient(0deg,#0d1f17,#0b1a13);border-top:1px solid var(--line);max-height:46vh;overflow:auto}
+.pinfo h1{margin:0;font-size:clamp(22px,4vw,34px)}
+.prow{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px}
+.pp{background:rgba(255,255,255,.05);border-radius:12px;padding:10px 16px}.pp .l{font-size:13px;color:var(--mute)}.pp .n{font-size:clamp(20px,3.2vw,28px);font-weight:700}
+.pp.s .n{color:var(--gold)}.pp.r .n{color:var(--rent)}.pp.a .n{color:var(--acc)}
+.pclose{position:absolute;top:12px;right:12px;z-index:3}
+.lb{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:95;display:none;align-items:center;justify-content:center}.lb.on{display:flex}.lb img{max-width:96vw;max-height:94vh}
+.login{max-width:420px;margin:12vh auto;padding:28px;background:var(--card);border:1px solid var(--line);border-radius:16px;text-align:center}
+.login h1{font-size:22px;margin:0 0 6px}.login p{color:var(--mute);margin:0 0 20px}
+.err{background:rgba(224,122,108,.12);border:1px solid rgba(224,122,108,.4);color:#f3b7ad;border-radius:10px;padding:10px 12px;font-size:13px;margin-top:14px;text-align:left;white-space:pre-wrap}
+.spin{display:inline-block;width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--acc);border-radius:50%;animation:s 1s linear infinite;vertical-align:-3px;margin-right:6px}@keyframes s{to{transform:rotate(360deg)}}
+@media(max-width:560px){.grid{grid-template-columns:1fr 1fr;gap:10px}.cn{font-size:14px}.avail b{font-size:22px}.cb{padding:10px}.bigp{grid-template-columns:1fr}.unit{grid-template-columns:84px 1fr}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="ov" id="ov"></div>
+<aside class="sheet" id="sheet"></aside>
+<div class="pres" id="pres"></div>
+<div class="lb" id="lb"><img id="lbimg" alt=""></div>
+
+<script>
+(() => {
+// ---------- config ----------
+const CFG = {
+  clientId: "8d5b5cd3-cdf0-4607-9862-1c8aff228533",
+  tenantId: "ca99e03e-c041-4c59-91e5-c341442b02b0",
+  site: "bg00009-my.sharepoint.com:/personal/natthareeya_beyond-green_co_th",
+  spBase: "https://bg00009-my.sharepoint.com/personal/natthareeya_beyond-green_co_th",
+  lists: { models: "c4717cc7-7c15-41eb-baa7-030fe86173d5", units: "16a325b3-c2f6-4e60-a0b7-b2fac877b6d2", defects: "67c0a979-742e-40d3-a256-78c1515ff670" },
+  listUrls: { models: "/Lists/Beyond%20Green", units: "/Lists/List", defects: "/Lists/List1" },
+  scopes: ["User.Read", "Sites.Read.All"]
+};
+const PHOTO_FIELDS = [["MainPhoto","ด้านหน้า"],["PhotoBack","ด้านหลัง"],["PhotoLeft","ด้านซ้าย"],["PhotoRight","ด้านขวา"],["PhotoSeat","เบาะ/ห้องโดยสาร"],["PhotoDash","หน้าปัด/พวงมาลัย"],["PhotoBattery","แบตเตอรี่"],["PhotoCharger","ชาร์จเจอร์"],["PhotoTires","ยาง/ล้อ"],["PhotoExtra1","อื่นๆ"],["PhotoExtra2","อื่นๆ"]];
+const CATS = [["all","ทั้งหมด"],["2 ที่นั่ง","2 ที่นั่ง"],["4 ที่นั่ง","4 ที่นั่ง"],["6–8 ที่นั่ง","6–8 ที่นั่ง"],["อเนกประสงค์/บรรทุก","อเนกประสงค์/บรรทุก"],["อื่นๆ","อื่นๆ"]];
+
+const S = { models:[], units:[], defects:[], q:"", cat:"all", offer:"all", sort:"order", open:null, unit:null, account:null, asOf:"" };
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const n = v => Number(v) || 0;
+const fmt = v => n(v).toLocaleString("th-TH");
+const baht = v => n(v) ? "฿" + fmt(v) : "";
+const noImg = (t="ยังไม่มีรูป") => `<div class="noimg"><svg width="46" height="34" viewBox="0 0 46 34" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="38" height="18" rx="3"/><path d="M8 22v6M38 22v6M2 4h42"/><circle cx="12" cy="29" r="3"/><circle cx="34" cy="29" r="3"/></svg>${t}</div>`;
+
+// ---------- auth ----------
+const msalApp = new msal.PublicClientApplication({
+  auth: { clientId: CFG.clientId, authority: "https://login.microsoftonline.com/" + CFG.tenantId, redirectUri: location.origin + location.pathname },
+  cache: { cacheLocation: "localStorage" }
+});
+async function token(){
+  const req = { scopes: CFG.scopes, account: S.account };
+  try { return (await msalApp.acquireTokenSilent(req)).accessToken; }
+  catch(e){ await msalApp.acquireTokenRedirect(req); throw e; }
+}
+async function g(path, opts={}){
+  const t = await token();
+  const r = await fetch(path.startsWith("http") ? path : "https://graph.microsoft.com/v1.0" + path, Object.assign({}, opts, { headers: Object.assign({ Authorization: "Bearer " + t, Accept: "application/json" }, opts.headers||{}) }));
+  if (!r.ok) { const tx = await r.text(); const e = new Error(r.status + " " + tx.slice(0,300)); e.status = r.status; throw e; }
+  return r.json();
+}
+async function allItems(siteId, listId){
+  let url = `/sites/${siteId}/lists/${listId}/items?expand=fields&$top=999`, out = [];
+  while (url) { const j = await g(url); out = out.concat(j.value); url = j["@odata.nextLink"] || null; }
+  return out.map(i => Object.assign({ _id: String(i.id) }, i.fields));
+}
+
+// ---------- photos (Image columns live in the Site Assets library) ----------
+const PH = { drive:null, cache:{} };
+function photoPath(v){
+  if (!v) return null;
+  let o = v; if (typeof v === "string") { try { o = JSON.parse(v); } catch(_) { return null; } }
+  const u = o && (o.serverRelativeUrl || o.serverUrl && o.serverRelativeUrl);
+  if (!u) return null;
+  const i = u.toLowerCase().indexOf("/siteassets/");
+  return i >= 0 ? decodeURIComponent(u.slice(i + 12)) : null;
+}
+async function resolvePhotos(paths){
+  const need = [...new Set(paths.filter(p => p && !PH.cache[p]))];
+  if (!need.length || !PH.drive) return;
+  for (let i = 0; i < need.length; i += 20) {
+    const chunk = need.slice(i, i+20);
+    const body = { requests: chunk.map((p, k) => ({ id: String(k), method: "GET", url: `/drives/${PH.drive}/root:/${p.split("/").map(encodeURIComponent).join("/")}?$select=id,@microsoft.graph.downloadUrl&$expand=thumbnails` })) };
+    try {
+      const res = await g("/$batch", { method: "POST", body: JSON.stringify(body), headers: { "Content-Type": "application/json" } });
+      for (const r of res.responses) {
+        const p = chunk[+r.id];
+        if (r.status === 200) {
+          const b = r.body, th = b.thumbnails && b.thumbnails[0];
+          PH.cache[p] = { full: b["@microsoft.graph.downloadUrl"], thumb: th && (th.large || th.medium) ? (th.large || th.medium).url : b["@microsoft.graph.downloadUrl"] };
+        } else PH.cache[p] = { missing: true };
+      }
+    } catch(e) { console.error(e); }
+  }
+}
+const ph = (v, kind="thumb") => { const p = photoPath(v); const c = p && PH.cache[p]; return c && !c.missing ? c[kind] : null; };
+
+// ---------- data ----------
+function unitsOf(mid){ return S.units.filter(u => String(u.ModelLookupId) === String(mid) && u.Status !== "ขาย/ปล่อยเช่าแล้ว").sort((a,b)=>(a.Title||"").localeCompare(b.Title||"")); }
+function unitPhotos(u){ return PHOTO_FIELDS.map(([f,tag]) => ({ v:u[f], tag })).filter(p => ph(p.v)); }
+function modelPhotos(m){ const ps = []; if (ph(m.ModelPhoto)) ps.push({ v:m.ModelPhoto, tag:"" }); for (const u of unitsOf(m._id)) ps.push(...unitPhotos(u)); return ps; }
+function defectsOf(uid){ return S.defects.filter(d => String(d.CartLookupId) === String(uid)); }
+const offer = m => m.field_12 || "ขาย/เช่า";
+const canSale = o => o === "ขาย/เช่า" || o === "ขายเท่านั้น";
+const canRent = o => o === "ขาย/เช่า" || o === "เช่าเท่านั้น";
+function unitOffer(u, m){ return (!u.Offer || u.Offer === "ตามรุ่น") ? offer(m) : u.Offer; }
+function priceText(m){ const a=n(m.field_13), b=n(m.field_14); if(!a&&!b) return ""; if(a&&b&&b>a) return baht(a)+" – "+baht(b); return baht(a||b); }
+function unitPrice(u, m){ return n(u.SalePrice) ? baht(u.SalePrice) : priceText(m); }
+const gradeLetter = gr => (gr||"").trim().charAt(0);
+function batSummary(u){ return [u.BatType, u.Voltage, n(u.BatCount) ? u.BatCount+" ลูก" : "", u.BatSpec, u.BatYear && ("ติดตั้งปี "+u.BatYear), u.BatHealth!=null && u.BatHealth!=="" ? "สุขภาพ "+u.BatHealth+"%" : ""].filter(Boolean).join(" · "); }
+
+async function loadAll(){
+  renderShell(true);
+  try {
+    const site = await g(`/sites/${CFG.site}?$select=id`);
+    const sid = site.id;
+    const [models, units, defects, drives] = await Promise.all([
+      allItems(sid, CFG.lists.models), allItems(sid, CFG.lists.units), allItems(sid, CFG.lists.defects),
+      g(`/sites/${sid}/drives?$select=id,name,webUrl`).catch(() => ({ value: [] }))
+    ]);
+    const sa = drives.value.find(d => /\/siteassets\/?$/i.test(d.webUrl || ""));
+    PH.drive = sa ? sa.id : null;
+    S.models = models.sort((a,b) => n(a.id||a._id) - n(b.id||b._id));
+    S.units = units; S.defects = defects;
+    S.asOf = (S.models.find(m => m.field_11) || {}).field_11 || "";
+    renderShell(false);
+    const paths = [];
+    S.models.forEach(m => paths.push(photoPath(m.ModelPhoto)));
+    S.units.forEach(u => PHOTO_FIELDS.forEach(([f]) => paths.push(photoPath(u[f]))));
+    S.defects.forEach(d => paths.push(photoPath(d.DefectPhoto)));
+    await resolvePhotos(paths);
+    renderGrid(); if (S.open) renderSheet();
+    routeFromHash();
+  } catch(e) {
+    console.error(e);
+    $("#app").innerHTML = `<div class="login"><h1>โหลดข้อมูลไม่ได้</h1><p>บัญชีนี้อาจยังไม่ได้รับสิทธิ์ดูรายการ หรือการเชื่อมต่อมีปัญหา</p>
+      <button class="btn pri" data-act="reload">ลองใหม่</button> <button class="btn" data-act="logout">เปลี่ยนบัญชี</button>
+      <div class="err">${esc(e.message)}</div></div>`;
+  }
+}
+
+// ---------- render ----------
+function renderLogin(err){
+  $("#app").innerHTML = `<div class="login"><h1>แคตตาล็อกรถตามสภาพ</h1><p>Beyond Green · สำหรับพนักงาน</p>
+    <button class="btn pri" data-act="login" style="padding:10px 18px;font-size:15px">เข้าสู่ระบบด้วยเมลบริษัท (Microsoft)</button>
+    ${err?`<div class="err">${esc(err)}</div>`:""}</div>`;
+}
+function renderShell(loading){
+  $("#app").innerHTML = `<header><div class="hwrap">
+    <div class="top"><div class="brand">แคตตาล็อกรถตามสภาพ<small>Beyond Green · ${S.asOf?"ข้อมูลสต๊อก ณ "+esc(S.asOf):"กำลังโหลด…"}</small></div>
+      <div class="who">${esc(S.account ? S.account.username : "")} <button class="btn" data-act="reload" title="โหลดข้อมูลใหม่">↻</button><button class="btn" data-act="logout">ออก</button></div></div>
+    <div class="kpis" id="kpis"></div>
+    <div class="tools"><input type="search" id="q" placeholder="ค้นหารุ่น เช่น Precedent, Tempo, Carryall" value="${esc(S.q)}"><div class="chips" id="cats"></div></div>
+    <div class="tools"><div class="chips" id="offers"></div><div class="chips" id="sorts" style="margin-left:auto"></div></div>
+  </div></header><main><div class="grid" id="grid"></div><div class="empty" id="empty">${loading?'<span class="spin"></span>กำลังโหลดข้อมูล…':""}</div></main>`;
+  $("#q").addEventListener("input", e => { S.q = e.target.value; renderGrid(); });
+  if (!loading) renderGrid();
+}
+function renderGrid(){
+  const ms0 = S.models;
+  const av = ms0.reduce((a,m)=>a+n(m.field_10),0), po = ms0.reduce((a,m)=>a+n(m.field_6),0), tot = ms0.reduce((a,m)=>a+n(m.field_2),0);
+  $("#kpis").innerHTML = `<div class="kpi g"><b>${fmt(av)}</b>คัน ขาย/เช่าได้</div><div class="kpi"><b>${fmt(ms0.filter(m=>n(m.field_10)>0).length)}</b>รุ่นที่มีรถ</div><div class="kpi"><b>${fmt(S.units.filter(u=>u.Status!=="ขาย/ปล่อยเช่าแล้ว").length)}</b>คันที่มีรูป/สเปก</div>`;
+  $("#cats").innerHTML = CATS.map(([k,l]) => `<button class="chip ${S.cat===k?"on":""}" data-cat="${esc(k)}">${l}</button>`).join("");
+  $("#offers").innerHTML = [["all","ขาย+เช่า"],["sale","ขายได้"],["rent","เช่าได้"]].map(([k,l]) => `<button class="chip ${S.offer===k?"on":""}" data-offer="${k}">${l}</button>`).join("");
+  $("#sorts").innerHTML = [["order","เรียงตามรายงาน"],["avail","คงเหลือมากสุด"]].map(([k,l]) => `<button class="chip ${S.sort===k?"on":""}" data-sort="${k}">${l}</button>`).join("");
+  let ms = ms0.filter(m => n(m.field_10) > 0 && offer(m) !== "ยังไม่เปิด");
+  const q = S.q.trim().toLowerCase();
+  if (q) ms = ms.filter(m => ((m.Title||"")+" "+(m.field_1||"")+" "+(m.field_16||"")).toLowerCase().includes(q));
+  if (S.cat !== "all") ms = ms.filter(m => m.field_1 === S.cat);
+  if (S.offer === "sale") ms = ms.filter(m => canSale(offer(m)));
+  if (S.offer === "rent") ms = ms.filter(m => canRent(offer(m)));
+  if (S.sort === "avail") ms = [...ms].sort((a,b) => n(b.field_10) - n(a.field_10));
+  const e = $("#empty");
+  if (!ms.length) { $("#grid").innerHTML = ""; e.textContent = "ไม่พบรุ่นที่ตรงกับตัวกรอง"; return; }
+  e.textContent = "";
+  $("#grid").innerHTML = ms.map(m => {
+    const ps = modelPhotos(m), us = unitsOf(m._id), o = offer(m), pt = priceText(m);
+    return `<article class="card" data-open="${esc(m._id)}">
+      <div class="ph">${ps.length?`<img loading="lazy" src="${esc(ph(ps[0].v))}" alt="">`:noImg()}${ps.length>1?`<span class="cnt">${ps.length} รูป</span>`:""}</div>
+      <div class="cb"><div class="cn">${esc(m.Title)}</div>
+        <div class="cat">${esc(m.field_1||"")}${us.length?` · มีข้อมูลรายคัน ${us.length} คัน`:""}</div>
+        <div class="avail"><b>${fmt(m.field_10)}</b><span class="note">คันพร้อมขาย/เช่า</span></div>
+        <div class="tags">${canSale(o)?'<span class="tag t-sale">ขายได้</span>':""}${canRent(o)?'<span class="tag t-rent">เช่าได้</span>':""}${n(m.field_8)?`<span class="tag t-mute">ฝากจอด ${fmt(m.field_8)}</span>`:""}</div>
+        <div class="price">${canSale(o)?`<div><span class="lbl">ราคาขาย</span><span class="v">${pt||'<span class="na">สอบถามราคา</span>'}</span></div>`:""}${canRent(o)?`<div><span class="lbl">ค่าเช่า</span><span class="v" style="color:var(--rent)"><span class="na">เซลล์เสนอตามเรต</span></span></div>`:""}</div>
+      </div></article>`;
+  }).join("");
+}
+function openModel(id){ S.open = id; S.unit = null; setHash("m-"+id); renderSheet(); $("#sheet").classList.add("on"); $("#ov").classList.add("on"); $("#sheet").scrollTop = 0; }
+function openUnit(id){ const u = S.units.find(x => x._id === String(id)); if (!u) return; S.open = String(u.ModelLookupId); S.unit = u._id; setHash("u-"+id); renderSheet(); $("#sheet").classList.add("on"); $("#ov").classList.add("on"); $("#sheet").scrollTop = 0; }
+function closeSheet(){ S.open = null; S.unit = null; setHash(""); $("#sheet").classList.remove("on"); $("#ov").classList.remove("on"); }
+function setHash(h){ try { history.replaceState(null, "", h ? "#"+h : location.pathname); } catch(_) {} }
+function routeFromHash(){ const h = location.hash.slice(1); if (h.startsWith("m-")) openModel(h.slice(2)); else if (h.startsWith("u-")) openUnit(h.slice(2)); }
+function specRows(rows){ const r = rows.filter(x => x[1] !== undefined && x[1] !== null && String(x[1]).trim() !== ""); return r.length ? `<div class="spec">${r.map(([k,v]) => `<div class="k">${k}</div><div class="v">${esc(v)}</div>`).join("")}</div>` : `<div class="note">ยังไม่ได้กรอก</div>`; }
+function renderSheet(){
+  const m = S.models.find(x => x._id === String(S.open)); const sh = $("#sheet");
+  if (!m) { sh.innerHTML = ""; return; }
+  if (S.unit) { const u = S.units.find(x => x._id === S.unit); if (u) return renderUnit(u, m); }
+  const ps = modelPhotos(m), us = unitsOf(m._id), o = offer(m), pt = priceText(m);
+  sh.innerHTML = `<div class="sh"><button class="btn" data-act="close">✕</button><h2>${esc(m.Title)}</h2><button class="btn gold" data-act="present">เปิดให้ลูกค้าดู</button></div>
+  <div class="sbody">
+    <div class="hero">${ps.length?`<img src="${esc(ph(ps[0].v,"full"))}" data-lb="${esc(ph(ps[0].v,"full"))}" alt="">`:noImg("ยังไม่มีรูปรุ่นนี้")}</div>
+    ${ps.length>1?`<div class="gal">${ps.slice(1,13).map(p=>`<div class="g"><img loading="lazy" src="${esc(ph(p.v))}" data-lb="${esc(ph(p.v,"full"))}" alt="">${p.tag?`<span class="cap">${esc(p.tag)}</span>`:""}</div>`).join("")}</div>`:""}
+    <div class="box"><h3>ขาย / เช่า<span class="sp"></span><span class="tag t-mute">${esc(o)}</span></h3>
+      <div class="bigp">${canSale(o)?`<div class="p s"><div class="l">ราคาขาย (ต่อคัน)</div><div class="n">${pt||"สอบถามราคา"}</div></div>`:""}${canRent(o)?`<div class="p r"><div class="l">ค่าเช่า</div><div class="n">เช่าได้</div><div class="note">เซลล์เสนอตามเรตเช่าปัจจุบัน</div></div>`:""}</div>
+      ${m.field_15?`<p class="note" style="margin:10px 0 0;white-space:pre-wrap">${esc(m.field_15)}</p>`:""}</div>
+    <div class="box"><h3>สต๊อกรุ่นนี้</h3><div class="stats">
+      <div class="st g"><b>${fmt(m.field_10)}</b>คงเหลือ ขาย/เช่าได้</div><div class="st"><b>${fmt(m.field_7)}</b>คลัง (สำนักงาน)</div><div class="st"><b>${fmt(m.field_8)}</b>รถฝากจอด</div>${n(m.field_9)?`<div class="st"><b>${fmt(m.field_9)}</b>Global House</div>`:""}</div>
+      <p class="note" style="margin:10px 0 0">สต๊อกทั้งหมด ${fmt(m.field_2)} คัน · มี PO แล้ว ${fmt(m.field_6)} คัน${n(m.field_6)?` (ขาย ${fmt(m.field_3)} · เช่า ${fmt(m.field_4)} · สัมปทาน ${fmt(m.field_5)})`:""}</p></div>
+    ${m.field_16?`<div class="box"><h3>รายละเอียดรุ่น</h3><div style="white-space:pre-wrap">${esc(m.field_16)}</div></div>`:""}
+    <div class="box"><h3>รถรายคัน (${us.length})</h3>
+      ${us.length?`<div class="units">${us.map(u => unitCard(u, m)).join("")}</div>`:`<div class="note">ยังไม่มีข้อมูลรายคันของรุ่นนี้ — ฝ่าย CM กำลังลงข้อมูล</div>`}</div>
+    <div class="note" style="text-align:right"><a href="${CFG.spBase+CFG.listUrls.models}/DispForm.aspx?ID=${esc(m._id)}" target="_blank" rel="noopener">เปิดใน Lists (ฝ่าย CM) ↗</a></div>
+  </div>`;
+}
+function unitCard(u, m){
+  const ps = unitPhotos(u), defs = defectsOf(u._id).filter(d => !d.Fixed), o = unitOffer(u, m), gl = gradeLetter(u.Grade);
+  return `<div class="unit" data-unit="${esc(u._id)}">
+    <div class="uph">${ps.length?`<img loading="lazy" src="${esc(ph(ps[0].v))}" alt="">`:noImg("")}</div>
+    <div><div class="ut">${gl?`<span class="grade g${esc(gl)}">${esc(gl)}</span>`:""}${esc(u.Title||"ไม่ระบุเลขรถ")} <span class="note">›</span></div>
+      <div class="um">${[u.MfgYear&&("ปี "+u.MfgYear), u.Color, u.Location].filter(Boolean).map(esc).join(" · ")}</div>
+      ${batSummary(u)?`<div class="um">🔋 ${esc(batSummary(u))}</div>`:""}
+      <div class="tags" style="margin-top:4px"><span class="tag ${u.Status==="พร้อมส่งมอบ"?"t-ok":u.Status==="จองแล้ว"?"t-hold":"t-mute"}">${esc(u.Status||"—")}</span>
+        ${canSale(o)?`<span class="tag t-sale">ขาย ${unitPrice(u,m)||"สอบถามราคา"}</span>`:""}${canRent(o)?'<span class="tag t-rent">เช่าได้</span>':""}
+        <span class="tag t-mute">${ps.length} รูป</span>${defs.length?`<span class="tag t-warn">ตำหนิ ${defs.length} จุด</span>`:""}</div></div></div>`;
+}
+function renderUnit(u, m){
+  const ps = unitPhotos(u), defs = defectsOf(u._id), open = defs.filter(d => !d.Fixed), o = unitOffer(u, m), gl = gradeLetter(u.Grade);
+  $("#sheet").innerHTML = `<div class="sh"><button class="btn" data-act="back">‹ ${esc(m.Title)}</button><h2>${gl?`<span class="grade g${esc(gl)}">${esc(gl)}</span>`:""}${esc(u.Title||"")}</h2><button class="btn gold" data-act="presentUnit">เปิดให้ลูกค้าดู</button></div>
+  <div class="sbody">
+    <div class="hero">${ps.length?`<img src="${esc(ph(ps[0].v,"full"))}" data-lb="${esc(ph(ps[0].v,"full"))}" alt="">`:noImg("ยังไม่มีรูปรถคันนี้")}</div>
+    ${ps.length>1?`<div class="gal">${ps.slice(1).map(p=>`<div class="g"><img loading="lazy" src="${esc(ph(p.v))}" data-lb="${esc(ph(p.v,"full"))}" alt=""><span class="cap">${esc(p.tag)}</span></div>`).join("")}</div>`:""}
+    <div class="box"><h3>ราคา<span class="sp"></span><span class="tag ${u.Status==="พร้อมส่งมอบ"?"t-ok":"t-hold"}">${esc(u.Status||"—")}</span></h3>
+      <div class="bigp">${canSale(o)?`<div class="p s"><div class="l">ราคาขายคันนี้</div><div class="n">${unitPrice(u,m)||"สอบถามราคา"}</div></div>`:""}${canRent(o)?`<div class="p r"><div class="l">ค่าเช่า</div><div class="n">เช่าได้</div><div class="note">เซลล์เสนอตามเรตเช่า</div></div>`:""}</div></div>
+    <div class="box"><h3>ข้อมูลรถ</h3>${specRows([["รุ่น",m.Title],["เลขรถ / Serial",u.Title],["ปีผลิต",u.MfgYear],["สี",u.Color],["ระบบขับเคลื่อน",u.Power],["ระบบมอเตอร์",u.Motor],["ชั่วโมงใช้งาน / ไมล์",u.Hours],["สภาพยาง",u.Tires],["อุปกรณ์ติดรถ",u.Accessories],["จัดเก็บที่",u.Location],["เกรดสภาพ",u.Grade],["สภาพโดยรวม",u.Condition]])}</div>
+    <div class="box"><h3>🔋 แบตเตอรี่</h3>${specRows([["ชนิดแบต",u.BatType],["แรงดันระบบ",u.Voltage],["ยี่ห้อ/รุ่นแบต",u.BatBrand],["จำนวนลูก",u.BatCount],["สเปกต่อลูก",u.BatSpec],["ปีที่ติดตั้ง/เปลี่ยน",u.BatYear],["สุขภาพแบต",u.BatHealth!=null&&u.BatHealth!==""?u.BatHealth+" %":""],["วิ่งได้ต่อการชาร์จ",u.Range!=null&&u.Range!==""?u.Range+" กม. (โดยประมาณ)":""],["ชาร์จเจอร์",u.Charger]])}</div>
+    <div class="box"><h3>ตำหนิ / จุดที่ต้องแจ้งลูกค้า (${open.length})</h3>
+      ${defs.length?`<div class="defs">${defs.map(d=>`<div class="def ${d.Fixed?"fixed":""}"><div class="dph">${ph(d.DefectPhoto)?`<img src="${esc(ph(d.DefectPhoto))}" data-lb="${esc(ph(d.DefectPhoto,"full"))}" alt="">`:noImg("")}</div>
+        <div><div class="ut"><span class="tag lv-${esc(d.Severity||"เล็กน้อย")}">${esc(d.Severity||"เล็กน้อย")}</span> ${esc(d.Title||"")}${d.Fixed?' <span class="tag t-ok">ซ่อมแล้ว</span>':""}</div><div class="um" style="white-space:pre-wrap">${esc(d.Detail||"")}</div></div></div>`).join("")}</div>`:`<div class="note">ไม่มีตำหนิที่บันทึกไว้</div>`}</div>
+    <div class="note" style="text-align:right"><a href="${CFG.spBase+CFG.listUrls.units}/DispForm.aspx?ID=${esc(u._id)}" target="_blank" rel="noopener">เปิดใน Lists (ฝ่าย CM) ↗</a></div>
+  </div>`;
+}
+
+// ---------- presentation ----------
+let P = { list:[], i:0 };
+function present(){ const m = S.models.find(x => x._id === String(S.open)); if (!m) return; P = { list: modelPhotos(m).map(p => ({ src: ph(p.v,"full"), cap: p.tag })), i:0, m, u:null }; renderPres(); $("#pres").classList.add("on"); }
+function presentUnit(){ const u = S.units.find(x => x._id === S.unit), m = S.models.find(x => x._id === String(S.open)); if (!u||!m) return; P = { list: unitPhotos(u).map(p => ({ src: ph(p.v,"full"), cap: p.tag })), i:0, m, u }; renderPres(); $("#pres").classList.add("on"); }
+function renderPres(){
+  const { m, u, list:L } = P, cur = L[P.i];
+  let info;
+  if (!u) {
+    const o = offer(m), pt = priceText(m);
+    info = `<h1>${esc(m.Title)}</h1>${m.field_16?`<div class="note" style="font-size:14px;margin-top:4px;white-space:pre-wrap">${esc(m.field_16)}</div>`:""}
+      <div class="prow"><div class="pp a"><div class="l">พร้อมส่งมอบ</div><div class="n">${fmt(m.field_10)} คัน</div></div>
+      ${canSale(o)&&pt?`<div class="pp s"><div class="l">ราคาขาย</div><div class="n">${pt}</div></div>`:""}${canRent(o)?`<div class="pp r"><div class="l">เช่า</div><div class="n">เช่าได้</div></div>`:""}</div>
+      ${m.field_15?`<div class="note" style="margin-top:8px">${esc(m.field_15)}</div>`:""}`;
+  } else {
+    const o = unitOffer(u, m), defs = defectsOf(u._id).filter(d => !d.Fixed), gl = gradeLetter(u.Grade), up = unitPrice(u, m);
+    info = `<h1>${esc(m.Title)} ${gl?`<span class="grade g${esc(gl)}" style="font-size:16px;vertical-align:middle">เกรด ${esc(gl)}</span>`:""}</h1>
+      <div class="note" style="font-size:14px;margin-top:4px">${[u.Title&&("เลขรถ "+u.Title),u.MfgYear&&("ปี "+u.MfgYear),u.Color,u.Hours&&("ใช้งาน "+u.Hours)].filter(Boolean).map(esc).join(" · ")}</div>
+      <div class="prow">${canSale(o)&&up?`<div class="pp s"><div class="l">ราคาขาย</div><div class="n">${up}</div></div>`:""}${canRent(o)?`<div class="pp r"><div class="l">เช่า</div><div class="n">เช่าได้</div></div>`:""}
+      ${batSummary(u)?`<div class="pp"><div class="l">🔋 แบตเตอรี่</div><div style="font-size:15px;font-weight:600;margin-top:4px">${esc(batSummary(u))}${u.Range?`<br>วิ่งได้ ~${esc(u.Range)} กม./ชาร์จ`:""}</div></div>`:""}</div>
+      ${u.Condition||u.Accessories?`<div style="margin-top:10px;font-size:14px">${esc(u.Condition||"")}${u.Accessories?`<div class="note">อุปกรณ์: ${esc(u.Accessories)}</div>`:""}</div>`:""}
+      ${defs.length?`<div style="margin-top:12px"><b>ตำหนิที่แจ้ง (${defs.length})</b><ul style="margin:6px 0 0;padding-left:18px">${defs.map(d=>`<li><span class="tag lv-${esc(d.Severity||"เล็กน้อย")}">${esc(d.Severity||"เล็กน้อย")}</span> ${esc(d.Title||"")} — ${esc(d.Detail||"")}</li>`).join("")}</ul></div>`:""}`;
+  }
+  $("#pres").innerHTML = `<button class="btn pclose" data-act="pclose">✕ ปิด</button>
+    <div class="pimg">${cur?`<img src="${esc(cur.src)}" alt="">`:noImg()}
+      ${L.length>1?`<button class="pnav l" data-act="pprev">‹</button><button class="pnav r" data-act="pnext">›</button>`:""}
+      ${L.length?`<div class="pdots">${cur.cap?esc(cur.cap)+" · ":""}${P.i+1} / ${L.length}</div>`:""}</div>
+    <div class="pinfo">${info}</div>`;
+}
+let tx = null;
+$("#pres").addEventListener("touchstart", e => { tx = e.touches[0].clientX; }, { passive:true });
+$("#pres").addEventListener("touchend", e => { if (tx == null || P.list.length < 2) return; const dx = e.changedTouches[0].clientX - tx; if (Math.abs(dx) > 40) { P.i = (P.i + (dx < 0 ? 1 : -1) + P.list.length) % P.list.length; renderPres(); } tx = null; });
+
+// ---------- events ----------
+document.addEventListener("click", async e => {
+  const t = e.target.closest("[data-act],[data-open],[data-unit],[data-cat],[data-offer],[data-sort],[data-lb]");
+  if (!t) return;
+  if (t.dataset.cat) { S.cat = t.dataset.cat; return renderGrid(); }
+  if (t.dataset.offer) { S.offer = t.dataset.offer; return renderGrid(); }
+  if (t.dataset.sort) { S.sort = t.dataset.sort; return renderGrid(); }
+  if (t.dataset.open) return openModel(t.dataset.open);
+  if (t.dataset.unit) return openUnit(t.dataset.unit);
+  if (t.dataset.lb && !t.dataset.act) { $("#lbimg").src = t.dataset.lb; return $("#lb").classList.add("on"); }
+  switch (t.dataset.act) {
+    case "login": try { await msalApp.loginRedirect({ scopes: CFG.scopes, prompt: "select_account" }); } catch(err) { renderLogin(err.message); } break;
+    case "logout": msalApp.logoutRedirect({ account: S.account, postLogoutRedirectUri: location.origin + location.pathname }); break;
+    case "reload": PH.cache = {}; loadAll(); break;
+    case "close": closeSheet(); break;
+    case "back": S.unit = null; setHash("m-"+S.open); renderSheet(); $("#sheet").scrollTop = 0; break;
+    case "present": present(); break;
+    case "presentUnit": presentUnit(); break;
+    case "pclose": $("#pres").classList.remove("on"); break;
+    case "pprev": P.i = (P.i - 1 + P.list.length) % P.list.length; renderPres(); break;
+    case "pnext": P.i = (P.i + 1) % P.list.length; renderPres(); break;
+  }
+});
+$("#ov").addEventListener("click", closeSheet);
+$("#lb").addEventListener("click", () => $("#lb").classList.remove("on"));
+document.addEventListener("keydown", e => {
+  const pres = $("#pres").classList.contains("on");
+  if (e.key === "Escape") { if ($("#lb").classList.contains("on")) $("#lb").classList.remove("on"); else if (pres) $("#pres").classList.remove("on"); else closeSheet(); }
+  if (pres && P.list.length > 1) { if (e.key === "ArrowRight") { P.i = (P.i+1) % P.list.length; renderPres(); } if (e.key === "ArrowLeft") { P.i = (P.i-1+P.list.length) % P.list.length; renderPres(); } }
+});
+
+// ---------- start ----------
+(async () => {
+  try {
+    const res = await msalApp.handleRedirectPromise();
+    if (res && res.account) msalApp.setActiveAccount(res.account);
+    S.account = msalApp.getActiveAccount() || msalApp.getAllAccounts()[0] || null;
+    if (S.account) { msalApp.setActiveAccount(S.account); loadAll(); } else renderLogin();
+  } catch(e) { console.error(e); renderLogin(e.errorMessage || e.message); }
+})();
+})();
+</script>
+</body>
+</html>
