@@ -172,7 +172,7 @@ main{padding:12px}
 <header><div class="hwrap">
   <div class="top">
     <div class="brand">แคตตาล็อกรถตามสภาพ<small id="asof">Beyond Green · กำลังโหลดข้อมูล…</small></div>
-    <div class="roles" id="roles"><button data-r="sales" class="on">👀 มุมมองเซลล์</button><button data-r="cm">📷 โหมด CM (ลงข้อมูล)</button></div>
+    <div class="roles" id="roles"><button data-r="sales" class="on">👀 มุมมองเซลล์</button><button data-r="cm">📷 โหมด CM</button><button data-r="acc">📥 นำเข้าสต๊อก</button></div>
   </div>
   <div class="kpis" id="kpis"></div>
   <div class="tools">
@@ -251,7 +251,7 @@ function rentText(m){ return n(m.rentPrice) ? baht(m.rentPrice)+" /เดือ�
 
 // --- header
 function renderHead(){
-  $("#asof").textContent = "Beyond Green · ข้อมูล ณ " + (S.meta.asOf || "—"); $("#cmb").style.display=S.role==="cm"?"block":"none";
+  $("#asof").textContent = "Beyond Green · ข้อมูล ณ " + (S.meta.asOf || "—"); $("#cmb").style.display=S.role!=="sales"?"block":"none"; $("#cmb").innerHTML=S.role==="acc"?"📥 โหมดนำเข้าสต๊อก (ตัวอย่าง) — เลือกไฟล์ Excel รายงาน HQ แล้วตรวจก่อนยืนยัน · <b>ไม่บันทึกจริง</b> รีเฟรชแล้วกลับเป็นข้อมูล 8 พ.ย.":"📷 โหมด CM (ตัวอย่าง) — ลองเพิ่มรถ ถ่าย/อัปโหลดรูป ใส่สเปกและตำหนิได้เลย · <b>ไม่บันทึกจริง</b> รีเฟรชแล้วข้อมูลที่ลองใส่จะหายไป";
   const ms = Object.values(S.models);
   const tot = ms.reduce((a,m)=>a+n(m.total),0), po = ms.reduce((a,m)=>a+n(m.poTotal),0), av = ms.reduce((a,m)=>a+n(m.avail),0);
   const priced = ms.filter(m=>n(m.avail)>0 && (salePriceText(m)||rentText(m))).length, withAvail = ms.filter(m=>n(m.avail)>0).length;
@@ -301,7 +301,7 @@ function renderGrid(){
 }
 
 // --- accounting panel (stock import)
-function renderAccPanel(){
+function renderAccPanel_old(){
   const p=$("#accPanel");
   if (S.role!=="acc"){ p.style.display="none"; return; }
   p.style.display="block";
@@ -450,6 +450,80 @@ document.addEventListener("click",async e=>{ const t=e.target.closest("[data-rsv
   if(a==="cancel"){ delete RSV[id]; toast("ยกเลิกการจองแล้ว"); }
   if(a==="close"){ RSV[id]={...RSV[id],closed:true}; toast("บันทึกปิดการขายแล้ว"); }
   saveRsv(); renderHead(); renderSheet(); renderGrid(); });
+
+// ---- นำเข้าสต๊อกจาก Excel (รายงาน HQ)
+let XLSXP=null;
+function loadXLSX(){ if(window.XLSX) return Promise.resolve(window.XLSX); if(XLSXP) return XLSXP;
+  XLSXP=new Promise((res,rej)=>{ const s=document.createElement("script"); s.src="xlsx.full.min.js"; s.onload=()=>res(window.XLSX); s.onerror=()=>{XLSXP=null;rej(new Error("load"));}; document.head.appendChild(s); });
+  return XLSXP; }
+const IMP={rows:null,file:""};
+function renderAccPanel(){
+  const p=$("#accPanel");
+  if (S.role!=="acc"){ p.style.display="none"; return; }
+  p.style.display="block";
+  p.innerHTML = `<div class="box" style="border-color:rgba(127,209,155,.5)"><h3 style="font-size:18px">📥 อัปเดตสต๊อกจากไฟล์ Excel ของ HQ</h3>
+    <div class="note" style="font-size:14px;margin-bottom:10px">เลือกไฟล์รายงานสต๊อกรถตามสภาพ (.xlsx / .xls / .csv) — ระบบอ่านชื่อรุ่นและตัวเลข แล้วแสดงให้ตรวจก่อนกดยืนยัน · ราคา รูป ข้อมูลรายคัน และการจองยังอยู่ครบ</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <label class="btn pri" style="cursor:pointer;font-size:15px;padding:10px 16px">📂 เลือกไฟล์ Excel<input type="file" id="impFile" accept=".xlsx,.xls,.csv" hidden></label>
+      <button class="btn" id="impSample">⬇ ดาวน์โหลดไฟล์ตัวอย่าง</button>
+      <label class="note" style="display:flex;gap:6px;align-items:center">ข้อมูล ณ วันที่ <input class="inp" id="impDate" style="width:150px" value="${esc(S.meta.asOf||"")}" placeholder="เช่น 15 พ.ย. 2569"></label>
+    </div>
+    <div id="impPrev" style="margin-top:12px">${IMP.rows?previewHtml(IMP.rows):IMP.done||""}</div>
+    <details style="margin-top:10px"><summary class="note" style="cursor:pointer">หรือคัดลอกตารางจาก Excel มาวางเอง</summary>
+      <textarea class="inp paste" id="impText" style="margin-top:8px" placeholder="PRECEDENT 2 SEATER\t522\t15\t183\t92\t290\t52\t180\t\t232"></textarea>
+      <div style="margin-top:6px"><button class="btn sm" id="impPasteChk">ตรวจสอบข้อมูลที่วาง</button></div>
+    </details>
+    <span class="note" id="impMsg"></span></div>`;
+}
+function rowsFromAOA(aoa){
+  const rows=[];
+  for(const r of aoa){
+    const cells=r.map(x=>x==null?"":String(x).trim());
+    const ni=cells.findIndex(c=>/[A-Za-zก-๙]/.test(c)); if(ni<0) continue;
+    const name=cells[ni].replace(/\s+/g," ");
+    if(/grand\s*total|รวมทั้งหมด|^รุ่น|^model|^row labels|^sum of|^count of/i.test(name)) continue;
+    const nums=cells.slice(ni+1,ni+10).map(c=>c===""?0:Number(c.replace(/,/g,"")));
+    if(nums.some(x=>isNaN(x))||!nums.some(x=>x>0)) continue;
+    const [total,poSale,poRent,poCon,poTotal,wh,consign,gh,avail]=[...nums,0,0,0,0,0,0,0,0,0].slice(0,9);
+    rows.push({name,total,poSale,poRent,poCon,poTotal:poTotal||poSale+poRent+poCon,wh,consign,gh,avail:cells.length>ni+9&&cells[ni+9]!==""?avail:total-(poTotal||poSale+poRent+poCon)});
+  }
+  return rows;
+}
+function previewHtml(rows){
+  const sum=k=>rows.reduce((a,r)=>a+n(r[k]),0);
+  const cur=Object.values(S.models), curIds=new Set(rows.map(r=>slug(r.name)));
+  const gone=cur.filter(m=>!curIds.has(m._id)&&n(m.avail));
+  const delta=(a,b)=>{ const d=a-b; return d?`<span style="color:${d>0?"var(--acc)":"var(--bad)"};font-size:12px"> ${d>0?"▲":"▼"}${fmt(Math.abs(d))}</span>`:""; };
+  return `<div class="note" style="font-size:14px;margin-bottom:6px">📄 ${esc(IMP.file)} — พบ <b style="color:var(--ink)">${rows.length} รุ่น</b> · สต๊อกรวม ${fmt(sum("total"))} · PO ${fmt(sum("poTotal"))} · ขาย/เช่าได้ <b style="color:var(--acc)">${fmt(sum("avail"))}</b></div>
+  <div style="max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:10px"><table style="width:100%;border-collapse:collapse;font-size:13.5px">
+  <tr style="position:sticky;top:0;background:var(--bg2);color:var(--mute);text-align:right"><th style="text-align:left;padding:7px 10px">รุ่น</th><th style="padding:7px">ทั้งหมด</th><th style="padding:7px">PO</th><th style="padding:7px 10px">ขาย/เช่าได้ (เทียบเดิม)</th></tr>
+  ${rows.map(r=>{ const m=S.models[slug(r.name)]; return `<tr style="border-top:1px solid var(--line);text-align:right"><td style="text-align:left;padding:6px 10px">${esc(r.name)}${m?"":' <span class="tag t-sale">ใหม่</span>'}</td><td style="padding:6px">${fmt(r.total)}</td><td style="padding:6px">${fmt(r.poTotal)}</td><td style="padding:6px 10px"><b>${fmt(r.avail)}</b>${m?delta(n(r.avail),n(m.avail)):""}</td></tr>`; }).join("")}
+  </table></div>
+  ${gone.length?`<div class="note" style="color:var(--warn);margin-top:6px">⚠ ${gone.length} รุ่นไม่มีในไฟล์นี้ จะถูกตั้งยอดเป็น 0: ${gone.map(m=>esc(m.name)).join(", ")}</div>`:""}
+  <div style="display:flex;gap:8px;margin-top:10px"><button class="btn pri" id="impConfirm" style="font-size:15px;padding:10px 18px">✅ ยืนยันนำเข้า ${rows.length} รุ่น</button><button class="btn" id="impCancel">ยกเลิก</button></div>`;
+}
+function showPreview(rows,file){ IMP.done=""; IMP.rows=rows; IMP.file=file; const msg=$("#impMsg");
+  if(!rows.length){ IMP.rows=null; $("#impPrev").innerHTML=""; msg.innerHTML='<span style="color:var(--bad)">ไม่พบข้อมูลรุ่นรถในไฟล์ — ตรวจว่าคอลัมน์แรกเป็นชื่อรุ่น ตามด้วยตัวเลขสต๊อก</span>'; return; }
+  msg.textContent=""; $("#impPrev").innerHTML=previewHtml(rows); }
+document.addEventListener("change",async e=>{ if(e.target.id!=="impFile") return; const f=e.target.files[0]; if(!f) return;
+  const msg=$("#impMsg"); msg.textContent="กำลังอ่านไฟล์…";
+  try{ const X=await loadXLSX(); const wb=X.read(await f.arrayBuffer(),{type:"array"});
+    let best=[]; for(const sn of wb.SheetNames){ const r=rowsFromAOA(X.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:false,defval:""})); if(r.length>best.length) best=r; }
+    showPreview(best,f.name);
+  }catch(err){ console.error(err); msg.innerHTML='<span style="color:var(--bad)">อ่านไฟล์ไม่ได้ — ลองบันทึกเป็น .xlsx แล้วเลือกใหม่</span>'; } });
+document.addEventListener("click",async e=>{ const id=e.target.id;
+  if(id==="impPasteChk"){ const aoa=$("#impText").value.split(/\r?\n/).map(l=>l.split("\t")); showPreview(rowsFromAOA(aoa),"ข้อมูลที่วาง"); }
+  if(id==="impCancel"){ IMP.rows=null; $("#impPrev").innerHTML=""; }
+  if(id==="impConfirm"&&IMP.rows){ const rows=IMP.rows;
+    $("#impText").value=rows.map(r=>[r.name,r.total,r.poSale,r.poRent,r.poCon,r.poTotal,r.wh,r.consign,r.gh,r.avail].join("\t")).join("\n");
+    IMP.rows=null; IMP.done=`<div class="note" style="color:var(--acc);font-size:15px">✅ อัปเดตสต๊อกแล้ว ${rows.length} รุ่น — สลับไป "มุมมองเซลล์" เพื่อดูผล</div>`; await doImport(); $("#impPrev").innerHTML=IMP.done; }
+  if(id==="impSample"){ try{ const X=await loadXLSX();
+      const head=["รุ่นรถ","สต๊อกคงเหลือ","PO ขาย","PO เช่า","PO สัมปทาน","PO รวม","คลัง (สำนักงาน)","รถฝากจอด","Global House","คงเหลือรวม"];
+      const body=Object.values(S.models).sort((a,b)=>n(a.order)-n(b.order)).map(m=>[m.name,m.total,m.poSale||"",m.poRent||"",m.poCon||"",m.poTotal||"",m.wh||"",m.consign||"",m.gh||"",m.avail]);
+      const ws=X.utils.aoa_to_sheet([head,...body]); ws["!cols"]=[{wch:30},...head.slice(1).map(()=>({wch:12}))];
+      const wb=X.utils.book_new(); X.utils.book_append_sheet(wb,ws,"สต๊อก"); X.writeFile(wb,"ตัวอย่าง_สต๊อกรถตามสภาพ_HQ.xlsx");
+    }catch(err){ toast("ดาวน์โหลดไม่สำเร็จ",true); } }
+});
 
 function unitCard(u,m){
   const ps=photoList(u), offer=u.offer||offerOf(m), defs=(u.defects||[]).filter(d=>!d.fixed);
