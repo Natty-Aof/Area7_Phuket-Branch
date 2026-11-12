@@ -164,6 +164,7 @@ main{padding:12px}
 .cn{font-size:17px!important}.avail b{font-size:26px!important}.cb{padding:12px!important}
 .price{font-size:15px}.price div{flex-wrap:nowrap}.price .v{text-align:right}
 #cmb{font-size:13px!important;padding:8px 10px!important}
+.sheet .gal{display:flex!important;overflow-x:auto;gap:8px;scrollbar-width:none}.sheet .gal .g{flex:0 0 42%}
 }
 </style>
 </head>
@@ -232,7 +233,7 @@ function dbErr(e){ console.error(e); toast(e && e.code==="invalid_argument" ? "�
 // --- derived
 function unitsOf(id){ return Object.values(S.units).filter(u=>u.modelId===id).sort((a,b)=>(a.serial||"").localeCompare(b.serial||"")); }
 function photoList(u){ return (u&&u.photos||[]).map(p=>typeof p==="string"?{id:p,tag:""}:p).filter(p=>p&&p.id); }
-function photosOf(m){ const ps=[...(m.photos||[])]; for(const u of unitsOf(m._id)) for(const p of photoList(u)) ps.push(p.id); return ps; }
+function photosOf(m){ const ps=[...(m.photos||[])]; for(const u of unitsOf(m._id)) for(const p of photoList(u)) ps.push(p.id); return [...new Set(ps)]; }
 const TAGS=["ด้านหน้า","ด้านหลัง","ด้านซ้าย","ด้านขวา","เบาะ/ห้องโดยสาร","หน้าปัด/พวงมาลัย","แบตเตอรี่","ชาร์จเจอร์","ยาง/ล้อ","หลังคา","อื่นๆ"];
 const LEVELS={minor:"เล็กน้อย",mid:"ปานกลาง",major:"ต้องซ่อม"};
 function priceOfUnit(u,m){ return n(u.salePrice)||n(m.salePriceMin)||0; }
