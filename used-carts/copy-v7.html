@@ -1,0 +1,2433 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>copy v7</title></head>
+<body style="font-family:sans-serif;padding:20px"><button id="b" style="font-size:22px;padding:14px 26px">COPY ALL v7</button> <span id="m"></span>
+<textarea id="t" style="width:100%;height:70vh;margin-top:12px">Screens:
+  scrHome:
+    Properties:
+      Fill: =RGBA(13,31,23,1)
+      OnVisible: |-
+        =ClearCollect(colUnits, &#x27;แคตตาล็อกรถตามสภาพ – รถรายคัน&#x27;); If(IsBlank(varCat), Set(varCat, &quot;ทั้งหมด&quot;)); If(IsBlank(varOffer), Set(varOffer, &quot;all&quot;)); If(IsBlank(varSort), Set(varSort, &quot;report&quot;)); Set(varCanEdit, DataSourceInfo(&#x27;แคตตาล็อกรถตามสภาพ – รถรายคัน&#x27;, DataSourceInfo.EditPermission)); Set(varIsMgr, DataSourceInfo(&#x27;แคตตาล็อกรถตามสภาพ – รุ่นรถ&#x27;, DataSourceInfo.EditPermission)); ClearCollect(colRsv, Filter(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; || &#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;))
+    Children:
+      - imgHomeHead:
+          Control: Image@2.2.3
+          Properties:
+            X: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, 266, 370)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Image: |-
+              =&quot;&quot;
+            Fill: =RGBA(19,41,31,1)
+            BorderColor: =RGBA(42,74,58,1)
+            BorderThickness: =0
+      - lblHomeTitle:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =(20) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(14) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-420, (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-220)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(36) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Text: |-
+              =&quot;แคตตาล็อกรถตามสภาพ&quot;
+            Size: |-
+              =(20) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Color: =RGBA(238,245,240,1)
+            PaddingLeft: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingRight: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingTop: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingBottom: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            FontWeight: =FontWeight.Bold
+      - lblHomeSub:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =(20) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(50) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-420, (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-220)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(24) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Text: |-
+              =&quot;Beyond Green · นับจากรถที่ CM ลงในระบบ&quot;
+            Size: |-
+              =(11) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Color: =RGBA(157,184,169,1)
+            PaddingLeft: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingRight: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingTop: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingBottom: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+      - imgRsvBtnBg:
+          Control: Image@2.2.3
+          Properties:
+            X: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-392, (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-196)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(14) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(176) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(36) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Image: |-
+              =&quot;&quot;
+            Fill: =RGBA(201,165,74,1)
+            BorderColor: =RGBA(201,165,74,1)
+            BorderThickness: =1
+            RadiusTopLeft: |-
+              =(18) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            RadiusTopRight: |-
+              =(18) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            RadiusBottomLeft: |-
+              =(18) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            RadiusBottomRight: |-
+              =(18) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+      - lblHomeRsvBtn:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-392, (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-196)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(14) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(176) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(36) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Text: |-
+              =&quot;🔒 การจอง&quot; &amp; With({p: CountRows(Filter(colRsv, &#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;))}, If(varIsMgr &amp;&amp; p &gt; 0, &quot; (รออนุมัติ &quot; &amp; p &amp; &quot;)&quot;, &quot;&quot;))
+            Size: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Color: =RGBA(26,20,5,1)
+            PaddingLeft: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingRight: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingTop: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingBottom: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            FontWeight: =FontWeight.Bold
+            Align: =Align.Center
+            OnSelect: =Navigate(scrRsv, ScreenTransition.Cover)
+      - imgCMBtnBg:
+          Control: Image@2.2.3
+          Properties:
+            X: |-
+              =((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-196) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, 14, 56)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(176) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(36) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Image: |-
+              =&quot;&quot;
+            Fill: =RGBA(127,209,155,1)
+            BorderColor: =RGBA(127,209,155,1)
+            BorderThickness: =1
+            RadiusTopLeft: |-
+              =(18) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            RadiusTopRight: |-
+              =(18) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            RadiusBottomLeft: |-
+              =(18) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            RadiusBottomRight: |-
+              =(18) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Visible: =varCanEdit
+      - lblHomeCMBtn:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-196) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, 14, 56)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(176) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(36) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Text: |-
+              =&quot;📷 CM ลงข้อมูล&quot;
+            Size: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Color: =RGBA(13,31,23,1)
+            PaddingLeft: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingRight: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingTop: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingBottom: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            FontWeight: =FontWeight.Bold
+            Align: =Align.Center
+            Visible: =varCanEdit
+            OnSelect: =Set(varUnit, Blank()); NewForm(frmUnit); Navigate(scrCMUnit, ScreenTransition.Cover)
+      - imgKpiAvail:
+          Control: Image@2.2.3
+          Properties:
+            X: |-
+              =(20 + 0 * (((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - 40 - 30) / 4 + 10)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, 82, 100)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - 40 - 30) / 4) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(72) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Image: |-
+              =&quot;&quot;
+            Fill: =RGBA(13,31,23,1)
+            BorderColor: =RGBA(42,74,58,1)
+            BorderThickness: =1
+            RadiusTopLeft: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            RadiusTopRight: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            RadiusBottomLeft: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            RadiusBottomRight: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+      - lblKpiAvailN:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =(20 + 0 * (((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - 40 - 30) / 4 + 10) + 12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, 90, 108)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - 40 - 30) / 4 - 16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(34) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Text: |-
+              =Text(CountIf(colUnits, &#x27;สถานะ&#x27;.Value = &quot;พร้อมส่งมอบ&quot;) - Coalesce(Sum(Filter(colRsv, &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now()), &#x27;จำนวนคัน&#x27;), 0), &quot;#,##0&quot;)
+            Size: |-
+              =(18) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Color: =RGBA(127,209,155,1)
+            PaddingLeft: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingRight: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingTop: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingBottom: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            FontWeight: =FontWeight.Bold
+      - lblKpiAvailT:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =(20 + 0 * (((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - 40 - 30) / 4 + 10) + 12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, 124, 142)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - 40 - 30) / 4 - 16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(22) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Text: |-
+              =&quot;คัน ขาย/เช่าได้&quot;
+            Size: |-
+              =(10) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Color: =RGBA(157,184,169,1)
+            PaddingLeft: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingRight: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingTop: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingBottom: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+      - imgKpiPO:
+          Control: Image@2.2.3
+          Properties:
+            X: |-
+              =(20 + 1 * (((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - 40 - 30) / 4 + 10)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, 82, 100)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - 40 - 30) / 4) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(72) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Image: |-
+              =&quot;&quot;
+            Fill: =RGBA(13,31,23,1)
+            BorderColor: =RGBA(42,74,58,1)
+            BorderThickness: =1
+            RadiusTopLeft: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            RadiusTopRight: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            RadiusBottomLeft: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            RadiusBottomRight: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+      - lblKpiPON:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =(20 + 1 * (((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - 40 - 30) / 4 + 10) + 12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, 90, 108)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - 40 - 30) / 4 - 16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(34) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Text: |-
+              =Text(CountIf(colUnits, &#x27;สถานะ&#x27;.Value = &quot;รอซ่อม/เตรียมรถ&quot;), &quot;#,##0&quot;)
+            Size: |-
+              =(18) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Color: =RGBA(238,245,240,1)
+            PaddingLeft: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingRight: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingTop: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingBottom: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            FontWeight: =FontWeight.Bold
+      - lblKpiPOT:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =(20 + 1 * (((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - 40 - 30) / 4 + 10) + 12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, 124, 142)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - 40 - 30) / 4 - 16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(22) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Text: |-
+              =&quot;คัน รอซ่อม/เตรียมรถ&quot;
+            Size: |-
+              =(10) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Color: =RGBA(157,184,169,1)
+            PaddingLeft: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingRight: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingTop: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingBottom: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+      - imgKpiAll:
+          Control: Image@2.2.3
+          Properties:
+            X: |-
+              =(20 + 2 * (((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - 40 - 30) / 4 + 10)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, 82, 100)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - 40 - 30) / 4) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(72) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Image: |-
+              =&quot;&quot;
+            Fill: =RGBA(13,31,23,1)
+            BorderColor: =RGBA(42,74,58,1)
+            BorderThickness: =1
+            RadiusTopLeft: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            RadiusTopRight: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            RadiusBottomLeft: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            RadiusBottomRight: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+      - lblKpiAllN:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =(20 + 2 * (((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - 40 - 30) / 4 + 10) + 12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, 90, 108)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - 40 - 30) / 4 - 16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(34) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Text: |-
+              =Text(CountIf(colUnits, &#x27;สถานะ&#x27;.Value &lt;&gt; &quot;ขาย/ปล่อยเช่าแล้ว&quot;), &quot;#,##0&quot;)
+            Size: |-
+              =(18) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Color: =RGBA(238,245,240,1)
+            PaddingLeft: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingRight: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingTop: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingBottom: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            FontWeight: =FontWeight.Bold
+      - lblKpiAllT:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =(20 + 2 * (((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - 40 - 30) / 4 + 10) + 12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, 124, 142)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - 40 - 30) / 4 - 16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(22) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Text: |-
+              =&quot;คัน ลงในระบบแล้ว&quot;
+            Size: |-
+              =(10) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Color: =RGBA(157,184,169,1)
+            PaddingLeft: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingRight: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingTop: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingBottom: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+      - imgKpiRsv:
+          Control: Image@2.2.3
+          Properties:
+            X: |-
+              =(20 + 3 * (((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - 40 - 30) / 4 + 10)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, 82, 100)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - 40 - 30) / 4) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(72) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Image: |-
+              =&quot;&quot;
+            Fill: =RGBA(13,31,23,1)
+            BorderColor: =RGBA(42,74,58,1)
+            BorderThickness: =1
+            RadiusTopLeft: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            RadiusTopRight: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            RadiusBottomLeft: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            RadiusBottomRight: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+      - lblKpiRsvN:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =(20 + 3 * (((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - 40 - 30) / 4 + 10) + 12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, 90, 108)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - 40 - 30) / 4 - 16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(34) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Text: |-
+              =Text(Coalesce(Sum(Filter(colRsv, &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now()), &#x27;จำนวนคัน&#x27;), 0), &quot;#,##0&quot;)
+            Size: |-
+              =(18) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Color: =RGBA(201,165,74,1)
+            PaddingLeft: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingRight: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingTop: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingBottom: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            FontWeight: =FontWeight.Bold
+      - lblKpiRsvT:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =(20 + 3 * (((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - 40 - 30) / 4 + 10) + 12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, 124, 142)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - 40 - 30) / 4 - 16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(22) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Text: |-
+              =&quot;คัน กำลังจอง&quot;
+            Size: |-
+              =(10) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Color: =RGBA(157,184,169,1)
+            PaddingLeft: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingRight: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingTop: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingBottom: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+      - txtSearch:
+          Control: Classic/TextInput@2.3.2
+          Properties:
+            X: |-
+              =(20) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, 168, 184)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, 320, (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-40)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(44) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Default: |-
+              =&quot;&quot;
+            HintText: |-
+              =&quot;🔎 ค้นหารุ่น เช่น Precedent&quot;
+            Size: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Color: =RGBA(238,245,240,1)
+            Fill: =RGBA(13,31,23,1)
+            BorderColor: =RGBA(42,74,58,1)
+            BorderThickness: =1
+            HoverFill: =RGBA(13,31,23,1)
+            PressedFill: =RGBA(13,31,23,1)
+            FocusedBorderColor: =RGBA(127,209,155,1)
+            RadiusTopLeft: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            RadiusTopRight: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            RadiusBottomLeft: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            RadiusBottomRight: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            PaddingLeft: |-
+              =(14) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+      - galCats:
+          Control: Gallery@2.15.0
+          Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+          Properties:
+            X: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, 352, 17)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, 166, 236)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-369, (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-34)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, 42, 84)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Items: |-
+              =Table({t:&quot;ทั้งหมด&quot;},{t:&quot;2 ที่นั่ง&quot;},{t:&quot;4 ที่นั่ง&quot;},{t:&quot;6–8 ที่นั่ง&quot;},{t:&quot;อเนกประสงค์/บรรทุก&quot;},{t:&quot;อื่นๆ&quot;})
+            WrapCount: |-
+              =If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, 6, 3)
+            TemplateSize: |-
+              =(42) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            TemplatePadding: |-
+              =(3) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            ShowScrollbar: =false
+          Children:
+            - imgCatBg:
+                Control: Image@2.2.3
+                Properties:
+                  X: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =((Parent.TemplateHeight / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-6) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Image: |-
+                    =&quot;&quot;
+                  Fill: =If(varCat = ThisItem.t, RGBA(127,209,155,0.14), RGBA(13,31,23,1))
+                  BorderColor: =If(varCat = ThisItem.t, RGBA(127,209,155,1), RGBA(42,74,58,1))
+                  BorderThickness: =1
+                  RadiusTopLeft: |-
+                    =(17) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  RadiusTopRight: |-
+                    =(17) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  RadiusBottomLeft: |-
+                    =(17) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  RadiusBottomRight: |-
+                    =(17) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            - lblCat:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =((Parent.TemplateHeight / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-6) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Text: =ThisItem.t
+                  Size: |-
+                    =(11) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Color: =If(varCat = ThisItem.t, RGBA(127,209,155,1), RGBA(157,184,169,1))
+                  PaddingLeft: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingRight: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingTop: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingBottom: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Align: =Align.Center
+                  OnSelect: =Set(varCat, ThisItem.t)
+      - galOffer:
+          Control: Gallery@2.15.0
+          Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+          Properties:
+            X: |-
+              =(17) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, 216, 322)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, 480, ((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-34)*0.58)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(42) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Items: |-
+              =Table({t:&quot;ขาย+เช่า ทั้งหมด&quot;,k:&quot;all&quot;},{t:&quot;ขายได้&quot;,k:&quot;sale&quot;},{t:&quot;เช่าได้&quot;,k:&quot;rent&quot;})
+            WrapCount: |-
+              =3
+            TemplateSize: |-
+              =(42) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            TemplatePadding: |-
+              =(3) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            ShowScrollbar: =false
+          Children:
+            - imgOfferBg:
+                Control: Image@2.2.3
+                Properties:
+                  X: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =((Parent.TemplateHeight / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-6) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Image: |-
+                    =&quot;&quot;
+                  Fill: =If(varOffer = ThisItem.k, RGBA(127,209,155,0.14), RGBA(13,31,23,1))
+                  BorderColor: =If(varOffer = ThisItem.k, RGBA(127,209,155,1), RGBA(42,74,58,1))
+                  BorderThickness: =1
+                  RadiusTopLeft: |-
+                    =(17) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  RadiusTopRight: |-
+                    =(17) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  RadiusBottomLeft: |-
+                    =(17) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  RadiusBottomRight: |-
+                    =(17) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            - lblOffer:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =((Parent.TemplateHeight / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-6) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Text: =ThisItem.t
+                  Size: |-
+                    =(11) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Color: =If(varOffer = ThisItem.k, RGBA(127,209,155,1), RGBA(157,184,169,1))
+                  PaddingLeft: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingRight: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingTop: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingBottom: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Align: =Align.Center
+                  OnSelect: =Set(varOffer, ThisItem.k)
+      - galSort:
+          Control: Gallery@2.15.0
+          Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+          Properties:
+            X: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-17-340, 17+((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-34)*0.6)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, 216, 322)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, 340, ((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-34)*0.4)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(42) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Items: |-
+              =Table({t:&quot;เรียงตามรายงาน&quot;,k:&quot;report&quot;},{t:&quot;คงเหลือมากสุด&quot;,k:&quot;avail&quot;})
+            WrapCount: |-
+              =2
+            TemplateSize: |-
+              =(42) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            TemplatePadding: |-
+              =(3) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            ShowScrollbar: =false
+          Children:
+            - imgSortBg:
+                Control: Image@2.2.3
+                Properties:
+                  X: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =((Parent.TemplateHeight / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-6) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Image: |-
+                    =&quot;&quot;
+                  Fill: =If(varSort = ThisItem.k, RGBA(127,209,155,0.14), RGBA(13,31,23,1))
+                  BorderColor: =If(varSort = ThisItem.k, RGBA(127,209,155,1), RGBA(42,74,58,1))
+                  BorderThickness: =1
+                  RadiusTopLeft: |-
+                    =(17) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  RadiusTopRight: |-
+                    =(17) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  RadiusBottomLeft: |-
+                    =(17) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  RadiusBottomRight: |-
+                    =(17) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            - lblSort:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =((Parent.TemplateHeight / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-6) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Text: =ThisItem.t
+                  Size: |-
+                    =(11) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Color: =If(varSort = ThisItem.k, RGBA(127,209,155,1), RGBA(157,184,169,1))
+                  PaddingLeft: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingRight: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingTop: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingBottom: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Align: =Align.Center
+                  OnSelect: =Set(varSort, ThisItem.k)
+      - galModels:
+          Control: Gallery@2.15.0
+          Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+          Properties:
+            X: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, 274, 378)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-24) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, (Parent.Height / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-274, (Parent.Height / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-378)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Items: |-
+              =With({src: Filter(&#x27;แคตตาล็อกรถตามสภาพ – รุ่นรถ&#x27;, &#x27;เปิดให้&#x27;.Value &lt;&gt; &quot;ยังไม่เปิด&quot; &amp;&amp; (varCat = &quot;ทั้งหมด&quot; || &#x27;หมวด&#x27;.Value = varCat) &amp;&amp; (varOffer = &quot;all&quot; || (varOffer = &quot;sale&quot; &amp;&amp; &#x27;เปิดให้&#x27;.Value &lt;&gt; &quot;เช่าเท่านั้น&quot;) || (varOffer = &quot;rent&quot; &amp;&amp; &#x27;เปิดให้&#x27;.Value &lt;&gt; &quot;ขายเท่านั้น&quot;)) &amp;&amp; (IsBlank(txtSearch.Text) || txtSearch.Text in Title))}, If(varSort = &quot;avail&quot;, Sort(src As m, CountIf(colUnits, &#x27;รุ่น&#x27;.Id = m.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;พร้อมส่งมอบ&quot;), SortOrder.Descending), src))
+            WrapCount: |-
+              =Max(2, RoundDown(((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - 24) / 330, 0))
+            TemplateSize: |-
+              =(428) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            TemplatePadding: |-
+              =(6) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            ShowScrollbar: =false
+          Children:
+            - lblCardBg:
+                Control: Image@2.2.3
+                Properties:
+                  X: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =((Parent.TemplateHeight / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-4) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Image: |-
+                    =&quot;&quot;
+                  Fill: =RGBA(24,51,38,1)
+                  BorderColor: =RGBA(42,74,58,1)
+                  BorderThickness: =1
+                  RadiusTopLeft: |-
+                    =(14) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  RadiusTopRight: |-
+                    =(14) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  RadiusBottomLeft: |-
+                    =(14) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  RadiusBottomRight: |-
+                    =(14) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  OnSelect: =Set(varModel, ThisItem); Navigate(scrModel, ScreenTransition.Cover)
+            - imgCard:
+                Control: Image@2.2.3
+                Properties:
+                  X: |-
+                    =(1) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(1) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-2) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(200) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Image: =ThisItem.&#x27;รูปรุ่น&#x27;.Large
+                  ImagePosition: =ImagePosition.Fill
+                  Fill: =RGBA(15,36,25,1)
+                  RadiusTopLeft: |-
+                    =(14) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  RadiusTopRight: |-
+                    =(14) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  OnSelect: =Set(varModel, ThisItem); Navigate(scrModel, ScreenTransition.Cover)
+            - lblNoImg:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(80) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(44) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Text: |-
+                    =&quot;🛒&quot; &amp; Char(10) &amp; &quot;ยังไม่มีรูป&quot;
+                  Size: |-
+                    =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Color: =RGBA(157,184,169,1)
+                  PaddingLeft: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingRight: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingTop: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingBottom: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Align: =Align.Center
+                  Visible: =IsBlank(ThisItem.&#x27;รูปรุ่น&#x27;.Large)
+                  OnSelect: =Set(varModel, ThisItem); Navigate(scrModel, ScreenTransition.Cover)
+            - lblCardName:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(214) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-32) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(26) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Text: =Upper(ThisItem.Title)
+                  Size: |-
+                    =(14) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Color: =RGBA(238,245,240,1)
+                  PaddingLeft: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingRight: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingTop: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingBottom: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  FontWeight: =FontWeight.Bold
+                  OnSelect: =Set(varModel, ThisItem); Navigate(scrModel, ScreenTransition.Cover)
+            - lblCardCat:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(242) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-32) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(22) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Text: |-
+                    =ThisItem.&#x27;หมวด&#x27;.Value &amp; &quot; · ลงข้อมูล &quot; &amp; CountIf(colUnits, &#x27;รุ่น&#x27;.Id = ThisItem.ID &amp;&amp; &#x27;สถานะ&#x27;.Value &lt;&gt; &quot;ขาย/ปล่อยเช่าแล้ว&quot;) &amp; &quot; คัน&quot; &amp; With({r: Coalesce(Sum(Filter(colRsv, &#x27;รุ่น&#x27;.Id = ThisItem.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now()), &#x27;จำนวนคัน&#x27;), 0)}, If(r &gt; 0, &quot; · 🔒 จอง &quot; &amp; r &amp; &quot; คัน&quot;, &quot;&quot;))
+                  Size: |-
+                    =(10) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Color: =RGBA(157,184,169,1)
+                  PaddingLeft: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingRight: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingTop: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingBottom: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            - lblCardAvail:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(266) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =(90) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(40) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Text: |-
+                    =Text(CountIf(colUnits, &#x27;รุ่น&#x27;.Id = ThisItem.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;พร้อมส่งมอบ&quot;) - Coalesce(Sum(Filter(colRsv, &#x27;รุ่น&#x27;.Id = ThisItem.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now()), &#x27;จำนวนคัน&#x27;), 0), &quot;#,##0&quot;)
+                  Size: |-
+                    =(24) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Color: =RGBA(127,209,155,1)
+                  PaddingLeft: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingRight: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingTop: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingBottom: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  FontWeight: =FontWeight.Bold
+            - lblCardAvailT:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(16 + Len(lblCardAvail.Text) * 17 + 6) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(280) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-120) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(24) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Text: |-
+                    =&quot;คันพร้อมขาย/เช่า&quot;
+                  Size: |-
+                    =(11) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Color: =RGBA(238,245,240,1)
+                  PaddingLeft: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingRight: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingTop: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingBottom: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            - lblTagSale:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(314) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =(62) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(26) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Text: |-
+                    =&quot;ขายได้&quot;
+                  Size: |-
+                    =(10) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Color: =RGBA(201,165,74,1)
+                  PaddingLeft: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingRight: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingTop: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingBottom: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  FontWeight: =FontWeight.Bold
+                  Align: =Align.Center
+                  Fill: =RGBA(201,165,74,0.16)
+                  Visible: |-
+                    =ThisItem.&#x27;เปิดให้&#x27;.Value &lt;&gt; &quot;เช่าเท่านั้น&quot;
+            - lblTagRent:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(If(ThisItem.&#x27;เปิดให้&#x27;.Value &lt;&gt; &quot;เช่าเท่านั้น&quot;, 84, 16)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(314) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =(62) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(26) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Text: |-
+                    =&quot;เช่าได้&quot;
+                  Size: |-
+                    =(10) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Color: =RGBA(108,182,232,1)
+                  PaddingLeft: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingRight: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingTop: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingBottom: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  FontWeight: =FontWeight.Bold
+                  Align: =Align.Center
+                  Fill: =RGBA(108,182,232,0.16)
+                  Visible: |-
+                    =ThisItem.&#x27;เปิดให้&#x27;.Value &lt;&gt; &quot;ขายเท่านั้น&quot;
+            - lblTagPark:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(16 + If(ThisItem.&#x27;เปิดให้&#x27;.Value &lt;&gt; &quot;เช่าเท่านั้น&quot;, 68, 0) + If(ThisItem.&#x27;เปิดให้&#x27;.Value &lt;&gt; &quot;ขายเท่านั้น&quot;, 68, 0)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(314) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =(96) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(26) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Text: |-
+                    =&quot;ฝากจอด &quot; &amp; CountIf(colUnits, &#x27;รุ่น&#x27;.Id = ThisItem.ID &amp;&amp; &#x27;จัดเก็บที่&#x27;.Value = &quot;รถฝากจอด&quot; &amp;&amp; &#x27;สถานะ&#x27;.Value &lt;&gt; &quot;ขาย/ปล่อยเช่าแล้ว&quot;)
+                  Size: |-
+                    =(10) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Color: =RGBA(157,184,169,1)
+                  PaddingLeft: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingRight: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingTop: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingBottom: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Align: =Align.Center
+                  Fill: =RGBA(255,255,255,0.06)
+                  Visible: =CountIf(colUnits, &#x27;รุ่น&#x27;.Id = ThisItem.ID &amp;&amp; &#x27;จัดเก็บที่&#x27;.Value = &quot;รถฝากจอด&quot; &amp;&amp; &#x27;สถานะ&#x27;.Value &lt;&gt; &quot;ขาย/ปล่อยเช่าแล้ว&quot;) &gt; 0
+            - imgCardLine:
+                Control: Image@2.2.3
+                Properties:
+                  X: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(352) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-32) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(1) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Image: |-
+                    =&quot;&quot;
+                  Fill: =RGBA(42,74,58,1)
+                  BorderThickness: =0
+            - lblPriceK:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(362) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =(100) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(24) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Text: |-
+                    =&quot;ราคาขาย&quot;
+                  Size: |-
+                    =(11) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Color: =RGBA(157,184,169,1)
+                  PaddingLeft: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingRight: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingTop: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingBottom: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            - lblCardPrice:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(110) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(362) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-126) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(24) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Text: |-
+                    =If(ThisItem.&#x27;เปิดให้&#x27;.Value = &quot;เช่าเท่านั้น&quot;, &quot;–&quot;, If(IsBlank(ThisItem.&#x27;ราคาขายต่ำสุด (บาท)&#x27;), &quot;สอบถามราคา&quot;, &quot;฿&quot; &amp; Text(ThisItem.&#x27;ราคาขายต่ำสุด (บาท)&#x27;, &quot;#,##0&quot;) &amp; If(ThisItem.&#x27;ราคาขายสูงสุด (บาท)&#x27; &gt; ThisItem.&#x27;ราคาขายต่ำสุด (บาท)&#x27;, &quot; – ฿&quot; &amp; Text(ThisItem.&#x27;ราคาขายสูงสุด (บาท)&#x27;, &quot;#,##0&quot;), &quot;&quot;)))
+                  Size: |-
+                    =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Color: =RGBA(238,245,240,1)
+                  PaddingLeft: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingRight: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingTop: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingBottom: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  FontWeight: =FontWeight.Bold
+                  Align: =Align.Right
+            - lblRentK:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(388) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =(100) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(24) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Text: |-
+                    =&quot;ค่าเช่า&quot;
+                  Size: |-
+                    =(11) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Color: =RGBA(157,184,169,1)
+                  PaddingLeft: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingRight: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingTop: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingBottom: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            - lblRentV:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(110) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(388) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-126) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(24) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Text: |-
+                    =If(ThisItem.&#x27;เปิดให้&#x27;.Value &lt;&gt; &quot;ขายเท่านั้น&quot;, &quot;เซลล์เสนอตามเรตเช่า&quot;, &quot;–&quot;)
+                  Size: |-
+                    =(11) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Color: =RGBA(157,184,169,1)
+                  PaddingLeft: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingRight: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingTop: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingBottom: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Align: =Align.Right
+                  Italic: =true
+  scrModel:
+    Properties:
+      OnVisible: =ClearCollect(colUnits, &#x27;แคตตาล็อกรถตามสภาพ – รถรายคัน&#x27;)
+      Fill: =RGBA(13,31,23,1)
+    Children:
+      - galModelBody:
+          Control: Gallery@2.15.0
+          Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+          Properties:
+            X: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(90) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))*0.5, (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, (Parent.Height / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-90, (Parent.Height / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-520)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Items: =[1]
+            TemplateSize: |-
+              =(900) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            TemplatePadding: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            ShowScrollbar: =false
+          Children:
+            - imgModelHero:
+                Control: Image@2.2.3
+                Properties:
+                  X: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(8) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-32) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(360) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Image: =varModel.&#x27;รูปรุ่น&#x27;.Full
+                  ImagePosition: =ImagePosition.Fill
+                  Fill: =RGBA(15,36,25,1)
+                  RadiusTopLeft: |-
+                    =(14) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  RadiusTopRight: |-
+                    =(14) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  RadiusBottomLeft: |-
+                    =(14) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  RadiusBottomRight: |-
+                    =(14) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            - lblModelNoImg:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(170) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-32) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(40) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Align: =Align.Center
+                  Color: =RGBA(157,184,169,1)
+                  Text: |-
+                    =&quot;📷 ยังไม่มีรูปรุ่นนี้&quot;
+                  Visible: =IsBlank(varModel.&#x27;รูปรุ่น&#x27;.Full)
+            - lblModelPrice:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(382) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-32) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(96) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Fill: =RGBA(24,51,38,1)
+                  PaddingLeft: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Size: |-
+                    =(20) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  FontWeight: =FontWeight.Bold
+                  Color: =RGBA(224,192,112,1)
+                  Text: |-
+                    =&quot;ราคาขาย  &quot; &amp; If(varModel.&#x27;เปิดให้&#x27;.Value = &quot;เช่าเท่านั้น&quot;, &quot;– (เช่าเท่านั้น)&quot;, If(IsBlank(varModel.&#x27;ราคาขายต่ำสุด (บาท)&#x27;), &quot;สอบถามราคา&quot;, &quot;฿&quot; &amp; Text(varModel.&#x27;ราคาขายต่ำสุด (บาท)&#x27;, &quot;#,##0&quot;) &amp; If(varModel.&#x27;ราคาขายสูงสุด (บาท)&#x27; &gt; varModel.&#x27;ราคาขายต่ำสุด (บาท)&#x27;, &quot; – ฿&quot; &amp; Text(varModel.&#x27;ราคาขายสูงสุด (บาท)&#x27;, &quot;#,##0&quot;), &quot;&quot;))) &amp; Char(10) &amp; If(varModel.&#x27;เปิดให้&#x27;.Value &lt;&gt; &quot;ขายเท่านั้น&quot;, &quot;เช่าได้ · เซลล์เสนอตามเรตเช่า&quot;, &quot;&quot;)
+            - lblModelStock:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(490) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-32) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(150) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Fill: =RGBA(24,51,38,1)
+                  PaddingLeft: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Size: |-
+                    =(14) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Color: =Color.White
+                  Text: |-
+                    =With({rd: CountIf(colUnits, &#x27;รุ่น&#x27;.Id = varModel.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;พร้อมส่งมอบ&quot;), r: Coalesce(Sum(Filter(colRsv, &#x27;รุ่น&#x27;.Id = varModel.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now()), &#x27;จำนวนคัน&#x27;), 0)}, &quot;พร้อมส่งมอบ &quot; &amp; rd &amp; &quot; คัน  ·  ว่างจริง &quot; &amp; (rd - r) &amp; &quot; คัน&quot; &amp; Char(10) &amp; &quot;🔒 กำลังจอง &quot; &amp; r &amp; &quot; คัน&quot; &amp; Char(10) &amp; &quot;รอซ่อม/เตรียมรถ &quot; &amp; CountIf(colUnits, &#x27;รุ่น&#x27;.Id = varModel.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;รอซ่อม/เตรียมรถ&quot;) &amp; &quot; คัน  ·  ฝากจอด &quot; &amp; CountIf(colUnits, &#x27;รุ่น&#x27;.Id = varModel.ID &amp;&amp; &#x27;จัดเก็บที่&#x27;.Value = &quot;รถฝากจอด&quot; &amp;&amp; &#x27;สถานะ&#x27;.Value &lt;&gt; &quot;ขาย/ปล่อยเช่าแล้ว&quot;) &amp; &quot; คัน&quot; &amp; Char(10) &amp; &quot;ลงในระบบทั้งหมด &quot; &amp; CountIf(colUnits, &#x27;รุ่น&#x27;.Id = varModel.ID &amp;&amp; &#x27;สถานะ&#x27;.Value &lt;&gt; &quot;ขาย/ปล่อยเช่าแล้ว&quot;) &amp; &quot; คัน&quot;)
+            - lblModelDesc:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(648) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-32) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(60) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Size: |-
+                    =(13) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Color: =RGBA(157,184,169,1)
+                  VerticalAlign: =VerticalAlign.Top
+                  Text: |-
+                    =Coalesce(varModel.&#x27;รายละเอียดรุ่น&#x27;, varModel.&#x27;หมายเหตุราคา&#x27;, &quot;&quot;)
+            - lblModelRsvList:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(712) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-32) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(80) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Size: |-
+                    =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Color: =RGBA(230,199,122,1)
+                  VerticalAlign: =VerticalAlign.Top
+                  Text: |-
+                    =Concat(Filter(colRsv, &#x27;รุ่น&#x27;.Id = varModel.ID &amp;&amp; &#x27;ประเภทการจอง&#x27;.Value = &quot;หลายคัน&quot; &amp;&amp; (&#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot; || &#x27;หมดอายุ&#x27; &gt; Now())), &quot;📦 &quot; &amp; &#x27;จำนวนคัน&#x27; &amp; &quot; คัน · &quot; &amp; Title &amp; &quot; · &quot; &amp; &#x27;เซลล์ผู้จอง&#x27; &amp; If(&#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;, &quot; · ⏳ รออนุมัติ&quot;, &quot; · ถึง &quot; &amp; Text(&#x27;หมดอายุ&#x27;, &quot;d/m/yy&quot;)), Char(10))
+            - lblLotBtn:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(796) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-32) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(48) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Align: =Align.Center
+                  Size: |-
+                    =(14) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  FontWeight: =FontWeight.Bold
+                  Color: =RGBA(230,199,122,1)
+                  Fill: =RGBA(24,51,38,1)
+                  BorderColor: =RGBA(214,178,94,1)
+                  BorderThickness: =1
+                  Text: |-
+                    =&quot;📦 จองหลายคัน (ล็อตใหญ่)&quot;
+                  OnSelect: =Reset(txtLotQty); Reset(txtLotCust); Set(varShowLot, true)
+            - lblUnitsHead:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(852) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-32) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(40) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Size: |-
+                    =(15) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  FontWeight: =FontWeight.Bold
+                  Color: =Color.White
+                  Text: |-
+                    =&quot;รถรายคัน (&quot; &amp; CountRows(galUnits.AllItems) &amp; &quot;)  ▼ เลื่อนลง&quot;
+      - galUnits:
+          Control: Gallery@2.15.0
+          Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+          Properties:
+            X: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))*0.5, 0)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, 90, (Parent.Height / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-430)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))*0.5, (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, (Parent.Height / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-90, 430)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            TemplateSize: |-
+              =(150) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            TemplatePadding: |-
+              =(6) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Fill: =RGBA(13,31,23,1)
+            BorderColor: =RGBA(42,74,58,1)
+            BorderThickness: =1
+            Items: |-
+              =Filter(&#x27;แคตตาล็อกรถตามสภาพ – รถรายคัน&#x27;, &#x27;รุ่น&#x27;.Id = varModel.ID &amp;&amp; &#x27;สถานะ&#x27;.Value &lt;&gt; &quot;ขาย/ปล่อยเช่าแล้ว&quot;)
+          Children:
+            - lblUnitBg:
+                Control: Image@2.2.3
+                Properties:
+                  Image: =&quot;&quot;
+                  X: |-
+                    =(10) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-20) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =((Parent.TemplateHeight / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Fill: =RGBA(19,41,31,1)
+                  BorderColor: =RGBA(42,74,58,1)
+                  BorderThickness: =1
+                  RadiusTopLeft: |-
+                    =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  RadiusTopRight: |-
+                    =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  RadiusBottomLeft: |-
+                    =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  RadiusBottomRight: |-
+                    =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  OnSelect: =Set(varUnit, ThisItem); Navigate(scrUnit, ScreenTransition.Cover)
+            - imgUnit:
+                Control: Image@2.2.3
+                Properties:
+                  X: |-
+                    =(20) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(10) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =(170) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =((Parent.TemplateHeight / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-20) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Image: |-
+                    =ThisItem.&#x27;รูปหลัก&#x27;.Large
+                  ImagePosition: =ImagePosition.Fill
+                  Fill: =RGBA(15,36,25,1)
+                  RadiusTopLeft: |-
+                    =(8) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  RadiusTopRight: |-
+                    =(8) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  RadiusBottomLeft: |-
+                    =(8) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  RadiusBottomRight: |-
+                    =(8) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  OnSelect: =Set(varUnit, ThisItem); Navigate(scrUnit, ScreenTransition.Cover)
+            - lblUnitTitle:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(202) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(10) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-222) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(34) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Size: |-
+                    =(14) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  FontWeight: =FontWeight.Bold
+                  Color: =Color.White
+                  Text: |-
+                    =If(IsBlank(ThisItem.&#x27;เกรดสภาพ&#x27;.Value), &quot;&quot;, &quot;[&quot; &amp; Left(ThisItem.&#x27;เกรดสภาพ&#x27;.Value, 1) &amp; &quot;] &quot;) &amp; ThisItem.Title &amp; &quot;  ›&quot;
+                  OnSelect: =Set(varUnit, ThisItem); Navigate(scrUnit, ScreenTransition.Cover)
+            - lblUnitInfo:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(202) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(44) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-222) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(60) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Size: |-
+                    =(11) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Color: =RGBA(157,184,169,1)
+                  VerticalAlign: =VerticalAlign.Top
+                  Text: |-
+                    =Concat(Filter(Table({v: If(IsBlank(ThisItem.&#x27;ปีผลิต&#x27;), &quot;&quot;, &quot;ปี &quot; &amp; ThisItem.&#x27;ปีผลิต&#x27;)}, {v: ThisItem.&#x27;สี&#x27;}, {v: ThisItem.&#x27;จัดเก็บที่&#x27;.Value}), !IsBlank(v)), v, &quot; · &quot;) &amp; Char(10) &amp; &quot;🔋 &quot; &amp; Concat(Filter(Table({v: ThisItem.&#x27;ชนิดแบต&#x27;.Value}, {v: ThisItem.&#x27;แรงดันระบบ&#x27;.Value}, {v: If(IsBlank(ThisItem.&#x27;สุขภาพแบต (%)&#x27;), &quot;&quot;, &quot;สุขภาพ &quot; &amp; ThisItem.&#x27;สุขภาพแบต (%)&#x27; &amp; &quot;%&quot;)}), !IsBlank(v)), v, &quot; · &quot;)
+            - lblUnitPrice:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(202) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(104) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-222) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(30) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Size: |-
+                    =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  FontWeight: =FontWeight.Bold
+                  Color: =RGBA(224,192,112,1)
+                  Text: |-
+                    =With({rv: LookUp(colRsv, &#x27;รถ (เลขรถ)&#x27;.Id = ThisItem.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now())}, If(IsBlank(rv), ThisItem.&#x27;สถานะ&#x27;.Value &amp; &quot;  ·  &quot; &amp; If(IsBlank(ThisItem.&#x27;ราคาขาย (บาท)&#x27;), &quot;ราคาตามรุ่น&quot;, &quot;฿&quot; &amp; Text(ThisItem.&#x27;ราคาขาย (บาท)&#x27;, &quot;#,##0&quot;)), &quot;🔒 จองโดย &quot; &amp; rv.&#x27;เซลล์ผู้จอง&#x27; &amp; &quot; · เหลือ &quot; &amp; RoundUp(DateDiff(Now(), rv.&#x27;หมดอายุ&#x27;, TimeUnit.Hours) / 24, 0) &amp; &quot; วัน&quot;))
+      - lblModelTopBar:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(90) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Fill: =RGBA(19,41,31,1)
+            Text: |-
+              =&quot;&quot;
+      - lblModelBack:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =((((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) / 2) + (12)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(20) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(90) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(50) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Size: |-
+              =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Color: =RGBA(127,209,155,1)
+            Text: |-
+              =&quot;‹ กลับ&quot;
+            OnSelect: =Back()
+      - lblModelTitle:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =((((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) / 2) + (100)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(20) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))-330) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(50) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Size: |-
+              =(15) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            FontWeight: =FontWeight.Bold
+            Color: =Color.White
+            Text: =varModel.Title
+      - lblModelPresent:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =((((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) / 2) + (If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))-220)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(20) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(204) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(50) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Align: =Align.Center
+            Size: |-
+              =(13) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            FontWeight: =FontWeight.Bold
+            Color: =RGBA(26,20,5,1)
+            Fill: =RGBA(201,165,74,1)
+            Text: |-
+              =&quot;เปิดให้ลูกค้าดู&quot;
+            OnSelect: |-
+              =ClearCollect(colPresent, Table({img: varModel.&#x27;รูปรุ่น&#x27;.Full, t: &quot;&quot;})); Collect(colPresent, ForAll(Filter(&#x27;แคตตาล็อกรถตามสภาพ – รถรายคัน&#x27;, &#x27;รุ่น&#x27;.Id = varModel.ID &amp;&amp; &#x27;สถานะ&#x27;.Value &lt;&gt; &quot;ขาย/ปล่อยเช่าแล้ว&quot;), {img: ThisRecord.&#x27;รูปหลัก&#x27;.Full, t: ThisRecord.Title})); RemoveIf(colPresent, IsBlank(img)); Set(varPI, 1); Set(varPresentTitle, varModel.Title); Set(varPresentInfo, &quot;พร้อมส่งมอบ &quot; &amp; Text(CountIf(colUnits, &#x27;รุ่น&#x27;.Id = varModel.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;พร้อมส่งมอบ&quot;), &quot;#,##0&quot;) &amp; &quot; คัน&quot; &amp; If(varModel.&#x27;เปิดให้&#x27;.Value &lt;&gt; &quot;เช่าเท่านั้น&quot; &amp;&amp; !IsBlank(varModel.&#x27;ราคาขายต่ำสุด (บาท)&#x27;), &quot;   ·   ราคาขาย ฿&quot; &amp; Text(varModel.&#x27;ราคาขายต่ำสุด (บาท)&#x27;, &quot;#,##0&quot;) &amp; If(varModel.&#x27;ราคาขายสูงสุด (บาท)&#x27; &gt; varModel.&#x27;ราคาขายต่ำสุด (บาท)&#x27;, &quot; – ฿&quot; &amp; Text(varModel.&#x27;ราคาขายสูงสุด (บาท)&#x27;, &quot;#,##0&quot;), &quot;&quot;), &quot;&quot;) &amp; If(varModel.&#x27;เปิดให้&#x27;.Value &lt;&gt; &quot;ขายเท่านั้น&quot;, &quot;   ·   เช่าได้&quot;, &quot;&quot;)); Navigate(scrPresent, ScreenTransition.Fade)
+      - lblModelAdd:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =((((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) / 2) + (If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))-330)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(20) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(100) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(50) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Align: =Align.Center
+            Size: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            FontWeight: =FontWeight.Bold
+            Color: =RGBA(13,31,23,1)
+            Fill: =RGBA(127,209,155,1)
+            Visible: =varCanEdit
+            Text: |-
+              =&quot;+ เพิ่มรถ&quot;
+            OnSelect: =Set(varUnit, Blank()); NewForm(frmUnit); Navigate(scrCMUnit, ScreenTransition.Cover)
+      - lblLotOverlay:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =((Parent.Height / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Fill: =RGBA(0,0,0,0.7)
+            Text: |-
+              =&quot;&quot;
+            Visible: =varShowLot
+      - lblLotBox:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =((((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) / 2) + (24)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =((Parent.Height / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))/2-260) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))-48) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(520) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Fill: =RGBA(24,51,38,1)
+            BorderColor: =RGBA(214,178,94,1)
+            BorderThickness: =2
+            Text: |-
+              =&quot;&quot;
+            Visible: =varShowLot
+      - lblLotTitle:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =((((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) / 2) + (48)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =((Parent.Height / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))/2-240) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))-96) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(90) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Size: |-
+              =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            FontWeight: =FontWeight.Bold
+            Color: =Color.White
+            Visible: =varShowLot
+            Text: |-
+              =&quot;📦 จองหลายคัน — &quot; &amp; varModel.Title &amp; Char(10) &amp; &quot;ว่างให้จองได้ &quot; &amp; Text(CountIf(colUnits, &#x27;รุ่น&#x27;.Id = varModel.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;พร้อมส่งมอบ&quot;) - Sum(Filter(colRsv, &#x27;รุ่น&#x27;.Id = varModel.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now()), &#x27;จำนวนคัน&#x27;), &quot;#,##0&quot;) &amp; &quot; คัน&quot;
+      - lblLotQtyL:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =((((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) / 2) + (48)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =((Parent.Height / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))/2-140) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))-96) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(30) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Size: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Color: =RGBA(157,184,169,1)
+            Visible: =varShowLot
+            Text: |-
+              =&quot;จำนวนคัน&quot;
+      - txtLotQty:
+          Control: Classic/TextInput@2.3.2
+          Properties:
+            Fill: =RGBA(19,41,31,1)
+            Color: =Color.White
+            BorderColor: =RGBA(42,74,58,1)
+            HoverFill: =RGBA(24,51,38,1)
+            HoverBorderColor: =RGBA(127,209,155,1)
+            PaddingLeft: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            X: |-
+              =((((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) / 2) + (48)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =((Parent.Height / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))/2-108) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))-96) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(56) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Default: |-
+              =&quot;&quot;
+            HintText: |-
+              =&quot;เช่น 100&quot;
+            Format: =TextFormat.Number
+            Size: |-
+              =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Visible: =varShowLot
+      - lblLotCustL:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =((((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) / 2) + (48)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =((Parent.Height / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))/2-40) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))-96) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(30) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Size: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Color: =RGBA(157,184,169,1)
+            Visible: =varShowLot
+            Text: |-
+              =&quot;ลูกค้า / หน่วยงาน&quot;
+      - txtLotCust:
+          Control: Classic/TextInput@2.3.2
+          Properties:
+            Fill: =RGBA(19,41,31,1)
+            Color: =Color.White
+            BorderColor: =RGBA(42,74,58,1)
+            HoverFill: =RGBA(24,51,38,1)
+            HoverBorderColor: =RGBA(127,209,155,1)
+            PaddingLeft: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            X: |-
+              =((((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) / 2) + (48)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =((Parent.Height / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))/2-8) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))-96) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(56) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Default: |-
+              =&quot;&quot;
+            HintText: |-
+              =&quot;ชื่อลูกค้า&quot;
+            Size: |-
+              =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Visible: =varShowLot
+      - lblLotRule:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =((((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) / 2) + (48)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =((Parent.Height / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))/2+56) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))-96) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(70) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Size: |-
+              =(11) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Color: =RGBA(230,199,122,1)
+            Visible: =varShowLot
+            Text: |-
+              =&quot;จองได้ 14 วัน · เกิน 10 คันต้องให้ผู้จัดการอนุมัติก่อน · ครบกำหนดยังไม่ปิดการขาย ระบบคืนยอดว่างอัตโนมัติ&quot;
+      - lblLotCancel:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =((((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) / 2) + (48)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =((Parent.Height / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))/2+150) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =((If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))-108)/2) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(56) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Align: =Align.Center
+            Size: |-
+              =(14) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Color: =Color.White
+            Fill: =RGBA(19,41,31,1)
+            BorderColor: =RGBA(42,74,58,1)
+            BorderThickness: =1
+            Visible: =varShowLot
+            Text: |-
+              =&quot;ยกเลิก&quot;
+            OnSelect: =Set(varShowLot, false)
+      - lblLotOK:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =((((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) / 2) + (If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))/2+6)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =((Parent.Height / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))/2+150) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =((If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))-108)/2) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(56) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Align: =Align.Center
+            Size: |-
+              =(14) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            FontWeight: =FontWeight.Bold
+            Color: =RGBA(26,20,5,1)
+            Fill: =RGBA(214,178,94,1)
+            Visible: =varShowLot
+            Text: |-
+              =&quot;ยืนยันจอง&quot;
+            OnSelect: |-
+              =With({q: Value(txtLotQty.Text), av: CountIf(colUnits, &#x27;รุ่น&#x27;.Id = varModel.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;พร้อมส่งมอบ&quot;) - Sum(Filter(colRsv, &#x27;รุ่น&#x27;.Id = varModel.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now()), &#x27;จำนวนคัน&#x27;)}, If(IsBlank(txtLotCust.Text) || IsBlank(q) || q &lt; 1, Notify(&quot;กรอกจำนวนคันและชื่อลูกค้า&quot;, NotificationType.Error), q &gt; av, Notify(&quot;จองได้สูงสุด &quot; &amp; av &amp; &quot; คัน&quot;, NotificationType.Error), Patch(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, Defaults(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;), {Title: txtLotCust.Text, &#x27;รุ่น&#x27;: {Id: varModel.ID, Value: varModel.Title}, &#x27;จำนวนคัน&#x27;: q, &#x27;ประเภทการจอง&#x27;: {Value: &quot;หลายคัน&quot;}, &#x27;สถานะ&#x27;: {Value: If(q &gt; 10, &quot;รออนุมัติ&quot;, &quot;จองอยู่&quot;)}, &#x27;เซลล์ผู้จอง&#x27;: User().FullName, &#x27;อีเมลเซลล์&#x27;: User().Email, &#x27;หมดอายุ&#x27;: DateAdd(Now(), 14, TimeUnit.Days)}); ClearCollect(colRsv, Filter(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; || &#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;)); Set(varShowLot, false); Notify(If(q &gt; 10, &quot;ส่งขออนุมัติแล้ว — รอผู้จัดการอนุมัติ&quot;, &quot;จองแล้ว &quot; &amp; q &amp; &quot; คัน (14 วัน)&quot;), NotificationType.Success)))
+  scrUnit:
+    Properties:
+      Fill: =RGBA(13,31,23,1)
+      OnVisible: |-
+        =ClearCollect(colPhotos, Filter(Table({t: &quot;ด้านหน้า&quot;, img: varUnit.&#x27;รูปหลัก&#x27;.Full}, {t: &quot;ด้านหลัง&quot;, img: varUnit.&#x27;รูป: ด้านหลัง&#x27;.Full}, {t: &quot;ด้านซ้าย&quot;, img: varUnit.&#x27;รูป: ด้านซ้าย&#x27;.Full}, {t: &quot;ด้านขวา&quot;, img: varUnit.&#x27;รูป: ด้านขวา&#x27;.Full}, {t: &quot;เบาะ/ห้องโดยสาร&quot;, img: varUnit.&#x27;รูป: เบาะ/ห้องโดยสาร&#x27;.Full}, {t: &quot;หน้าปัด/พวงมาลัย&quot;, img: varUnit.&#x27;รูป: หน้าปัด/พวงมาลัย&#x27;.Full}, {t: &quot;แบตเตอรี่&quot;, img: varUnit.&#x27;รูป: แบตเตอรี่&#x27;.Full}, {t: &quot;ชาร์จเจอร์&quot;, img: varUnit.&#x27;รูป: ชาร์จเจอร์&#x27;.Full}, {t: &quot;ยาง/ล้อ&quot;, img: varUnit.&#x27;รูป: ยาง/ล้อ&#x27;.Full}, {t: &quot;อื่นๆ&quot;, img: varUnit.&#x27;รูป: อื่นๆ 1&#x27;.Full}, {t: &quot;อื่นๆ&quot;, img: varUnit.&#x27;รูป: อื่นๆ 2&#x27;.Full}), !IsBlank(img))); Set(varIdx, 1)
+    Children:
+      - galUnitBody:
+          Control: Gallery@2.15.0
+          Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+          Properties:
+            X: |-
+              =((((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) / 2) + (0)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(90) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =((Parent.Height / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-90-150) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Items: =[1]
+            TemplateSize: |-
+              =(1700) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            TemplatePadding: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            ShowScrollbar: =false
+          Children:
+            - imgUnitHero:
+                Control: Image@2.2.3
+                Properties:
+                  X: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(8) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-32) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(400) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Image: =If(CountRows(colPhotos) &gt; 0, Index(colPhotos, varIdx).img)
+                  ImagePosition: =ImagePosition.Fit
+                  Fill: =RGBA(15,36,25,1)
+                  RadiusTopLeft: |-
+                    =(14) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  RadiusTopRight: |-
+                    =(14) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  RadiusBottomLeft: |-
+                    =(14) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  RadiusBottomRight: |-
+                    =(14) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            - lblUnitNoImg:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(190) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-32) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(40) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Align: =Align.Center
+                  Color: =RGBA(157,184,169,1)
+                  Text: |-
+                    =&quot;📷 ยังไม่มีรูปรถคันนี้&quot;
+                  Visible: =CountRows(colPhotos) = 0
+            - lblPrev:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(24) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(180) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =(60) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(60) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Align: =Align.Center
+                  Size: |-
+                    =(28) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Color: =Color.White
+                  Fill: =RGBA(0,0,0,0.4)
+                  Text: |-
+                    =&quot;‹&quot;
+                  Visible: =CountRows(colPhotos) &gt; 1
+                  OnSelect: =Set(varIdx, If(varIdx &lt;= 1, CountRows(colPhotos), varIdx - 1))
+            - lblNext:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-84) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(180) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =(60) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(60) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Align: =Align.Center
+                  Size: |-
+                    =(28) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Color: =Color.White
+                  Fill: =RGBA(0,0,0,0.4)
+                  Text: |-
+                    =&quot;›&quot;
+                  Visible: =CountRows(colPhotos) &gt; 1
+                  OnSelect: =Set(varIdx, If(varIdx &gt;= CountRows(colPhotos), 1, varIdx + 1))
+            - lblPhotoCap:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(412) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-32) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(30) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Align: =Align.Center
+                  Size: |-
+                    =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Color: =RGBA(157,184,169,1)
+                  Text: |-
+                    =If(CountRows(colPhotos) = 0, &quot;&quot;, Index(colPhotos, varIdx).t &amp; &quot;  ·  &quot; &amp; varIdx &amp; &quot; / &quot; &amp; CountRows(colPhotos))
+            - lblUnitPriceBox:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(450) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-32) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(96) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Fill: =RGBA(24,51,38,1)
+                  PaddingLeft: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Size: |-
+                    =(20) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  FontWeight: =FontWeight.Bold
+                  Color: =RGBA(224,192,112,1)
+                  Text: |-
+                    =&quot;ราคาขาย  &quot; &amp; If(!IsBlank(varUnit.&#x27;ราคาขาย (บาท)&#x27;), &quot;฿&quot; &amp; Text(varUnit.&#x27;ราคาขาย (บาท)&#x27;, &quot;#,##0&quot;), If(IsBlank(varModel.&#x27;ราคาขายต่ำสุด (บาท)&#x27;), &quot;สอบถามราคา&quot;, &quot;฿&quot; &amp; Text(varModel.&#x27;ราคาขายต่ำสุด (บาท)&#x27;, &quot;#,##0&quot;) &amp; &quot; (ราคาตามรุ่น)&quot;)) &amp; Char(10) &amp; varUnit.&#x27;สถานะ&#x27;.Value &amp; &quot;  ·  เช่าได้ – เซลล์เสนอตามเรต&quot;
+            - lblSpecHead:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(560) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-32) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(36) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Size: |-
+                    =(15) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  FontWeight: =FontWeight.Bold
+                  Color: =Color.White
+                  Text: |-
+                    =&quot;ข้อมูลรถ&quot;
+            - lblSpec:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(598) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-32) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(330) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Fill: =RGBA(24,51,38,1)
+                  PaddingLeft: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingTop: |-
+                    =(10) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Size: |-
+                    =(13) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Color: =Color.White
+                  VerticalAlign: =VerticalAlign.Top
+                  Text: |-
+                    =Concat(Filter(Table({k: &quot;รุ่น&quot;, v: varModel.Title}, {k: &quot;เลขรถ / Serial&quot;, v: varUnit.Title}, {k: &quot;ปีผลิต&quot;, v: varUnit.&#x27;ปีผลิต&#x27;}, {k: &quot;สี&quot;, v: varUnit.&#x27;สี&#x27;}, {k: &quot;ระบบขับเคลื่อน&quot;, v: varUnit.&#x27;ระบบขับเคลื่อน&#x27;.Value}, {k: &quot;มอเตอร์&quot;, v: varUnit.&#x27;มอเตอร์&#x27;.Value}, {k: &quot;ชั่วโมงใช้งาน/ไมล์&quot;, v: varUnit.&#x27;ชั่วโมงใช้งาน/ไมล์&#x27;}, {k: &quot;สภาพยาง&quot;, v: varUnit.&#x27;สภาพยาง&#x27;}, {k: &quot;อุปกรณ์ติดรถ&quot;, v: varUnit.&#x27;อุปกรณ์ติดรถ&#x27;}, {k: &quot;จัดเก็บที่&quot;, v: varUnit.&#x27;จัดเก็บที่&#x27;.Value}, {k: &quot;เกรดสภาพ&quot;, v: varUnit.&#x27;เกรดสภาพ&#x27;.Value}, {k: &quot;สภาพโดยรวม&quot;, v: varUnit.&#x27;สภาพโดยรวม&#x27;}), !IsBlank(v)), k &amp; &quot;:  &quot; &amp; v, Char(10))
+            - lblBatHead:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(940) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-32) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(36) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Size: |-
+                    =(15) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  FontWeight: =FontWeight.Bold
+                  Color: =Color.White
+                  Text: |-
+                    =&quot;🔋 แบตเตอรี่&quot;
+            - lblBat:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(978) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-32) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(250) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Fill: =RGBA(24,51,38,1)
+                  PaddingLeft: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingTop: |-
+                    =(10) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Size: |-
+                    =(13) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Color: =Color.White
+                  VerticalAlign: =VerticalAlign.Top
+                  Text: |-
+                    =Concat(Filter(Table({k: &quot;ชนิดแบต&quot;, v: varUnit.&#x27;ชนิดแบต&#x27;.Value}, {k: &quot;แรงดันระบบ&quot;, v: varUnit.&#x27;แรงดันระบบ&#x27;.Value}, {k: &quot;ยี่ห้อ/รุ่นแบต&quot;, v: varUnit.&#x27;ยี่ห้อ/รุ่นแบต&#x27;}, {k: &quot;จำนวนลูก&quot;, v: Text(varUnit.&#x27;จำนวนลูกแบต&#x27;)}, {k: &quot;สเปกต่อลูก&quot;, v: varUnit.&#x27;สเปกต่อลูก&#x27;}, {k: &quot;ปีที่ติดตั้ง/เปลี่ยน&quot;, v: varUnit.&#x27;ปีที่ติดตั้งแบต&#x27;}, {k: &quot;สุขภาพแบต&quot;, v: If(IsBlank(varUnit.&#x27;สุขภาพแบต (%)&#x27;), &quot;&quot;, varUnit.&#x27;สุขภาพแบต (%)&#x27; &amp; &quot; %&quot;)}, {k: &quot;วิ่งได้ต่อชาร์จ&quot;, v: If(IsBlank(varUnit.&#x27;วิ่งได้ต่อชาร์จ (กม.)&#x27;), &quot;&quot;, varUnit.&#x27;วิ่งได้ต่อชาร์จ (กม.)&#x27; &amp; &quot; กม. (โดยประมาณ)&quot;)}, {k: &quot;ชาร์จเจอร์&quot;, v: varUnit.&#x27;ชาร์จเจอร์&#x27;.Value}), !IsBlank(v)), k &amp; &quot;:  &quot; &amp; v, Char(10))
+            - lblDefHead:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(1240) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-32) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(36) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Size: |-
+                    =(15) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  FontWeight: =FontWeight.Bold
+                  Color: =Color.White
+                  Text: |-
+                    =&quot;ตำหนิ / จุดที่ต้องแจ้งลูกค้า (&quot; &amp; CountRows(Filter(&#x27;แคตตาล็อกรถตามสภาพ – ตำหนิรถ&#x27;, &#x27;รถ (เลขรถ)&#x27;.Id = varUnit.ID &amp;&amp; !&#x27;ซ่อมแล้ว&#x27;)) &amp; &quot;)&quot;
+            - lblDefs:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(1278) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-32) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(400) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Fill: =RGBA(24,51,38,1)
+                  PaddingLeft: |-
+                    =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  PaddingTop: |-
+                    =(10) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Size: |-
+                    =(13) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Color: =Color.White
+                  VerticalAlign: =VerticalAlign.Top
+                  Text: |-
+                    =With({d: Filter(&#x27;แคตตาล็อกรถตามสภาพ – ตำหนิรถ&#x27;, &#x27;รถ (เลขรถ)&#x27;.Id = varUnit.ID)}, If(CountRows(d) = 0, &quot;ไม่มีตำหนิที่บันทึกไว้&quot;, Concat(d, &quot;[&quot; &amp; &#x27;ระดับ&#x27;.Value &amp; &quot;] &quot; &amp; Title &amp; If(&#x27;ซ่อมแล้ว&#x27;, &quot;  ✓ ซ่อมแล้ว&quot;, &quot;&quot;) &amp; Char(10) &amp; &quot;    &quot; &amp; &#x27;รายละเอียด&#x27;, Char(10) &amp; Char(10))))
+      - lblUnitTopBar:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(90) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Fill: =RGBA(19,41,31,1)
+            Text: |-
+              =&quot;&quot;
+      - lblUnitBack:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =((((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) / 2) + (12)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(20) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(90) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(50) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Size: |-
+              =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Color: =RGBA(127,209,155,1)
+            Text: |-
+              =&quot;‹ กลับ&quot;
+            OnSelect: =Back()
+      - lblUnitTop:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =((((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) / 2) + (100)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(20) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))-330) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(50) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Size: |-
+              =(14) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            FontWeight: =FontWeight.Bold
+            Color: =Color.White
+            Text: |-
+              =If(IsBlank(varUnit.&#x27;เกรดสภาพ&#x27;.Value), &quot;&quot;, &quot;[&quot; &amp; Left(varUnit.&#x27;เกรดสภาพ&#x27;.Value, 1) &amp; &quot;] &quot;) &amp; varUnit.Title
+      - lblUnitPresent:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =((((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) / 2) + (If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))-220)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(20) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(204) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(50) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Align: =Align.Center
+            Size: |-
+              =(13) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            FontWeight: =FontWeight.Bold
+            Color: =RGBA(26,20,5,1)
+            Fill: =RGBA(201,165,74,1)
+            Text: |-
+              =&quot;เปิดให้ลูกค้าดู&quot;
+            OnSelect: |-
+              =ClearCollect(colPresent, colPhotos); Set(varPI, 1); Set(varPresentTitle, varModel.Title &amp; If(IsBlank(varUnit.&#x27;เกรดสภาพ&#x27;.Value), &quot;&quot;, &quot;  ·  เกรด &quot; &amp; Left(varUnit.&#x27;เกรดสภาพ&#x27;.Value, 1))); Set(varPresentInfo, Concat(Filter(Table({v: If(!IsBlank(varUnit.&#x27;ราคาขาย (บาท)&#x27;), &quot;ราคาขาย ฿&quot; &amp; Text(varUnit.&#x27;ราคาขาย (บาท)&#x27;, &quot;#,##0&quot;), If(IsBlank(varModel.&#x27;ราคาขายต่ำสุด (บาท)&#x27;), &quot;&quot;, &quot;ราคาขาย ฿&quot; &amp; Text(varModel.&#x27;ราคาขายต่ำสุด (บาท)&#x27;, &quot;#,##0&quot;)))}, {v: &quot;เช่าได้&quot;}, {v: If(IsBlank(varUnit.&#x27;ปีผลิต&#x27;), &quot;&quot;, &quot;ปี &quot; &amp; varUnit.&#x27;ปีผลิต&#x27;)}, {v: If(IsBlank(varUnit.&#x27;ชนิดแบต&#x27;.Value), &quot;&quot;, &quot;แบต &quot; &amp; varUnit.&#x27;ชนิดแบต&#x27;.Value &amp; &quot; &quot; &amp; varUnit.&#x27;แรงดันระบบ&#x27;.Value)}, {v: If(IsBlank(varUnit.&#x27;สุขภาพแบต (%)&#x27;), &quot;&quot;, &quot;สุขภาพแบต &quot; &amp; varUnit.&#x27;สุขภาพแบต (%)&#x27; &amp; &quot;%&quot;)}, {v: If(IsBlank(varUnit.&#x27;วิ่งได้ต่อชาร์จ (กม.)&#x27;), &quot;&quot;, &quot;วิ่งได้ ~&quot; &amp; varUnit.&#x27;วิ่งได้ต่อชาร์จ (กม.)&#x27; &amp; &quot; กม./ชาร์จ&quot;)}), !IsBlank(v)), v, &quot;   ·   &quot;) &amp; With({d: Filter(&#x27;แคตตาล็อกรถตามสภาพ – ตำหนิรถ&#x27;, &#x27;รถ (เลขรถ)&#x27;.Id = varUnit.ID &amp;&amp; !&#x27;ซ่อมแล้ว&#x27;)}, If(CountRows(d) &gt; 0, Char(10) &amp; &quot;ตำหนิที่แจ้ง: &quot; &amp; Concat(d, Title &amp; &quot; (&quot; &amp; &#x27;ระดับ&#x27;.Value &amp; &quot;)&quot;, &quot;, &quot;), &quot;&quot;))); Navigate(scrPresent, ScreenTransition.Fade)
+      - lblUnitEdit:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =((((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) / 2) + (If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))-330)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(20) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(100) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(50) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Align: =Align.Center
+            Size: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            FontWeight: =FontWeight.Bold
+            Color: =RGBA(13,31,23,1)
+            Fill: =RGBA(127,209,155,1)
+            Visible: =varCanEdit
+            Text: |-
+              =&quot;✏️ แก้ไข&quot;
+            OnSelect: =EditForm(frmUnit); Navigate(scrCMUnit, ScreenTransition.Cover)
+      - lblRsvBar:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =((Parent.Height / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-150) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(150) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Fill: =RGBA(19,41,31,1)
+            BorderColor: =RGBA(42,74,58,1)
+            BorderThickness: =1
+            Text: |-
+              =&quot;&quot;
+      - lblRsvInfo:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =((((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) / 2) + (16)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =((Parent.Height / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-146) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))-32) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(60) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Size: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Color: =RGBA(230,199,122,1)
+            Text: |-
+              =With({rv: LookUp(colRsv, &#x27;รถ (เลขรถ)&#x27;.Id = varUnit.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now())}, If(IsBlank(rv), &quot;ว่าง — จองได้ 7 วัน ครบกำหนดยังไม่ปิดการขาย ระบบปลดอัตโนมัติ&quot;, &quot;🔒 จองโดย &quot; &amp; rv.&#x27;เซลล์ผู้จอง&#x27; &amp; &quot; · ลูกค้า &quot; &amp; rv.Title &amp; Char(10) &amp; &quot;หมดอายุ &quot; &amp; Text(rv.&#x27;หมดอายุ&#x27;, &quot;d/m/yy hh:mm&quot;) &amp; &quot; (เหลือ &quot; &amp; RoundUp(DateDiff(Now(), rv.&#x27;หมดอายุ&#x27;, TimeUnit.Hours) / 24, 0) &amp; &quot; วัน)&quot;))
+      - txtRsvCust:
+          Control: Classic/TextInput@2.3.2
+          Properties:
+            Fill: =RGBA(19,41,31,1)
+            Color: =Color.White
+            BorderColor: =RGBA(42,74,58,1)
+            HoverFill: =RGBA(24,51,38,1)
+            HoverBorderColor: =RGBA(127,209,155,1)
+            PaddingLeft: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            X: |-
+              =((((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) / 2) + (16)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =((Parent.Height / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-82) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))-292) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(60) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Default: |-
+              =&quot;&quot;
+            HintText: |-
+              =&quot;ชื่อลูกค้า / หน่วยงาน&quot;
+            Size: |-
+              =(14) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Visible: |-
+              =IsBlank(LookUp(colRsv, &#x27;รถ (เลขรถ)&#x27;.Id = varUnit.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now()))
+      - lblRsvMake:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =((((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) / 2) + (If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))-266)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =((Parent.Height / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-82) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(250) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(60) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Align: =Align.Center
+            Size: |-
+              =(14) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            FontWeight: =FontWeight.Bold
+            Color: =RGBA(26,20,5,1)
+            Fill: =RGBA(214,178,94,1)
+            Visible: |-
+              =IsBlank(LookUp(colRsv, &#x27;รถ (เลขรถ)&#x27;.Id = varUnit.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now()))
+            Text: |-
+              =&quot;🔒 จองคันนี้ 7 วัน&quot;
+            OnSelect: |-
+              =If(IsBlank(txtRsvCust.Text), Notify(&quot;กรอกชื่อลูกค้าก่อนจอง&quot;, NotificationType.Error), If(!IsBlank(LookUp(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, &#x27;รถ (เลขรถ)&#x27;.Id = varUnit.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now())), Notify(&quot;รถคันนี้เพิ่งถูกเซลล์คนอื่นจองไปแล้ว&quot;, NotificationType.Error), Patch(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, Defaults(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;), {Title: txtRsvCust.Text, &#x27;รถ (เลขรถ)&#x27;: {Id: varUnit.ID, Value: varUnit.Title}, &#x27;รุ่น&#x27;: {Id: varModel.ID, Value: varModel.Title}, &#x27;จำนวนคัน&#x27;: 1, &#x27;ประเภทการจอง&#x27;: {Value: &quot;รายคัน&quot;}, &#x27;สถานะ&#x27;: {Value: &quot;จองอยู่&quot;}, &#x27;เซลล์ผู้จอง&#x27;: User().FullName, &#x27;อีเมลเซลล์&#x27;: User().Email, &#x27;หมดอายุ&#x27;: DateAdd(Now(), 7, TimeUnit.Days)}); Notify(&quot;จองแล้ว — ทุกคนเห็นทันที&quot;, NotificationType.Success)); ClearCollect(colRsv, Filter(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; || &#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;)); Reset(txtRsvCust))
+      - lblRsvClose:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =((((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) / 2) + (16)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =((Parent.Height / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-82) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =((If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))-44)/2) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(60) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Align: =Align.Center
+            Size: |-
+              =(13) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            FontWeight: =FontWeight.Bold
+            Color: =RGBA(13,31,23,1)
+            Fill: =RGBA(127,209,155,1)
+            Visible: |-
+              =With({rv: LookUp(colRsv, &#x27;รถ (เลขรถ)&#x27;.Id = varUnit.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now())}, !IsBlank(rv) &amp;&amp; (rv.&#x27;อีเมลเซลล์&#x27; = User().Email || varIsMgr))
+            Text: |-
+              =&quot;✅ ปิดการขายได้แล้ว&quot;
+            OnSelect: |-
+              =Patch(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, LookUp(colRsv, &#x27;รถ (เลขรถ)&#x27;.Id = varUnit.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now()), {&#x27;สถานะ&#x27;: {Value: &quot;ปิดการขาย&quot;}, &#x27;ปิดการขายได้ (คัน)&#x27;: 1}); ClearCollect(colRsv, Filter(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; || &#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;)); Notify(&quot;บันทึกปิดการขายแล้ว&quot;, NotificationType.Success)
+      - lblRsvCancel:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =((((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) / 2) + (If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))/2+6)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =((Parent.Height / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-82) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =((If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))-44)/2) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(60) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Align: =Align.Center
+            Size: |-
+              =(13) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Color: =Color.White
+            Fill: =RGBA(13,31,23,1)
+            BorderColor: =RGBA(42,74,58,1)
+            BorderThickness: =1
+            Visible: |-
+              =With({rv: LookUp(colRsv, &#x27;รถ (เลขรถ)&#x27;.Id = varUnit.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now())}, !IsBlank(rv) &amp;&amp; (rv.&#x27;อีเมลเซลล์&#x27; = User().Email || varIsMgr))
+            Text: |-
+              =&quot;ยกเลิกการจอง&quot;
+            OnSelect: |-
+              =Patch(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, LookUp(colRsv, &#x27;รถ (เลขรถ)&#x27;.Id = varUnit.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now()), {&#x27;สถานะ&#x27;: {Value: &quot;ยกเลิก&quot;}}); ClearCollect(colRsv, Filter(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; || &#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;)); Notify(&quot;ยกเลิกการจองแล้ว&quot;, NotificationType.Success)
+  scrRsv:
+    Properties:
+      Fill: =RGBA(13,31,23,1)
+      OnVisible: |-
+        =ClearCollect(colRsv, Filter(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; || &#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;)); Set(varRsvMine, false)
+    Children:
+      - lblRsvTop:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(90) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Fill: =RGBA(19,41,31,1)
+            Text: |-
+              =&quot;&quot;
+      - lblRsvBack:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =((((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) / 2) + (12)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(20) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(90) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(50) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Size: |-
+              =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Color: =RGBA(127,209,155,1)
+            Text: |-
+              =&quot;‹ กลับ&quot;
+            OnSelect: =Back()
+      - lblRsvTitle:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =((((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) / 2) + (100)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(20) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))-120) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(50) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Size: |-
+              =(16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            FontWeight: =FontWeight.Bold
+            Color: =Color.White
+            Text: |-
+              =&quot;🔒 การจองทั้งหมด&quot;
+      - lblRsvAll:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =((((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) / 2) + (16)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(100) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =((If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))-44)/2) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(44) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Align: =Align.Center
+            Size: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Color: =If(!varRsvMine, RGBA(127,209,155,1), RGBA(157,184,169,1))
+            Fill: =If(!varRsvMine, RGBA(127,209,155,0.12), RGBA(19,41,31,1))
+            BorderColor: =RGBA(42,74,58,1)
+            BorderThickness: =1
+            Text: |-
+              =&quot;ทั้งหมด&quot;
+            OnSelect: =Set(varRsvMine, false)
+      - lblRsvMineBtn:
+          Control: Label@2.5.1
+          Properties:
+            X: |-
+              =((((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) / 2) + (If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))/2+6)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(100) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =((If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))-44)/2) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =(44) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Align: =Align.Center
+            Size: |-
+              =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Color: =If(varRsvMine, RGBA(127,209,155,1), RGBA(157,184,169,1))
+            Fill: =If(varRsvMine, RGBA(127,209,155,0.12), RGBA(19,41,31,1))
+            BorderColor: =RGBA(42,74,58,1)
+            BorderThickness: =1
+            Text: |-
+              =&quot;ของฉัน&quot;
+            OnSelect: =Set(varRsvMine, true)
+      - galRsv:
+          Control: Gallery@2.15.0
+          Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+          Properties:
+            X: |-
+              =((((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) - If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) / 2) + (0)) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Y: |-
+              =(154) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Width: |-
+              =(If((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)) &gt;= 900, Min((Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)), 960), (Parent.Width / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)))) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            Height: |-
+              =((Parent.Height / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-154) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            TemplateSize: |-
+              =(160) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            TemplatePadding: |-
+              =(4) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+            ShowScrollbar: =false
+            Items: |-
+              =Sort(Filter(colRsv, (&#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot; || &#x27;หมดอายุ&#x27; &gt; Now()) &amp;&amp; (!varRsvMine || &#x27;อีเมลเซลล์&#x27; = User().Email)), &#x27;หมดอายุ&#x27;, SortOrder.Ascending)
+          Children:
+            - lblRsvRowBg:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(8) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(0) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-16) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =((Parent.TemplateHeight / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-6) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Fill: =RGBA(24,51,38,1)
+                  BorderColor: |-
+                    =If(ThisItem.&#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;, RGBA(214,178,94,1), RGBA(42,74,58,1))
+                  BorderThickness: =1
+                  Text: |-
+                    =&quot;&quot;
+            - lblRsvRowT:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(22) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(8) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-44) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(34) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Size: |-
+                    =(14) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  FontWeight: =FontWeight.Bold
+                  Color: =Color.White
+                  Text: |-
+                    =If(ThisItem.&#x27;ประเภทการจอง&#x27;.Value = &quot;หลายคัน&quot;, &quot;📦 &quot; &amp; ThisItem.&#x27;จำนวนคัน&#x27; &amp; &quot; คัน · &quot;, &quot;🔒 &quot; &amp; ThisItem.&#x27;รถ (เลขรถ)&#x27;.Value &amp; &quot; · &quot;) &amp; ThisItem.&#x27;รุ่น&#x27;.Value
+            - lblRsvRowD:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(22) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(42) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-44) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(56) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Size: |-
+                    =(11) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Color: =RGBA(157,184,169,1)
+                  VerticalAlign: =VerticalAlign.Top
+                  Text: |-
+                    =&quot;ลูกค้า &quot; &amp; ThisItem.Title &amp; &quot; · เซลล์ &quot; &amp; ThisItem.&#x27;เซลล์ผู้จอง&#x27; &amp; Char(10) &amp; If(ThisItem.&#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;, &quot;⏳ รอผู้จัดการอนุมัติ&quot;, If(ThisItem.&#x27;หมดอายุ&#x27; &gt; Now(), &quot;หมดอายุ &quot; &amp; Text(ThisItem.&#x27;หมดอายุ&#x27;, &quot;d/m/yy&quot;) &amp; &quot; (เหลือ &quot; &amp; RoundUp(DateDiff(Now(), ThisItem.&#x27;หมดอายุ&#x27;, TimeUnit.Hours) / 24, 0) &amp; &quot; วัน)&quot;, &quot;⏰ หมดอายุแล้ว — ปลดการจองอัตโนมัติ&quot;))
+            - lblRsvApprove:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(22) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(102) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =(((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-60)/2) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(46) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Align: =Align.Center
+                  Size: |-
+                    =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  FontWeight: =FontWeight.Bold
+                  Color: =RGBA(13,31,23,1)
+                  Fill: =RGBA(127,209,155,1)
+                  BorderColor: =RGBA(42,74,58,1)
+                  BorderThickness: =1
+                  Visible: |-
+                    =varIsMgr &amp;&amp; ThisItem.&#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;
+                  Text: |-
+                    =&quot;✅ อนุมัติ&quot;
+                  OnSelect: |-
+                    =Patch(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, ThisItem, {&#x27;สถานะ&#x27;: {Value: &quot;จองอยู่&quot;}, &#x27;ผู้อนุมัติ&#x27;: User().FullName, &#x27;หมดอายุ&#x27;: DateAdd(Now(), 14, TimeUnit.Days)}); ClearCollect(colRsv, Filter(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; || &#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;))
+            - lblRsvReject:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))/2+8) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(102) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =(((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-60)/2) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(46) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Align: =Align.Center
+                  Size: |-
+                    =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  FontWeight: =FontWeight.Bold
+                  Color: =RGBA(224,122,108,1)
+                  Fill: =RGBA(13,31,23,1)
+                  BorderColor: =RGBA(42,74,58,1)
+                  BorderThickness: =1
+                  Visible: |-
+                    =varIsMgr &amp;&amp; ThisItem.&#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;
+                  Text: |-
+                    =&quot;ไม่อนุมัติ&quot;
+                  OnSelect: |-
+                    =Patch(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, ThisItem, {&#x27;สถานะ&#x27;: {Value: &quot;ไม่อนุมัติ&quot;}, &#x27;ผู้อนุมัติ&#x27;: User().FullName}); ClearCollect(colRsv, Filter(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; || &#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;))
+            - lblRsvRowClose:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =(22) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(102) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =(((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-60)/2) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(46) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Align: =Align.Center
+                  Size: |-
+                    =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  FontWeight: =FontWeight.Bold
+                  Color: =RGBA(13,31,23,1)
+                  Fill: =RGBA(127,209,155,1)
+                  BorderColor: =RGBA(42,74,58,1)
+                  BorderThickness: =1
+                  Visible: |-
+                    =(ThisItem.&#x27;อีเมลเซลล์&#x27; = User().Email || varIsMgr) &amp;&amp; ThisItem.&#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; ThisItem.&#x27;หมดอายุ&#x27; &gt; Now()
+                  Text: |-
+                    =&quot;✅ ปิดการขายแล้ว&quot;
+                  OnSelect: |-
+                    =Patch(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, ThisItem, {&#x27;สถานะ&#x27;: {Value: &quot;ปิดการขาย&quot;}, &#x27;ปิดการขายได้ (คัน)&#x27;: ThisItem.&#x27;จำนวนคัน&#x27;}); ClearCollect(colRsv, Filter(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; || &#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;)); Notify(&quot;บันทึกปิดการขายแล้ว&quot;, NotificationType.Success)
+            - lblRsvRowCancel:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))/2+8) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Y: |-
+                    =(102) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Width: |-
+                    =(((Parent.TemplateWidth / If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1))-60)/2) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Height: |-
+                    =(46) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  Align: =Align.Center
+                  Size: |-
+                    =(12) * If(App.Width &gt;= 1600, Min(2, App.Width / 1440), 1)
+                  FontWeight: =FontWeight.Bold
+                  Color: =Color.White
+                  Fill: =RGBA(13,31,23,1)
+                  BorderColor: =RGBA(42,74,58,1)
+                  BorderThickness: =1
+                  Visible: |-
+                    =(ThisItem.&#x27;อีเมลเซลล์&#x27; = User().Email || varIsMgr) &amp;&amp; ThisItem.&#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; ThisItem.&#x27;หมดอายุ&#x27; &gt; Now()
+                  Text: |-
+                    =&quot;ยกเลิกการจอง&quot;
+                  OnSelect: |-
+                    =Patch(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, ThisItem, {&#x27;สถานะ&#x27;: {Value: &quot;ยกเลิก&quot;}}); ClearCollect(colRsv, Filter(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; || &#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;))
+</textarea>
+<script>document.getElementById('b').onclick=()=>{const t=document.getElementById('t');t.select();const ok=document.execCommand('copy');document.getElementById('m').textContent=ok?'copied '+t.value.length:'failed';};</script></body></html>
