@@ -1,0 +1,1314 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>copy v2</title></head>
+<body style="font-family:sans-serif;padding:20px"><button id="b" style="font-size:22px;padding:14px 26px">COPY YAML v2</button> <span id="m"></span>
+<textarea id="t" style="width:100%;height:70vh;margin-top:12px">Screens:
+  scrHome:
+    Properties:
+      Fill: =RGBA(13,31,23,1)
+      OnVisible: |-
+        =If(IsBlank(varCat), Set(varCat, &quot;ทั้งหมด&quot;)); Set(varCanEdit, DataSourceInfo(&#x27;แคตตาล็อกรถตามสภาพ – รถรายคัน&#x27;, DataSourceInfo.EditPermission)); Set(varIsMgr, DataSourceInfo(&#x27;แคตตาล็อกรถตามสภาพ – รุ่นรถ&#x27;, DataSourceInfo.EditPermission)); ClearCollect(colRsv, Filter(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; || &#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;))
+    Children:
+      - lblHomeHeader:
+          Control: Label@2.5.1
+          Properties:
+            X: =0
+            Y: =0
+            Width: =Parent.Width
+            Height: =120
+            Fill: =RGBA(19,41,31,1)
+            Text: |-
+              =&quot;&quot;
+      - lblHomeTitle:
+          Control: Label@2.5.1
+          Properties:
+            X: =24
+            Y: =18
+            Width: =Parent.Width-250
+            Height: =50
+            Size: =22
+            FontWeight: =FontWeight.Bold
+            Color: =Color.White
+            Text: |-
+              =&quot;แคตตาล็อกรถตามสภาพ&quot;
+      - lblHomeSub:
+          Control: Label@2.5.1
+          Properties:
+            X: =24
+            Y: =62
+            Width: =Parent.Width-250
+            Height: =56
+            Size: =12
+            Color: =RGBA(157,184,169,1)
+            Text: |-
+              =&quot;Beyond Green · ข้อมูลสต๊อก ณ &quot; &amp; First(&#x27;แคตตาล็อกรถตามสภาพ – รุ่นรถ&#x27;).&#x27;ข้อมูล ณ วันที่&#x27; &amp; &quot;  ·  พร้อมขาย/เช่า &quot; &amp; Text(Sum(&#x27;แคตตาล็อกรถตามสภาพ – รุ่นรถ&#x27;, &#x27;คงเหลือขาย/เช่าได้&#x27;), &quot;#,##0&quot;) &amp; &quot; คัน&quot; &amp; &quot;  ·  🔒 กำลังจอง &quot; &amp; Text(Sum(Filter(colRsv, &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now()), &#x27;จำนวนคัน&#x27;), &quot;#,##0&quot;) &amp; &quot; คัน&quot;
+      - lblHomeRsvBtn:
+          Control: Label@2.5.1
+          Properties:
+            X: =Parent.Width-216
+            Y: =14
+            Width: =200
+            Height: =44
+            Align: =Align.Center
+            Size: =12
+            FontWeight: =FontWeight.Bold
+            Color: =RGBA(26,20,5,1)
+            Fill: =RGBA(214,178,94,1)
+            Text: |-
+              =&quot;🔒 การจอง&quot; &amp; With({p: CountRows(Filter(colRsv, &#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;))}, If(varIsMgr &amp;&amp; p &gt; 0, &quot; (รออนุมัติ &quot; &amp; p &amp; &quot;)&quot;, &quot;&quot;))
+            OnSelect: =Navigate(scrRsv, ScreenTransition.Cover)
+      - lblHomeCMBtn:
+          Control: Label@2.5.1
+          Properties:
+            X: =Parent.Width-216
+            Y: =64
+            Width: =200
+            Height: =44
+            Align: =Align.Center
+            Size: =12
+            FontWeight: =FontWeight.Bold
+            Color: =RGBA(13,31,23,1)
+            Fill: =RGBA(127,209,155,1)
+            Visible: =varCanEdit
+            Text: |-
+              =&quot;📷 CM ลงข้อมูล&quot;
+            OnSelect: =Set(varUnit, Blank()); NewForm(frmUnit); Navigate(scrCMUnit, ScreenTransition.Cover)
+      - galCats:
+          Control: Gallery@2.15.0
+          Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+          Properties:
+            X: =16
+            Y: =128
+            Width: =Parent.Width-32
+            Height: =104
+            Items: |-
+              =[&quot;ทั้งหมด&quot;,&quot;2 ที่นั่ง&quot;,&quot;4 ที่นั่ง&quot;,&quot;6–8 ที่นั่ง&quot;,&quot;อเนกประสงค์/บรรทุก&quot;,&quot;อื่นๆ&quot;]
+            WrapCount: =3
+            TemplateSize: =50
+            TemplatePadding: =4
+            ShowScrollbar: =false
+          Children:
+            - lblCat:
+                Control: Label@2.5.1
+                Properties:
+                  X: =0
+                  Y: =0
+                  Width: =Parent.TemplateWidth
+                  Height: =Parent.TemplateHeight
+                  Align: =Align.Center
+                  Size: =12
+                  Text: =ThisItem.Value
+                  Color: =If(varCat=ThisItem.Value, RGBA(127,209,155,1), RGBA(157,184,169,1))
+                  Fill: =If(varCat=ThisItem.Value, RGBA(127,209,155,0.12), RGBA(19,41,31,1))
+                  BorderColor: =If(varCat=ThisItem.Value, RGBA(127,209,155,1), RGBA(42,74,58,1))
+                  BorderThickness: =1
+                  OnSelect: =Set(varCat, ThisItem.Value)
+      - galModels:
+          Control: Gallery@2.15.0
+          Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+          Properties:
+            X: =12
+            Y: =238
+            Width: =Parent.Width-24
+            Height: =Parent.Height-238
+            WrapCount: =2
+            TemplateSize: =430
+            TemplatePadding: =8
+            ShowScrollbar: =false
+            Items: |-
+              =Filter(&#x27;แคตตาล็อกรถตามสภาพ – รุ่นรถ&#x27;, &#x27;คงเหลือขาย/เช่าได้&#x27; &gt; 0 &amp;&amp; &#x27;เปิดให้&#x27;.Value &lt;&gt; &quot;ยังไม่เปิด&quot; &amp;&amp; (varCat = &quot;ทั้งหมด&quot; || &#x27;หมวด&#x27;.Value = varCat))
+          Children:
+            - lblCardBg:
+                Control: Image@2.2.3
+                Properties:
+                  X: =0
+                  Y: =0
+                  Width: =Parent.TemplateWidth
+                  Height: =Parent.TemplateHeight
+                  Fill: =RGBA(24,51,38,1)
+                  BorderColor: =RGBA(42,74,58,1)
+                  BorderThickness: =1
+                  RadiusTopLeft: =16
+                  RadiusTopRight: =16
+                  RadiusBottomLeft: =16
+                  RadiusBottomRight: =16
+                  OnSelect: =Set(varModel, ThisItem); Navigate(scrModel, ScreenTransition.Cover)
+            - imgCard:
+                Control: Image@2.2.3
+                Properties:
+                  X: =1
+                  Y: =1
+                  Width: =Parent.TemplateWidth-2
+                  Height: =200
+                  Image: =ThisItem.&#x27;รูปรุ่น&#x27;.Large
+                  ImagePosition: =ImagePosition.Fill
+                  Fill: =RGBA(15,36,25,1)
+                  RadiusTopLeft: =16
+                  RadiusTopRight: =16
+                  OnSelect: =Set(varModel, ThisItem); Navigate(scrModel, ScreenTransition.Cover)
+            - lblNoImg:
+                Control: Label@2.5.1
+                Properties:
+                  X: =0
+                  Y: =80
+                  Width: =Parent.TemplateWidth
+                  Height: =40
+                  Align: =Align.Center
+                  Size: =12
+                  Color: =RGBA(157,184,169,1)
+                  Text: |-
+                    =&quot;📷 ยังไม่มีรูป&quot;
+                  Visible: =IsBlank(ThisItem.&#x27;รูปรุ่น&#x27;.Large)
+            - lblCardName:
+                Control: Label@2.5.1
+                Properties:
+                  X: =14
+                  Y: =208
+                  Width: =Parent.TemplateWidth-28
+                  Height: =50
+                  Size: =14
+                  FontWeight: =FontWeight.Bold
+                  Color: =Color.White
+                  VerticalAlign: =VerticalAlign.Top
+                  Text: =ThisItem.&#x27;รุ่นรถ&#x27;
+                  OnSelect: =Set(varModel, ThisItem); Navigate(scrModel, ScreenTransition.Cover)
+            - lblCardCat:
+                Control: Label@2.5.1
+                Properties:
+                  X: =14
+                  Y: =256
+                  Width: =Parent.TemplateWidth-28
+                  Height: =24
+                  Size: =11
+                  Color: =RGBA(157,184,169,1)
+                  Text: =ThisItem.&#x27;หมวด&#x27;.Value
+            - lblCardAvail:
+                Control: Label@2.5.1
+                Properties:
+                  X: =14
+                  Y: =282
+                  Width: =Parent.TemplateWidth-28
+                  Height: =52
+                  Size: =26
+                  FontWeight: =FontWeight.Bold
+                  Color: =RGBA(127,209,155,1)
+                  Text: |-
+                    =Text(ThisItem.&#x27;คงเหลือขาย/เช่าได้&#x27; - Sum(Filter(colRsv, &#x27;รุ่น&#x27;.Id = ThisItem.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now()), &#x27;จำนวนคัน&#x27;), &quot;#,##0&quot;)
+            - lblCardAvailT:
+                Control: Label@2.5.1
+                Properties:
+                  X: =14
+                  Y: =330
+                  Width: =Parent.TemplateWidth-28
+                  Height: =22
+                  Size: =11
+                  Color: =RGBA(157,184,169,1)
+                  Text: |-
+                    =&quot;คันว่าง&quot; &amp; With({r: Sum(Filter(colRsv, &#x27;รุ่น&#x27;.Id = ThisItem.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now()), &#x27;จำนวนคัน&#x27;)}, If(r &gt; 0, &quot;  ·  🔒 จอง &quot; &amp; r, &quot;&quot;))
+            - lblCardOffer:
+                Control: Label@2.5.1
+                Properties:
+                  X: =14
+                  Y: =354
+                  Width: =Parent.TemplateWidth-28
+                  Height: =24
+                  Size: =11
+                  FontWeight: =FontWeight.Semibold
+                  Color: =RGBA(108,182,232,1)
+                  Text: |-
+                    =Switch(ThisItem.&#x27;เปิดให้&#x27;.Value, &quot;ขายเท่านั้น&quot;, &quot;● ขายได้&quot;, &quot;เช่าเท่านั้น&quot;, &quot;● เช่าได้&quot;, &quot;● ขายได้  ● เช่าได้&quot;)
+            - lblCardPrice:
+                Control: Label@2.5.1
+                Properties:
+                  X: =14
+                  Y: =384
+                  Width: =Parent.TemplateWidth-28
+                  Height: =34
+                  Size: =13
+                  FontWeight: =FontWeight.Bold
+                  Color: =RGBA(224,192,112,1)
+                  BorderColor: =RGBA(42,74,58,1)
+                  Text: |-
+                    =If(ThisItem.&#x27;เปิดให้&#x27;.Value = &quot;เช่าเท่านั้น&quot;, &quot;ค่าเช่า: เซลล์เสนอตามเรต&quot;, If(IsBlank(ThisItem.&#x27;ราคาขายต่ำสุด (บาท)&#x27;), &quot;ราคาขาย: สอบถามราคา&quot;, &quot;฿&quot; &amp; Text(ThisItem.&#x27;ราคาขายต่ำสุด (บาท)&#x27;, &quot;#,##0&quot;) &amp; If(ThisItem.&#x27;ราคาขายสูงสุด (บาท)&#x27; &gt; ThisItem.&#x27;ราคาขายต่ำสุด (บาท)&#x27;, &quot; – ฿&quot; &amp; Text(ThisItem.&#x27;ราคาขายสูงสุด (บาท)&#x27;, &quot;#,##0&quot;), &quot;&quot;)))
+  scrModel:
+    Properties:
+      Fill: =RGBA(13,31,23,1)
+    Children:
+      - galModelBody:
+          Control: Gallery@2.15.0
+          Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+          Properties:
+            X: =0
+            Y: =90
+            Width: =Parent.Width
+            Height: =Parent.Height-520
+            Items: =[1]
+            TemplateSize: =900
+            TemplatePadding: =0
+            ShowScrollbar: =false
+          Children:
+            - imgModelHero:
+                Control: Image@2.2.3
+                Properties:
+                  X: =16
+                  Y: =8
+                  Width: =Parent.TemplateWidth-32
+                  Height: =360
+                  Image: =varModel.&#x27;รูปรุ่น&#x27;.Full
+                  ImagePosition: =ImagePosition.Fill
+                  Fill: =RGBA(15,36,25,1)
+                  RadiusTopLeft: =14
+                  RadiusTopRight: =14
+                  RadiusBottomLeft: =14
+                  RadiusBottomRight: =14
+            - lblModelNoImg:
+                Control: Label@2.5.1
+                Properties:
+                  X: =16
+                  Y: =170
+                  Width: =Parent.TemplateWidth-32
+                  Height: =40
+                  Align: =Align.Center
+                  Color: =RGBA(157,184,169,1)
+                  Text: |-
+                    =&quot;📷 ยังไม่มีรูปรุ่นนี้&quot;
+                  Visible: =IsBlank(varModel.&#x27;รูปรุ่น&#x27;.Full)
+            - lblModelPrice:
+                Control: Label@2.5.1
+                Properties:
+                  X: =16
+                  Y: =382
+                  Width: =Parent.TemplateWidth-32
+                  Height: =96
+                  Fill: =RGBA(24,51,38,1)
+                  PaddingLeft: =16
+                  Size: =20
+                  FontWeight: =FontWeight.Bold
+                  Color: =RGBA(224,192,112,1)
+                  Text: |-
+                    =&quot;ราคาขาย  &quot; &amp; If(varModel.&#x27;เปิดให้&#x27;.Value = &quot;เช่าเท่านั้น&quot;, &quot;– (เช่าเท่านั้น)&quot;, If(IsBlank(varModel.&#x27;ราคาขายต่ำสุด (บาท)&#x27;), &quot;สอบถามราคา&quot;, &quot;฿&quot; &amp; Text(varModel.&#x27;ราคาขายต่ำสุด (บาท)&#x27;, &quot;#,##0&quot;) &amp; If(varModel.&#x27;ราคาขายสูงสุด (บาท)&#x27; &gt; varModel.&#x27;ราคาขายต่ำสุด (บาท)&#x27;, &quot; – ฿&quot; &amp; Text(varModel.&#x27;ราคาขายสูงสุด (บาท)&#x27;, &quot;#,##0&quot;), &quot;&quot;))) &amp; Char(10) &amp; If(varModel.&#x27;เปิดให้&#x27;.Value &lt;&gt; &quot;ขายเท่านั้น&quot;, &quot;เช่าได้ · เซลล์เสนอตามเรตเช่า&quot;, &quot;&quot;)
+            - lblModelStock:
+                Control: Label@2.5.1
+                Properties:
+                  X: =16
+                  Y: =490
+                  Width: =Parent.TemplateWidth-32
+                  Height: =150
+                  Fill: =RGBA(24,51,38,1)
+                  PaddingLeft: =16
+                  Size: =14
+                  Color: =Color.White
+                  Text: |-
+                    =&quot;คงเหลือขาย/เช่าได้  &quot; &amp; Text(varModel.&#x27;คงเหลือขาย/เช่าได้&#x27;, &quot;#,##0&quot;) &amp; &quot; คัน&quot; &amp; Char(10) &amp; &quot;คลัง (สำนักงาน) &quot; &amp; Text(varModel.&#x27;คลัง (สำนักงาน)&#x27;, &quot;#,##0&quot;) &amp; &quot;  ·  รถฝากจอด &quot; &amp; Text(varModel.&#x27;รถฝากจอด&#x27;, &quot;#,##0&quot;) &amp; If(varModel.&#x27;Global House&#x27; &gt; 0, &quot;  ·  Global House &quot; &amp; Text(varModel.&#x27;Global House&#x27;, &quot;#,##0&quot;), &quot;&quot;) &amp; Char(10) &amp; &quot;สต๊อกทั้งหมด &quot; &amp; Text(varModel.&#x27;สต๊อกทั้งหมด&#x27;, &quot;#,##0&quot;) &amp; &quot;  ·  มี PO แล้ว &quot; &amp; Text(varModel.&#x27;PO รวม&#x27;, &quot;#,##0&quot;) &amp; Char(10) &amp; With({r: Sum(Filter(colRsv, &#x27;รุ่น&#x27;.Id = varModel.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now()), &#x27;จำนวนคัน&#x27;)}, &quot;🔒 กำลังจอง &quot; &amp; r &amp; &quot; คัน  ·  ว่างจริง &quot; &amp; Text(varModel.&#x27;คงเหลือขาย/เช่าได้&#x27; - r, &quot;#,##0&quot;) &amp; &quot; คัน&quot;)
+            - lblModelDesc:
+                Control: Label@2.5.1
+                Properties:
+                  X: =16
+                  Y: =648
+                  Width: =Parent.TemplateWidth-32
+                  Height: =60
+                  Size: =13
+                  Color: =RGBA(157,184,169,1)
+                  VerticalAlign: =VerticalAlign.Top
+                  Text: |-
+                    =Coalesce(varModel.&#x27;รายละเอียดรุ่น&#x27;, varModel.&#x27;หมายเหตุราคา&#x27;, &quot;&quot;)
+            - lblModelRsvList:
+                Control: Label@2.5.1
+                Properties:
+                  X: =16
+                  Y: =712
+                  Width: =Parent.TemplateWidth-32
+                  Height: =80
+                  Size: =12
+                  Color: =RGBA(230,199,122,1)
+                  VerticalAlign: =VerticalAlign.Top
+                  Text: |-
+                    =Concat(Filter(colRsv, &#x27;รุ่น&#x27;.Id = varModel.ID &amp;&amp; &#x27;ประเภทการจอง&#x27;.Value = &quot;หลายคัน&quot; &amp;&amp; (&#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot; || &#x27;หมดอายุ&#x27; &gt; Now())), &quot;📦 &quot; &amp; &#x27;จำนวนคัน&#x27; &amp; &quot; คัน · &quot; &amp; &#x27;ลูกค้า / หน่วยงาน&#x27; &amp; &quot; · &quot; &amp; &#x27;เซลล์ผู้จอง&#x27; &amp; If(&#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;, &quot; · ⏳ รออนุมัติ&quot;, &quot; · ถึง &quot; &amp; Text(&#x27;หมดอายุ&#x27;, &quot;d/m/yy&quot;)), Char(10))
+            - lblLotBtn:
+                Control: Label@2.5.1
+                Properties:
+                  X: =16
+                  Y: =796
+                  Width: =Parent.TemplateWidth-32
+                  Height: =48
+                  Align: =Align.Center
+                  Size: =14
+                  FontWeight: =FontWeight.Bold
+                  Color: =RGBA(230,199,122,1)
+                  Fill: =RGBA(24,51,38,1)
+                  BorderColor: =RGBA(214,178,94,1)
+                  BorderThickness: =1
+                  Text: |-
+                    =&quot;📦 จองหลายคัน (ล็อตใหญ่)&quot;
+                  OnSelect: =Reset(txtLotQty); Reset(txtLotCust); Set(varShowLot, true)
+            - lblUnitsHead:
+                Control: Label@2.5.1
+                Properties:
+                  X: =16
+                  Y: =852
+                  Width: =Parent.TemplateWidth-32
+                  Height: =40
+                  Size: =15
+                  FontWeight: =FontWeight.Bold
+                  Color: =Color.White
+                  Text: |-
+                    =&quot;รถรายคัน (&quot; &amp; CountRows(galUnits.AllItems) &amp; &quot;)  ▼ เลื่อนลง&quot;
+      - galUnits:
+          Control: Gallery@2.15.0
+          Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+          Properties:
+            X: =0
+            Y: =Parent.Height-430
+            Width: =Parent.Width
+            Height: =430
+            TemplateSize: =150
+            TemplatePadding: =6
+            Fill: =RGBA(13,31,23,1)
+            BorderColor: =RGBA(42,74,58,1)
+            BorderThickness: =1
+            Items: |-
+              =Filter(&#x27;แคตตาล็อกรถตามสภาพ – รถรายคัน&#x27;, &#x27;รุ่น&#x27;.Id = varModel.ID &amp;&amp; &#x27;สถานะ&#x27;.Value &lt;&gt; &quot;ขาย/ปล่อยเช่าแล้ว&quot;)
+          Children:
+            - lblUnitBg:
+                Control: Image@2.2.3
+                Properties:
+                  X: =10
+                  Y: =0
+                  Width: =Parent.TemplateWidth-20
+                  Height: =Parent.TemplateHeight
+                  Fill: =RGBA(19,41,31,1)
+                  BorderColor: =RGBA(42,74,58,1)
+                  BorderThickness: =1
+                  RadiusTopLeft: =12
+                  RadiusTopRight: =12
+                  RadiusBottomLeft: =12
+                  RadiusBottomRight: =12
+                  OnSelect: =Set(varUnit, ThisItem); Navigate(scrUnit, ScreenTransition.Cover)
+            - imgUnit:
+                Control: Image@2.2.3
+                Properties:
+                  X: =20
+                  Y: =10
+                  Width: =170
+                  Height: =Parent.TemplateHeight-20
+                  Image: |-
+                    =ThisItem.&#x27;รูป: ด้านหน้า (รูปหลัก)&#x27;.Large
+                  ImagePosition: =ImagePosition.Fill
+                  Fill: =RGBA(15,36,25,1)
+                  RadiusTopLeft: =8
+                  RadiusTopRight: =8
+                  RadiusBottomLeft: =8
+                  RadiusBottomRight: =8
+                  OnSelect: =Set(varUnit, ThisItem); Navigate(scrUnit, ScreenTransition.Cover)
+            - lblUnitTitle:
+                Control: Label@2.5.1
+                Properties:
+                  X: =202
+                  Y: =10
+                  Width: =Parent.TemplateWidth-222
+                  Height: =34
+                  Size: =14
+                  FontWeight: =FontWeight.Bold
+                  Color: =Color.White
+                  Text: |-
+                    =If(IsBlank(ThisItem.&#x27;เกรดสภาพ&#x27;.Value), &quot;&quot;, &quot;[&quot; &amp; Left(ThisItem.&#x27;เกรดสภาพ&#x27;.Value, 1) &amp; &quot;] &quot;) &amp; ThisItem.&#x27;เลขรถ / Serial&#x27; &amp; &quot;  ›&quot;
+                  OnSelect: =Set(varUnit, ThisItem); Navigate(scrUnit, ScreenTransition.Cover)
+            - lblUnitInfo:
+                Control: Label@2.5.1
+                Properties:
+                  X: =202
+                  Y: =44
+                  Width: =Parent.TemplateWidth-222
+                  Height: =60
+                  Size: =11
+                  Color: =RGBA(157,184,169,1)
+                  VerticalAlign: =VerticalAlign.Top
+                  Text: |-
+                    =Concat(Filter(Table({v: If(IsBlank(ThisItem.&#x27;ปีผลิต&#x27;), &quot;&quot;, &quot;ปี &quot; &amp; ThisItem.&#x27;ปีผลิต&#x27;)}, {v: ThisItem.&#x27;สี&#x27;}, {v: ThisItem.&#x27;จัดเก็บที่&#x27;.Value}), !IsBlank(v)), v, &quot; · &quot;) &amp; Char(10) &amp; &quot;🔋 &quot; &amp; Concat(Filter(Table({v: ThisItem.&#x27;ชนิดแบต&#x27;.Value}, {v: ThisItem.&#x27;แรงดันระบบ&#x27;.Value}, {v: If(IsBlank(ThisItem.&#x27;สุขภาพแบต (%)&#x27;), &quot;&quot;, &quot;สุขภาพ &quot; &amp; ThisItem.&#x27;สุขภาพแบต (%)&#x27; &amp; &quot;%&quot;)}), !IsBlank(v)), v, &quot; · &quot;)
+            - lblUnitPrice:
+                Control: Label@2.5.1
+                Properties:
+                  X: =202
+                  Y: =104
+                  Width: =Parent.TemplateWidth-222
+                  Height: =30
+                  Size: =12
+                  FontWeight: =FontWeight.Bold
+                  Color: =RGBA(224,192,112,1)
+                  Text: |-
+                    =With({rv: LookUp(colRsv, &#x27;รถ (เลขรถ)&#x27;.Id = ThisItem.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now())}, If(IsBlank(rv), ThisItem.&#x27;สถานะ&#x27;.Value &amp; &quot;  ·  &quot; &amp; If(IsBlank(ThisItem.&#x27;ราคาขาย (บาท)&#x27;), &quot;ราคาตามรุ่น&quot;, &quot;฿&quot; &amp; Text(ThisItem.&#x27;ราคาขาย (บาท)&#x27;, &quot;#,##0&quot;)), &quot;🔒 จองโดย &quot; &amp; rv.&#x27;เซลล์ผู้จอง&#x27; &amp; &quot; · เหลือ &quot; &amp; RoundUp(DateDiff(Now(), rv.&#x27;หมดอายุ&#x27;, TimeUnit.Hours) / 24, 0) &amp; &quot; วัน&quot;))
+      - lblModelTopBar:
+          Control: Label@2.5.1
+          Properties:
+            X: =0
+            Y: =0
+            Width: =Parent.Width
+            Height: =90
+            Fill: =RGBA(19,41,31,1)
+            Text: |-
+              =&quot;&quot;
+      - lblModelBack:
+          Control: Label@2.5.1
+          Properties:
+            X: =12
+            Y: =20
+            Width: =90
+            Height: =50
+            Size: =16
+            Color: =RGBA(127,209,155,1)
+            Text: |-
+              =&quot;‹ กลับ&quot;
+            OnSelect: =Back()
+      - lblModelTitle:
+          Control: Label@2.5.1
+          Properties:
+            X: =100
+            Y: =20
+            Width: =Parent.Width-330
+            Height: =50
+            Size: =15
+            FontWeight: =FontWeight.Bold
+            Color: =Color.White
+            Text: =varModel.&#x27;รุ่นรถ&#x27;
+      - lblModelPresent:
+          Control: Label@2.5.1
+          Properties:
+            X: =Parent.Width-220
+            Y: =20
+            Width: =204
+            Height: =50
+            Align: =Align.Center
+            Size: =13
+            FontWeight: =FontWeight.Bold
+            Color: =RGBA(26,20,5,1)
+            Fill: =RGBA(201,165,74,1)
+            Text: |-
+              =&quot;เปิดให้ลูกค้าดู&quot;
+            OnSelect: |-
+              =ClearCollect(colPresent, Table({img: varModel.&#x27;รูปรุ่น&#x27;.Full, t: &quot;&quot;})); Collect(colPresent, ForAll(Filter(&#x27;แคตตาล็อกรถตามสภาพ – รถรายคัน&#x27;, &#x27;รุ่น&#x27;.Id = varModel.ID &amp;&amp; &#x27;สถานะ&#x27;.Value &lt;&gt; &quot;ขาย/ปล่อยเช่าแล้ว&quot;), {img: ThisRecord.&#x27;รูป: ด้านหน้า (รูปหลัก)&#x27;.Full, t: ThisRecord.&#x27;เลขรถ / Serial&#x27;})); RemoveIf(colPresent, IsBlank(img)); Set(varPI, 1); Set(varPresentTitle, varModel.&#x27;รุ่นรถ&#x27;); Set(varPresentInfo, &quot;พร้อมส่งมอบ &quot; &amp; Text(varModel.&#x27;คงเหลือขาย/เช่าได้&#x27;, &quot;#,##0&quot;) &amp; &quot; คัน&quot; &amp; If(varModel.&#x27;เปิดให้&#x27;.Value &lt;&gt; &quot;เช่าเท่านั้น&quot; &amp;&amp; !IsBlank(varModel.&#x27;ราคาขายต่ำสุด (บาท)&#x27;), &quot;   ·   ราคาขาย ฿&quot; &amp; Text(varModel.&#x27;ราคาขายต่ำสุด (บาท)&#x27;, &quot;#,##0&quot;) &amp; If(varModel.&#x27;ราคาขายสูงสุด (บาท)&#x27; &gt; varModel.&#x27;ราคาขายต่ำสุด (บาท)&#x27;, &quot; – ฿&quot; &amp; Text(varModel.&#x27;ราคาขายสูงสุด (บาท)&#x27;, &quot;#,##0&quot;), &quot;&quot;), &quot;&quot;) &amp; If(varModel.&#x27;เปิดให้&#x27;.Value &lt;&gt; &quot;ขายเท่านั้น&quot;, &quot;   ·   เช่าได้&quot;, &quot;&quot;)); Navigate(scrPresent, ScreenTransition.Fade)
+      - lblModelAdd:
+          Control: Label@2.5.1
+          Properties:
+            X: =Parent.Width-330
+            Y: =20
+            Width: =100
+            Height: =50
+            Align: =Align.Center
+            Size: =12
+            FontWeight: =FontWeight.Bold
+            Color: =RGBA(13,31,23,1)
+            Fill: =RGBA(127,209,155,1)
+            Visible: =varCanEdit
+            Text: |-
+              =&quot;+ เพิ่มรถ&quot;
+            OnSelect: =Set(varUnit, Blank()); NewForm(frmUnit); Navigate(scrCMUnit, ScreenTransition.Cover)
+      - lblLotOverlay:
+          Control: Label@2.5.1
+          Properties:
+            X: =0
+            Y: =0
+            Width: =Parent.Width
+            Height: =Parent.Height
+            Fill: =RGBA(0,0,0,0.7)
+            Text: |-
+              =&quot;&quot;
+            Visible: =varShowLot
+      - lblLotBox:
+          Control: Label@2.5.1
+          Properties:
+            X: =24
+            Y: =Parent.Height/2-260
+            Width: =Parent.Width-48
+            Height: =520
+            Fill: =RGBA(24,51,38,1)
+            BorderColor: =RGBA(214,178,94,1)
+            BorderThickness: =2
+            Text: |-
+              =&quot;&quot;
+            Visible: =varShowLot
+      - lblLotTitle:
+          Control: Label@2.5.1
+          Properties:
+            X: =48
+            Y: =Parent.Height/2-240
+            Width: =Parent.Width-96
+            Height: =90
+            Size: =16
+            FontWeight: =FontWeight.Bold
+            Color: =Color.White
+            Visible: =varShowLot
+            Text: |-
+              =&quot;📦 จองหลายคัน — &quot; &amp; varModel.&#x27;รุ่นรถ&#x27; &amp; Char(10) &amp; &quot;ว่างให้จองได้ &quot; &amp; Text(varModel.&#x27;คงเหลือขาย/เช่าได้&#x27; - Sum(Filter(colRsv, &#x27;รุ่น&#x27;.Id = varModel.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now()), &#x27;จำนวนคัน&#x27;), &quot;#,##0&quot;) &amp; &quot; คัน&quot;
+      - lblLotQtyL:
+          Control: Label@2.5.1
+          Properties:
+            X: =48
+            Y: =Parent.Height/2-140
+            Width: =Parent.Width-96
+            Height: =30
+            Size: =12
+            Color: =RGBA(157,184,169,1)
+            Visible: =varShowLot
+            Text: |-
+              =&quot;จำนวนคัน&quot;
+      - txtLotQty:
+          Control: Classic/TextInput@2.3.2
+          Properties:
+            Fill: =RGBA(19,41,31,1)
+            Color: =Color.White
+            BorderColor: =RGBA(42,74,58,1)
+            HoverFill: =RGBA(24,51,38,1)
+            HoverBorderColor: =RGBA(127,209,155,1)
+            PaddingLeft: =12
+            X: =48
+            Y: =Parent.Height/2-108
+            Width: =Parent.Width-96
+            Height: =56
+            Default: |-
+              =&quot;&quot;
+            HintText: |-
+              =&quot;เช่น 100&quot;
+            Format: =TextFormat.Number
+            Size: =16
+            Visible: =varShowLot
+      - lblLotCustL:
+          Control: Label@2.5.1
+          Properties:
+            X: =48
+            Y: =Parent.Height/2-40
+            Width: =Parent.Width-96
+            Height: =30
+            Size: =12
+            Color: =RGBA(157,184,169,1)
+            Visible: =varShowLot
+            Text: |-
+              =&quot;ลูกค้า / หน่วยงาน&quot;
+      - txtLotCust:
+          Control: Classic/TextInput@2.3.2
+          Properties:
+            Fill: =RGBA(19,41,31,1)
+            Color: =Color.White
+            BorderColor: =RGBA(42,74,58,1)
+            HoverFill: =RGBA(24,51,38,1)
+            HoverBorderColor: =RGBA(127,209,155,1)
+            PaddingLeft: =12
+            X: =48
+            Y: =Parent.Height/2-8
+            Width: =Parent.Width-96
+            Height: =56
+            Default: |-
+              =&quot;&quot;
+            HintText: |-
+              =&quot;ชื่อลูกค้า&quot;
+            Size: =16
+            Visible: =varShowLot
+      - lblLotRule:
+          Control: Label@2.5.1
+          Properties:
+            X: =48
+            Y: =Parent.Height/2+56
+            Width: =Parent.Width-96
+            Height: =70
+            Size: =11
+            Color: =RGBA(230,199,122,1)
+            Visible: =varShowLot
+            Text: |-
+              =&quot;จองได้ 14 วัน · เกิน 10 คันต้องให้ผู้จัดการอนุมัติก่อน · ครบกำหนดยังไม่ปิดการขาย ระบบคืนยอดว่างอัตโนมัติ&quot;
+      - lblLotCancel:
+          Control: Label@2.5.1
+          Properties:
+            X: =48
+            Y: =Parent.Height/2+150
+            Width: =(Parent.Width-108)/2
+            Height: =56
+            Align: =Align.Center
+            Size: =14
+            Color: =Color.White
+            Fill: =RGBA(19,41,31,1)
+            BorderColor: =RGBA(42,74,58,1)
+            BorderThickness: =1
+            Visible: =varShowLot
+            Text: |-
+              =&quot;ยกเลิก&quot;
+            OnSelect: =Set(varShowLot, false)
+      - lblLotOK:
+          Control: Label@2.5.1
+          Properties:
+            X: =Parent.Width/2+6
+            Y: =Parent.Height/2+150
+            Width: =(Parent.Width-108)/2
+            Height: =56
+            Align: =Align.Center
+            Size: =14
+            FontWeight: =FontWeight.Bold
+            Color: =RGBA(26,20,5,1)
+            Fill: =RGBA(214,178,94,1)
+            Visible: =varShowLot
+            Text: |-
+              =&quot;ยืนยันจอง&quot;
+            OnSelect: |-
+              =With({q: Value(txtLotQty.Text), av: varModel.&#x27;คงเหลือขาย/เช่าได้&#x27; - Sum(Filter(colRsv, &#x27;รุ่น&#x27;.Id = varModel.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now()), &#x27;จำนวนคัน&#x27;)}, If(IsBlank(txtLotCust.Text) || IsBlank(q) || q &lt; 1, Notify(&quot;กรอกจำนวนคันและชื่อลูกค้า&quot;, NotificationType.Error), q &gt; av, Notify(&quot;จองได้สูงสุด &quot; &amp; av &amp; &quot; คัน&quot;, NotificationType.Error), Patch(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, Defaults(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;), {&#x27;ลูกค้า / หน่วยงาน&#x27;: txtLotCust.Text, &#x27;รุ่น&#x27;: {Id: varModel.ID, Value: varModel.&#x27;รุ่นรถ&#x27;}, &#x27;จำนวนคัน&#x27;: q, &#x27;ประเภทการจอง&#x27;: {Value: &quot;หลายคัน&quot;}, &#x27;สถานะ&#x27;: {Value: If(q &gt; 10, &quot;รออนุมัติ&quot;, &quot;จองอยู่&quot;)}, &#x27;เซลล์ผู้จอง&#x27;: User().FullName, &#x27;อีเมลเซลล์&#x27;: User().Email, &#x27;หมดอายุ&#x27;: DateAdd(Now(), 14, TimeUnit.Days)}); ClearCollect(colRsv, Filter(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; || &#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;)); Set(varShowLot, false); Notify(If(q &gt; 10, &quot;ส่งขออนุมัติแล้ว — รอผู้จัดการอนุมัติ&quot;, &quot;จองแล้ว &quot; &amp; q &amp; &quot; คัน (14 วัน)&quot;), NotificationType.Success)))
+  scrUnit:
+    Properties:
+      Fill: =RGBA(13,31,23,1)
+      OnVisible: |-
+        =ClearCollect(colPhotos, Filter(Table({t: &quot;ด้านหน้า&quot;, img: varUnit.&#x27;รูป: ด้านหน้า (รูปหลัก)&#x27;.Full}, {t: &quot;ด้านหลัง&quot;, img: varUnit.&#x27;รูป: ด้านหลัง&#x27;.Full}, {t: &quot;ด้านซ้าย&quot;, img: varUnit.&#x27;รูป: ด้านซ้าย&#x27;.Full}, {t: &quot;ด้านขวา&quot;, img: varUnit.&#x27;รูป: ด้านขวา&#x27;.Full}, {t: &quot;เบาะ/ห้องโดยสาร&quot;, img: varUnit.&#x27;รูป: เบาะ/ห้องโดยสาร&#x27;.Full}, {t: &quot;หน้าปัด/พวงมาลัย&quot;, img: varUnit.&#x27;รูป: หน้าปัด/พวงมาลัย&#x27;.Full}, {t: &quot;แบตเตอรี่&quot;, img: varUnit.&#x27;รูป: แบตเตอรี่&#x27;.Full}, {t: &quot;ชาร์จเจอร์&quot;, img: varUnit.&#x27;รูป: ชาร์จเจอร์&#x27;.Full}, {t: &quot;ยาง/ล้อ&quot;, img: varUnit.&#x27;รูป: ยาง/ล้อ&#x27;.Full}, {t: &quot;อื่นๆ&quot;, img: varUnit.&#x27;รูป: อื่นๆ 1&#x27;.Full}, {t: &quot;อื่นๆ&quot;, img: varUnit.&#x27;รูป: อื่นๆ 2&#x27;.Full}), !IsBlank(img))); Set(varIdx, 1)
+    Children:
+      - galUnitBody:
+          Control: Gallery@2.15.0
+          Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+          Properties:
+            X: =0
+            Y: =90
+            Width: =Parent.Width
+            Height: =Parent.Height-90-150
+            Items: =[1]
+            TemplateSize: =1700
+            TemplatePadding: =0
+            ShowScrollbar: =false
+          Children:
+            - imgUnitHero:
+                Control: Image@2.2.3
+                Properties:
+                  X: =16
+                  Y: =8
+                  Width: =Parent.TemplateWidth-32
+                  Height: =400
+                  Image: =Index(colPhotos, varIdx).img
+                  ImagePosition: =ImagePosition.Fit
+                  Fill: =RGBA(15,36,25,1)
+                  RadiusTopLeft: =14
+                  RadiusTopRight: =14
+                  RadiusBottomLeft: =14
+                  RadiusBottomRight: =14
+            - lblUnitNoImg:
+                Control: Label@2.5.1
+                Properties:
+                  X: =16
+                  Y: =190
+                  Width: =Parent.TemplateWidth-32
+                  Height: =40
+                  Align: =Align.Center
+                  Color: =RGBA(157,184,169,1)
+                  Text: |-
+                    =&quot;📷 ยังไม่มีรูปรถคันนี้&quot;
+                  Visible: =CountRows(colPhotos) = 0
+            - lblPrev:
+                Control: Label@2.5.1
+                Properties:
+                  X: =24
+                  Y: =180
+                  Width: =60
+                  Height: =60
+                  Align: =Align.Center
+                  Size: =28
+                  Color: =Color.White
+                  Fill: =RGBA(0,0,0,0.4)
+                  Text: |-
+                    =&quot;‹&quot;
+                  Visible: =CountRows(colPhotos) &gt; 1
+                  OnSelect: =Set(varIdx, If(varIdx &lt;= 1, CountRows(colPhotos), varIdx - 1))
+            - lblNext:
+                Control: Label@2.5.1
+                Properties:
+                  X: =Parent.TemplateWidth-84
+                  Y: =180
+                  Width: =60
+                  Height: =60
+                  Align: =Align.Center
+                  Size: =28
+                  Color: =Color.White
+                  Fill: =RGBA(0,0,0,0.4)
+                  Text: |-
+                    =&quot;›&quot;
+                  Visible: =CountRows(colPhotos) &gt; 1
+                  OnSelect: =Set(varIdx, If(varIdx &gt;= CountRows(colPhotos), 1, varIdx + 1))
+            - lblPhotoCap:
+                Control: Label@2.5.1
+                Properties:
+                  X: =16
+                  Y: =412
+                  Width: =Parent.TemplateWidth-32
+                  Height: =30
+                  Align: =Align.Center
+                  Size: =12
+                  Color: =RGBA(157,184,169,1)
+                  Text: |-
+                    =If(CountRows(colPhotos) = 0, &quot;&quot;, Index(colPhotos, varIdx).t &amp; &quot;  ·  &quot; &amp; varIdx &amp; &quot; / &quot; &amp; CountRows(colPhotos))
+            - lblUnitPriceBox:
+                Control: Label@2.5.1
+                Properties:
+                  X: =16
+                  Y: =450
+                  Width: =Parent.TemplateWidth-32
+                  Height: =96
+                  Fill: =RGBA(24,51,38,1)
+                  PaddingLeft: =16
+                  Size: =20
+                  FontWeight: =FontWeight.Bold
+                  Color: =RGBA(224,192,112,1)
+                  Text: |-
+                    =&quot;ราคาขาย  &quot; &amp; If(!IsBlank(varUnit.&#x27;ราคาขาย (บาท)&#x27;), &quot;฿&quot; &amp; Text(varUnit.&#x27;ราคาขาย (บาท)&#x27;, &quot;#,##0&quot;), If(IsBlank(varModel.&#x27;ราคาขายต่ำสุด (บาท)&#x27;), &quot;สอบถามราคา&quot;, &quot;฿&quot; &amp; Text(varModel.&#x27;ราคาขายต่ำสุด (บาท)&#x27;, &quot;#,##0&quot;) &amp; &quot; (ราคาตามรุ่น)&quot;)) &amp; Char(10) &amp; varUnit.&#x27;สถานะ&#x27;.Value &amp; &quot;  ·  เช่าได้ – เซลล์เสนอตามเรต&quot;
+            - lblSpecHead:
+                Control: Label@2.5.1
+                Properties:
+                  X: =16
+                  Y: =560
+                  Width: =Parent.TemplateWidth-32
+                  Height: =36
+                  Size: =15
+                  FontWeight: =FontWeight.Bold
+                  Color: =Color.White
+                  Text: |-
+                    =&quot;ข้อมูลรถ&quot;
+            - lblSpec:
+                Control: Label@2.5.1
+                Properties:
+                  X: =16
+                  Y: =598
+                  Width: =Parent.TemplateWidth-32
+                  Height: =330
+                  Fill: =RGBA(24,51,38,1)
+                  PaddingLeft: =16
+                  PaddingTop: =10
+                  Size: =13
+                  Color: =Color.White
+                  VerticalAlign: =VerticalAlign.Top
+                  Text: |-
+                    =Concat(Filter(Table({k: &quot;รุ่น&quot;, v: varModel.&#x27;รุ่นรถ&#x27;}, {k: &quot;เลขรถ / Serial&quot;, v: varUnit.&#x27;เลขรถ / Serial&#x27;}, {k: &quot;ปีผลิต&quot;, v: varUnit.&#x27;ปีผลิต&#x27;}, {k: &quot;สี&quot;, v: varUnit.&#x27;สี&#x27;}, {k: &quot;ระบบขับเคลื่อน&quot;, v: varUnit.&#x27;ระบบขับเคลื่อน&#x27;.Value}, {k: &quot;มอเตอร์&quot;, v: varUnit.&#x27;มอเตอร์&#x27;.Value}, {k: &quot;ชั่วโมงใช้งาน/ไมล์&quot;, v: varUnit.&#x27;ชั่วโมงใช้งาน/ไมล์&#x27;}, {k: &quot;สภาพยาง&quot;, v: varUnit.&#x27;สภาพยาง&#x27;}, {k: &quot;อุปกรณ์ติดรถ&quot;, v: varUnit.&#x27;อุปกรณ์ติดรถ&#x27;}, {k: &quot;จัดเก็บที่&quot;, v: varUnit.&#x27;จัดเก็บที่&#x27;.Value}, {k: &quot;เกรดสภาพ&quot;, v: varUnit.&#x27;เกรดสภาพ&#x27;.Value}, {k: &quot;สภาพโดยรวม&quot;, v: varUnit.&#x27;สภาพโดยรวม&#x27;}), !IsBlank(v)), k &amp; &quot;:  &quot; &amp; v, Char(10))
+            - lblBatHead:
+                Control: Label@2.5.1
+                Properties:
+                  X: =16
+                  Y: =940
+                  Width: =Parent.TemplateWidth-32
+                  Height: =36
+                  Size: =15
+                  FontWeight: =FontWeight.Bold
+                  Color: =Color.White
+                  Text: |-
+                    =&quot;🔋 แบตเตอรี่&quot;
+            - lblBat:
+                Control: Label@2.5.1
+                Properties:
+                  X: =16
+                  Y: =978
+                  Width: =Parent.TemplateWidth-32
+                  Height: =250
+                  Fill: =RGBA(24,51,38,1)
+                  PaddingLeft: =16
+                  PaddingTop: =10
+                  Size: =13
+                  Color: =Color.White
+                  VerticalAlign: =VerticalAlign.Top
+                  Text: |-
+                    =Concat(Filter(Table({k: &quot;ชนิดแบต&quot;, v: varUnit.&#x27;ชนิดแบต&#x27;.Value}, {k: &quot;แรงดันระบบ&quot;, v: varUnit.&#x27;แรงดันระบบ&#x27;.Value}, {k: &quot;ยี่ห้อ/รุ่นแบต&quot;, v: varUnit.&#x27;ยี่ห้อ/รุ่นแบต&#x27;}, {k: &quot;จำนวนลูก&quot;, v: Text(varUnit.&#x27;จำนวนลูกแบต&#x27;)}, {k: &quot;สเปกต่อลูก&quot;, v: varUnit.&#x27;สเปกต่อลูก&#x27;}, {k: &quot;ปีที่ติดตั้ง/เปลี่ยน&quot;, v: varUnit.&#x27;ปีที่ติดตั้งแบต&#x27;}, {k: &quot;สุขภาพแบต&quot;, v: If(IsBlank(varUnit.&#x27;สุขภาพแบต (%)&#x27;), &quot;&quot;, varUnit.&#x27;สุขภาพแบต (%)&#x27; &amp; &quot; %&quot;)}, {k: &quot;วิ่งได้ต่อชาร์จ&quot;, v: If(IsBlank(varUnit.&#x27;วิ่งได้ต่อชาร์จ (กม.)&#x27;), &quot;&quot;, varUnit.&#x27;วิ่งได้ต่อชาร์จ (กม.)&#x27; &amp; &quot; กม. (โดยประมาณ)&quot;)}, {k: &quot;ชาร์จเจอร์&quot;, v: varUnit.&#x27;ชาร์จเจอร์&#x27;.Value}), !IsBlank(v)), k &amp; &quot;:  &quot; &amp; v, Char(10))
+            - lblDefHead:
+                Control: Label@2.5.1
+                Properties:
+                  X: =16
+                  Y: =1240
+                  Width: =Parent.TemplateWidth-32
+                  Height: =36
+                  Size: =15
+                  FontWeight: =FontWeight.Bold
+                  Color: =Color.White
+                  Text: |-
+                    =&quot;ตำหนิ / จุดที่ต้องแจ้งลูกค้า (&quot; &amp; CountRows(Filter(&#x27;แคตตาล็อกรถตามสภาพ – ตำหนิรถ&#x27;, &#x27;รถ (เลขรถ)&#x27;.Id = varUnit.ID &amp;&amp; !&#x27;ซ่อมแล้ว&#x27;)) &amp; &quot;)&quot;
+            - lblDefs:
+                Control: Label@2.5.1
+                Properties:
+                  X: =16
+                  Y: =1278
+                  Width: =Parent.TemplateWidth-32
+                  Height: =400
+                  Fill: =RGBA(24,51,38,1)
+                  PaddingLeft: =16
+                  PaddingTop: =10
+                  Size: =13
+                  Color: =Color.White
+                  VerticalAlign: =VerticalAlign.Top
+                  Text: |-
+                    =With({d: Filter(&#x27;แคตตาล็อกรถตามสภาพ – ตำหนิรถ&#x27;, &#x27;รถ (เลขรถ)&#x27;.Id = varUnit.ID)}, If(CountRows(d) = 0, &quot;ไม่มีตำหนิที่บันทึกไว้&quot;, Concat(d, &quot;[&quot; &amp; &#x27;ระดับ&#x27;.Value &amp; &quot;] &quot; &amp; &#x27;จุด/ชิ้นส่วน&#x27; &amp; If(&#x27;ซ่อมแล้ว&#x27;, &quot;  ✓ ซ่อมแล้ว&quot;, &quot;&quot;) &amp; Char(10) &amp; &quot;    &quot; &amp; &#x27;รายละเอียด&#x27;, Char(10) &amp; Char(10))))
+      - lblUnitTopBar:
+          Control: Label@2.5.1
+          Properties:
+            X: =0
+            Y: =0
+            Width: =Parent.Width
+            Height: =90
+            Fill: =RGBA(19,41,31,1)
+            Text: |-
+              =&quot;&quot;
+      - lblUnitBack:
+          Control: Label@2.5.1
+          Properties:
+            X: =12
+            Y: =20
+            Width: =90
+            Height: =50
+            Size: =16
+            Color: =RGBA(127,209,155,1)
+            Text: |-
+              =&quot;‹ กลับ&quot;
+            OnSelect: =Back()
+      - lblUnitTop:
+          Control: Label@2.5.1
+          Properties:
+            X: =100
+            Y: =20
+            Width: =Parent.Width-330
+            Height: =50
+            Size: =14
+            FontWeight: =FontWeight.Bold
+            Color: =Color.White
+            Text: |-
+              =If(IsBlank(varUnit.&#x27;เกรดสภาพ&#x27;.Value), &quot;&quot;, &quot;[&quot; &amp; Left(varUnit.&#x27;เกรดสภาพ&#x27;.Value, 1) &amp; &quot;] &quot;) &amp; varUnit.&#x27;เลขรถ / Serial&#x27;
+      - lblUnitPresent:
+          Control: Label@2.5.1
+          Properties:
+            X: =Parent.Width-220
+            Y: =20
+            Width: =204
+            Height: =50
+            Align: =Align.Center
+            Size: =13
+            FontWeight: =FontWeight.Bold
+            Color: =RGBA(26,20,5,1)
+            Fill: =RGBA(201,165,74,1)
+            Text: |-
+              =&quot;เปิดให้ลูกค้าดู&quot;
+            OnSelect: |-
+              =ClearCollect(colPresent, colPhotos); Set(varPI, 1); Set(varPresentTitle, varModel.&#x27;รุ่นรถ&#x27; &amp; If(IsBlank(varUnit.&#x27;เกรดสภาพ&#x27;.Value), &quot;&quot;, &quot;  ·  เกรด &quot; &amp; Left(varUnit.&#x27;เกรดสภาพ&#x27;.Value, 1))); Set(varPresentInfo, Concat(Filter(Table({v: If(!IsBlank(varUnit.&#x27;ราคาขาย (บาท)&#x27;), &quot;ราคาขาย ฿&quot; &amp; Text(varUnit.&#x27;ราคาขาย (บาท)&#x27;, &quot;#,##0&quot;), If(IsBlank(varModel.&#x27;ราคาขายต่ำสุด (บาท)&#x27;), &quot;&quot;, &quot;ราคาขาย ฿&quot; &amp; Text(varModel.&#x27;ราคาขายต่ำสุด (บาท)&#x27;, &quot;#,##0&quot;)))}, {v: &quot;เช่าได้&quot;}, {v: If(IsBlank(varUnit.&#x27;ปีผลิต&#x27;), &quot;&quot;, &quot;ปี &quot; &amp; varUnit.&#x27;ปีผลิต&#x27;)}, {v: If(IsBlank(varUnit.&#x27;ชนิดแบต&#x27;.Value), &quot;&quot;, &quot;แบต &quot; &amp; varUnit.&#x27;ชนิดแบต&#x27;.Value &amp; &quot; &quot; &amp; varUnit.&#x27;แรงดันระบบ&#x27;.Value)}, {v: If(IsBlank(varUnit.&#x27;สุขภาพแบต (%)&#x27;), &quot;&quot;, &quot;สุขภาพแบต &quot; &amp; varUnit.&#x27;สุขภาพแบต (%)&#x27; &amp; &quot;%&quot;)}, {v: If(IsBlank(varUnit.&#x27;วิ่งได้ต่อชาร์จ (กม.)&#x27;), &quot;&quot;, &quot;วิ่งได้ ~&quot; &amp; varUnit.&#x27;วิ่งได้ต่อชาร์จ (กม.)&#x27; &amp; &quot; กม./ชาร์จ&quot;)}), !IsBlank(v)), v, &quot;   ·   &quot;) &amp; With({d: Filter(&#x27;แคตตาล็อกรถตามสภาพ – ตำหนิรถ&#x27;, &#x27;รถ (เลขรถ)&#x27;.Id = varUnit.ID &amp;&amp; !&#x27;ซ่อมแล้ว&#x27;)}, If(CountRows(d) &gt; 0, Char(10) &amp; &quot;ตำหนิที่แจ้ง: &quot; &amp; Concat(d, &#x27;จุด/ชิ้นส่วน&#x27; &amp; &quot; (&quot; &amp; &#x27;ระดับ&#x27;.Value &amp; &quot;)&quot;, &quot;, &quot;), &quot;&quot;))); Navigate(scrPresent, ScreenTransition.Fade)
+      - lblUnitEdit:
+          Control: Label@2.5.1
+          Properties:
+            X: =Parent.Width-330
+            Y: =20
+            Width: =100
+            Height: =50
+            Align: =Align.Center
+            Size: =12
+            FontWeight: =FontWeight.Bold
+            Color: =RGBA(13,31,23,1)
+            Fill: =RGBA(127,209,155,1)
+            Visible: =varCanEdit
+            Text: |-
+              =&quot;✏️ แก้ไข&quot;
+            OnSelect: =EditForm(frmUnit); Navigate(scrCMUnit, ScreenTransition.Cover)
+      - lblRsvBar:
+          Control: Label@2.5.1
+          Properties:
+            X: =0
+            Y: =Parent.Height-150
+            Width: =Parent.Width
+            Height: =150
+            Fill: =RGBA(19,41,31,1)
+            BorderColor: =RGBA(42,74,58,1)
+            BorderThickness: =1
+            Text: |-
+              =&quot;&quot;
+      - lblRsvInfo:
+          Control: Label@2.5.1
+          Properties:
+            X: =16
+            Y: =Parent.Height-146
+            Width: =Parent.Width-32
+            Height: =60
+            Size: =12
+            Color: =RGBA(230,199,122,1)
+            Text: |-
+              =With({rv: LookUp(colRsv, &#x27;รถ (เลขรถ)&#x27;.Id = varUnit.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now())}, If(IsBlank(rv), &quot;ว่าง — จองได้ 7 วัน ครบกำหนดยังไม่ปิดการขาย ระบบปลดอัตโนมัติ&quot;, &quot;🔒 จองโดย &quot; &amp; rv.&#x27;เซลล์ผู้จอง&#x27; &amp; &quot; · ลูกค้า &quot; &amp; rv.&#x27;ลูกค้า / หน่วยงาน&#x27; &amp; Char(10) &amp; &quot;หมดอายุ &quot; &amp; Text(rv.&#x27;หมดอายุ&#x27;, &quot;d/m/yy hh:mm&quot;) &amp; &quot; (เหลือ &quot; &amp; RoundUp(DateDiff(Now(), rv.&#x27;หมดอายุ&#x27;, TimeUnit.Hours) / 24, 0) &amp; &quot; วัน)&quot;))
+      - txtRsvCust:
+          Control: Classic/TextInput@2.3.2
+          Properties:
+            Fill: =RGBA(19,41,31,1)
+            Color: =Color.White
+            BorderColor: =RGBA(42,74,58,1)
+            HoverFill: =RGBA(24,51,38,1)
+            HoverBorderColor: =RGBA(127,209,155,1)
+            PaddingLeft: =12
+            X: =16
+            Y: =Parent.Height-82
+            Width: =Parent.Width-292
+            Height: =60
+            Default: |-
+              =&quot;&quot;
+            HintText: |-
+              =&quot;ชื่อลูกค้า / หน่วยงาน&quot;
+            Size: =14
+            Visible: |-
+              =IsBlank(LookUp(colRsv, &#x27;รถ (เลขรถ)&#x27;.Id = varUnit.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now()))
+      - lblRsvMake:
+          Control: Label@2.5.1
+          Properties:
+            X: =Parent.Width-266
+            Y: =Parent.Height-82
+            Width: =250
+            Height: =60
+            Align: =Align.Center
+            Size: =14
+            FontWeight: =FontWeight.Bold
+            Color: =RGBA(26,20,5,1)
+            Fill: =RGBA(214,178,94,1)
+            Visible: |-
+              =IsBlank(LookUp(colRsv, &#x27;รถ (เลขรถ)&#x27;.Id = varUnit.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now()))
+            Text: |-
+              =&quot;🔒 จองคันนี้ 7 วัน&quot;
+            OnSelect: |-
+              =If(IsBlank(txtRsvCust.Text), Notify(&quot;กรอกชื่อลูกค้าก่อนจอง&quot;, NotificationType.Error), If(!IsBlank(LookUp(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, &#x27;รถ (เลขรถ)&#x27;.Id = varUnit.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now())), Notify(&quot;รถคันนี้เพิ่งถูกเซลล์คนอื่นจองไปแล้ว&quot;, NotificationType.Error), Patch(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, Defaults(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;), {&#x27;ลูกค้า / หน่วยงาน&#x27;: txtRsvCust.Text, &#x27;รถ (เลขรถ)&#x27;: {Id: varUnit.ID, Value: varUnit.&#x27;เลขรถ / Serial&#x27;}, &#x27;รุ่น&#x27;: {Id: varModel.ID, Value: varModel.&#x27;รุ่นรถ&#x27;}, &#x27;จำนวนคัน&#x27;: 1, &#x27;ประเภทการจอง&#x27;: {Value: &quot;รายคัน&quot;}, &#x27;สถานะ&#x27;: {Value: &quot;จองอยู่&quot;}, &#x27;เซลล์ผู้จอง&#x27;: User().FullName, &#x27;อีเมลเซลล์&#x27;: User().Email, &#x27;หมดอายุ&#x27;: DateAdd(Now(), 7, TimeUnit.Days)}); Notify(&quot;จองแล้ว — ทุกคนเห็นทันที&quot;, NotificationType.Success)); ClearCollect(colRsv, Filter(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; || &#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;)); Reset(txtRsvCust))
+      - lblRsvClose:
+          Control: Label@2.5.1
+          Properties:
+            X: =16
+            Y: =Parent.Height-82
+            Width: =(Parent.Width-44)/2
+            Height: =60
+            Align: =Align.Center
+            Size: =13
+            FontWeight: =FontWeight.Bold
+            Color: =RGBA(13,31,23,1)
+            Fill: =RGBA(127,209,155,1)
+            Visible: |-
+              =With({rv: LookUp(colRsv, &#x27;รถ (เลขรถ)&#x27;.Id = varUnit.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now())}, !IsBlank(rv) &amp;&amp; (rv.&#x27;อีเมลเซลล์&#x27; = User().Email || varIsMgr))
+            Text: |-
+              =&quot;✅ ปิดการขายได้แล้ว&quot;
+            OnSelect: |-
+              =Patch(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, LookUp(colRsv, &#x27;รถ (เลขรถ)&#x27;.Id = varUnit.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now()), {&#x27;สถานะ&#x27;: {Value: &quot;ปิดการขาย&quot;}, &#x27;ปิดการขายได้ (คัน)&#x27;: 1}); ClearCollect(colRsv, Filter(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; || &#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;)); Notify(&quot;บันทึกปิดการขายแล้ว&quot;, NotificationType.Success)
+      - lblRsvCancel:
+          Control: Label@2.5.1
+          Properties:
+            X: =Parent.Width/2+6
+            Y: =Parent.Height-82
+            Width: =(Parent.Width-44)/2
+            Height: =60
+            Align: =Align.Center
+            Size: =13
+            Color: =Color.White
+            Fill: =RGBA(13,31,23,1)
+            BorderColor: =RGBA(42,74,58,1)
+            BorderThickness: =1
+            Visible: |-
+              =With({rv: LookUp(colRsv, &#x27;รถ (เลขรถ)&#x27;.Id = varUnit.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now())}, !IsBlank(rv) &amp;&amp; (rv.&#x27;อีเมลเซลล์&#x27; = User().Email || varIsMgr))
+            Text: |-
+              =&quot;ยกเลิกการจอง&quot;
+            OnSelect: |-
+              =Patch(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, LookUp(colRsv, &#x27;รถ (เลขรถ)&#x27;.Id = varUnit.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now()), {&#x27;สถานะ&#x27;: {Value: &quot;ยกเลิก&quot;}}); ClearCollect(colRsv, Filter(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; || &#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;)); Notify(&quot;ยกเลิกการจองแล้ว&quot;, NotificationType.Success)
+  scrPresent:
+    Properties:
+      Fill: =RGBA(6,16,11,1)
+    Children:
+      - imgPresent:
+          Control: Image@2.2.3
+          Properties:
+            X: =0
+            Y: =0
+            Width: =Parent.Width
+            Height: =Parent.Height-260
+            Image: =Index(colPresent, varPI).img
+            ImagePosition: =ImagePosition.Fit
+            OnSelect: =Set(varPI, If(varPI &gt;= CountRows(colPresent), 1, varPI + 1))
+      - lblPresentNoImg:
+          Control: Label@2.5.1
+          Properties:
+            X: =0
+            Y: =(Parent.Height-260)/2-20
+            Width: =Parent.Width
+            Height: =40
+            Align: =Align.Center
+            Color: =RGBA(157,184,169,1)
+            Text: |-
+              =&quot;📷 ยังไม่มีรูป&quot;
+            Visible: =CountRows(colPresent) = 0
+      - lblPPrev:
+          Control: Label@2.5.1
+          Properties:
+            X: =12
+            Y: =(Parent.Height-260)/2-35
+            Width: =70
+            Height: =70
+            Align: =Align.Center
+            Size: =32
+            Color: =Color.White
+            Fill: =RGBA(255,255,255,0.14)
+            Text: |-
+              =&quot;‹&quot;
+            Visible: =CountRows(colPresent) &gt; 1
+            OnSelect: =Set(varPI, If(varPI &lt;= 1, CountRows(colPresent), varPI - 1))
+      - lblPNext:
+          Control: Label@2.5.1
+          Properties:
+            X: =Parent.Width-82
+            Y: =(Parent.Height-260)/2-35
+            Width: =70
+            Height: =70
+            Align: =Align.Center
+            Size: =32
+            Color: =Color.White
+            Fill: =RGBA(255,255,255,0.14)
+            Text: |-
+              =&quot;›&quot;
+            Visible: =CountRows(colPresent) &gt; 1
+            OnSelect: =Set(varPI, If(varPI &gt;= CountRows(colPresent), 1, varPI + 1))
+      - lblPCount:
+          Control: Label@2.5.1
+          Properties:
+            X: =0
+            Y: =Parent.Height-300
+            Width: =Parent.Width
+            Height: =36
+            Align: =Align.Center
+            Size: =12
+            Color: =RGBA(204,238,221,1)
+            Text: |-
+              =If(CountRows(colPresent) = 0, &quot;&quot;, Coalesce(Index(colPresent, varPI).t, &quot;&quot;) &amp; &quot;  &quot; &amp; varPI &amp; &quot; / &quot; &amp; CountRows(colPresent))
+      - lblPInfoBg:
+          Control: Label@2.5.1
+          Properties:
+            X: =0
+            Y: =Parent.Height-260
+            Width: =Parent.Width
+            Height: =260
+            Fill: =RGBA(13,31,23,1)
+            BorderColor: =RGBA(42,74,58,1)
+            Text: |-
+              =&quot;&quot;
+      - lblPTitle:
+          Control: Label@2.5.1
+          Properties:
+            X: =24
+            Y: =Parent.Height-250
+            Width: =Parent.Width-48
+            Height: =56
+            Size: =22
+            FontWeight: =FontWeight.Bold
+            Color: =Color.White
+            Text: =varPresentTitle
+      - lblPInfo:
+          Control: Label@2.5.1
+          Properties:
+            X: =24
+            Y: =Parent.Height-192
+            Width: =Parent.Width-48
+            Height: =180
+            Size: =15
+            Color: =RGBA(224,192,112,1)
+            VerticalAlign: =VerticalAlign.Top
+            Text: =varPresentInfo
+      - lblPClose:
+          Control: Label@2.5.1
+          Properties:
+            X: =Parent.Width-130
+            Y: =16
+            Width: =114
+            Height: =50
+            Align: =Align.Center
+            Size: =14
+            Color: =Color.White
+            Fill: =RGBA(0,0,0,0.5)
+            Text: |-
+              =&quot;✕ ปิด&quot;
+            OnSelect: =Back()
+  scrRsv:
+    Properties:
+      Fill: =RGBA(13,31,23,1)
+      OnVisible: |-
+        =ClearCollect(colRsv, Filter(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; || &#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;)); Set(varRsvMine, false)
+    Children:
+      - lblRsvTop:
+          Control: Label@2.5.1
+          Properties:
+            X: =0
+            Y: =0
+            Width: =Parent.Width
+            Height: =90
+            Fill: =RGBA(19,41,31,1)
+            Text: |-
+              =&quot;&quot;
+      - lblRsvBack:
+          Control: Label@2.5.1
+          Properties:
+            X: =12
+            Y: =20
+            Width: =90
+            Height: =50
+            Size: =16
+            Color: =RGBA(127,209,155,1)
+            Text: |-
+              =&quot;‹ กลับ&quot;
+            OnSelect: =Back()
+      - lblRsvTitle:
+          Control: Label@2.5.1
+          Properties:
+            X: =100
+            Y: =20
+            Width: =Parent.Width-120
+            Height: =50
+            Size: =16
+            FontWeight: =FontWeight.Bold
+            Color: =Color.White
+            Text: |-
+              =&quot;🔒 การจองทั้งหมด&quot;
+      - lblRsvAll:
+          Control: Label@2.5.1
+          Properties:
+            X: =16
+            Y: =100
+            Width: =(Parent.Width-44)/2
+            Height: =44
+            Align: =Align.Center
+            Size: =12
+            Color: =If(!varRsvMine, RGBA(127,209,155,1), RGBA(157,184,169,1))
+            Fill: =If(!varRsvMine, RGBA(127,209,155,0.12), RGBA(19,41,31,1))
+            BorderColor: =RGBA(42,74,58,1)
+            BorderThickness: =1
+            Text: |-
+              =&quot;ทั้งหมด&quot;
+            OnSelect: =Set(varRsvMine, false)
+      - lblRsvMineBtn:
+          Control: Label@2.5.1
+          Properties:
+            X: =Parent.Width/2+6
+            Y: =100
+            Width: =(Parent.Width-44)/2
+            Height: =44
+            Align: =Align.Center
+            Size: =12
+            Color: =If(varRsvMine, RGBA(127,209,155,1), RGBA(157,184,169,1))
+            Fill: =If(varRsvMine, RGBA(127,209,155,0.12), RGBA(19,41,31,1))
+            BorderColor: =RGBA(42,74,58,1)
+            BorderThickness: =1
+            Text: |-
+              =&quot;ของฉัน&quot;
+            OnSelect: =Set(varRsvMine, true)
+      - galRsv:
+          Control: Gallery@2.15.0
+          Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+          Properties:
+            X: =0
+            Y: =154
+            Width: =Parent.Width
+            Height: =Parent.Height-154
+            TemplateSize: =160
+            TemplatePadding: =4
+            ShowScrollbar: =false
+            Items: |-
+              =Sort(Filter(colRsv, (&#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot; || &#x27;หมดอายุ&#x27; &gt; Now()) &amp;&amp; (!varRsvMine || &#x27;อีเมลเซลล์&#x27; = User().Email)), &#x27;หมดอายุ&#x27;, SortOrder.Ascending)
+          Children:
+            - lblRsvRowBg:
+                Control: Label@2.5.1
+                Properties:
+                  X: =8
+                  Y: =0
+                  Width: =Parent.TemplateWidth-16
+                  Height: =Parent.TemplateHeight-6
+                  Fill: =RGBA(24,51,38,1)
+                  BorderColor: |-
+                    =If(ThisItem.&#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;, RGBA(214,178,94,1), RGBA(42,74,58,1))
+                  BorderThickness: =1
+                  Text: |-
+                    =&quot;&quot;
+            - lblRsvRowT:
+                Control: Label@2.5.1
+                Properties:
+                  X: =22
+                  Y: =8
+                  Width: =Parent.TemplateWidth-44
+                  Height: =34
+                  Size: =14
+                  FontWeight: =FontWeight.Bold
+                  Color: =Color.White
+                  Text: |-
+                    =If(ThisItem.&#x27;ประเภทการจอง&#x27;.Value = &quot;หลายคัน&quot;, &quot;📦 &quot; &amp; ThisItem.&#x27;จำนวนคัน&#x27; &amp; &quot; คัน · &quot;, &quot;🔒 &quot; &amp; ThisItem.&#x27;รถ (เลขรถ)&#x27;.Value &amp; &quot; · &quot;) &amp; ThisItem.&#x27;รุ่น&#x27;.Value
+            - lblRsvRowD:
+                Control: Label@2.5.1
+                Properties:
+                  X: =22
+                  Y: =42
+                  Width: =Parent.TemplateWidth-44
+                  Height: =56
+                  Size: =11
+                  Color: =RGBA(157,184,169,1)
+                  VerticalAlign: =VerticalAlign.Top
+                  Text: |-
+                    =&quot;ลูกค้า &quot; &amp; ThisItem.&#x27;ลูกค้า / หน่วยงาน&#x27; &amp; &quot; · เซลล์ &quot; &amp; ThisItem.&#x27;เซลล์ผู้จอง&#x27; &amp; Char(10) &amp; If(ThisItem.&#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;, &quot;⏳ รอผู้จัดการอนุมัติ&quot;, If(ThisItem.&#x27;หมดอายุ&#x27; &gt; Now(), &quot;หมดอายุ &quot; &amp; Text(ThisItem.&#x27;หมดอายุ&#x27;, &quot;d/m/yy&quot;) &amp; &quot; (เหลือ &quot; &amp; RoundUp(DateDiff(Now(), ThisItem.&#x27;หมดอายุ&#x27;, TimeUnit.Hours) / 24, 0) &amp; &quot; วัน)&quot;, &quot;⏰ หมดอายุแล้ว — ปลดการจองอัตโนมัติ&quot;))
+            - lblRsvApprove:
+                Control: Label@2.5.1
+                Properties:
+                  X: =22
+                  Y: =102
+                  Width: =(Parent.TemplateWidth-60)/2
+                  Height: =46
+                  Align: =Align.Center
+                  Size: =12
+                  FontWeight: =FontWeight.Bold
+                  Color: =RGBA(13,31,23,1)
+                  Fill: =RGBA(127,209,155,1)
+                  BorderColor: =RGBA(42,74,58,1)
+                  BorderThickness: =1
+                  Visible: |-
+                    =varIsMgr &amp;&amp; ThisItem.&#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;
+                  Text: |-
+                    =&quot;✅ อนุมัติ&quot;
+                  OnSelect: |-
+                    =Patch(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, ThisItem, {&#x27;สถานะ&#x27;: {Value: &quot;จองอยู่&quot;}, &#x27;ผู้อนุมัติ&#x27;: User().FullName, &#x27;หมดอายุ&#x27;: DateAdd(Now(), 14, TimeUnit.Days)}); ClearCollect(colRsv, Filter(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; || &#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;))
+            - lblRsvReject:
+                Control: Label@2.5.1
+                Properties:
+                  X: =Parent.TemplateWidth/2+8
+                  Y: =102
+                  Width: =(Parent.TemplateWidth-60)/2
+                  Height: =46
+                  Align: =Align.Center
+                  Size: =12
+                  FontWeight: =FontWeight.Bold
+                  Color: =RGBA(224,122,108,1)
+                  Fill: =RGBA(13,31,23,1)
+                  BorderColor: =RGBA(42,74,58,1)
+                  BorderThickness: =1
+                  Visible: |-
+                    =varIsMgr &amp;&amp; ThisItem.&#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;
+                  Text: |-
+                    =&quot;ไม่อนุมัติ&quot;
+                  OnSelect: |-
+                    =Patch(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, ThisItem, {&#x27;สถานะ&#x27;: {Value: &quot;ไม่อนุมัติ&quot;}, &#x27;ผู้อนุมัติ&#x27;: User().FullName}); ClearCollect(colRsv, Filter(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; || &#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;))
+            - lblRsvRowClose:
+                Control: Label@2.5.1
+                Properties:
+                  X: =22
+                  Y: =102
+                  Width: =(Parent.TemplateWidth-60)/2
+                  Height: =46
+                  Align: =Align.Center
+                  Size: =12
+                  FontWeight: =FontWeight.Bold
+                  Color: =RGBA(13,31,23,1)
+                  Fill: =RGBA(127,209,155,1)
+                  BorderColor: =RGBA(42,74,58,1)
+                  BorderThickness: =1
+                  Visible: |-
+                    =(ThisItem.&#x27;อีเมลเซลล์&#x27; = User().Email || varIsMgr) &amp;&amp; ThisItem.&#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; ThisItem.&#x27;หมดอายุ&#x27; &gt; Now()
+                  Text: |-
+                    =&quot;✅ ปิดการขายแล้ว&quot;
+                  OnSelect: |-
+                    =Patch(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, ThisItem, {&#x27;สถานะ&#x27;: {Value: &quot;ปิดการขาย&quot;}, &#x27;ปิดการขายได้ (คัน)&#x27;: ThisItem.&#x27;จำนวนคัน&#x27;}); ClearCollect(colRsv, Filter(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; || &#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;)); Notify(&quot;บันทึกปิดการขายแล้ว&quot;, NotificationType.Success)
+            - lblRsvRowCancel:
+                Control: Label@2.5.1
+                Properties:
+                  X: =Parent.TemplateWidth/2+8
+                  Y: =102
+                  Width: =(Parent.TemplateWidth-60)/2
+                  Height: =46
+                  Align: =Align.Center
+                  Size: =12
+                  FontWeight: =FontWeight.Bold
+                  Color: =Color.White
+                  Fill: =RGBA(13,31,23,1)
+                  BorderColor: =RGBA(42,74,58,1)
+                  BorderThickness: =1
+                  Visible: |-
+                    =(ThisItem.&#x27;อีเมลเซลล์&#x27; = User().Email || varIsMgr) &amp;&amp; ThisItem.&#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; ThisItem.&#x27;หมดอายุ&#x27; &gt; Now()
+                  Text: |-
+                    =&quot;ยกเลิกการจอง&quot;
+                  OnSelect: |-
+                    =Patch(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, ThisItem, {&#x27;สถานะ&#x27;: {Value: &quot;ยกเลิก&quot;}}); ClearCollect(colRsv, Filter(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; || &#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;))
+</textarea>
+<script>document.getElementById('b').onclick=()=>{const t=document.getElementById('t');t.select();const ok=document.execCommand('copy');document.getElementById('m').textContent=ok?'copied '+t.value.length:'failed';};</script></body></html>
