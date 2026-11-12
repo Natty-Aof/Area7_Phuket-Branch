@@ -1,0 +1,737 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>copy v3</title></head>
+<body style="font-family:sans-serif;padding:20px"><button id="b" style="font-size:22px;padding:14px 26px">COPY HOME v3</button> <span id="m"></span>
+<textarea id="t" style="width:100%;height:70vh;margin-top:12px">Screens:
+  scrHome:
+    Properties:
+      Fill: =RGBA(13,31,23,1)
+      OnVisible: |-
+        =If(IsBlank(varCat), Set(varCat, &quot;ทั้งหมด&quot;)); If(IsBlank(varOffer), Set(varOffer, &quot;all&quot;)); If(IsBlank(varSort), Set(varSort, &quot;report&quot;)); Set(varCanEdit, DataSourceInfo(&#x27;แคตตาล็อกรถตามสภาพ – รถรายคัน&#x27;, DataSourceInfo.EditPermission)); Set(varIsMgr, DataSourceInfo(&#x27;แคตตาล็อกรถตามสภาพ – รุ่นรถ&#x27;, DataSourceInfo.EditPermission)); ClearCollect(colRsv, Filter(&#x27;แคตตาล็อกรถตามสภาพ – การจอง&#x27;, &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; || &#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;))
+    Children:
+      - imgHomeHead:
+          Control: Image@2.2.3
+          Properties:
+            X: =0
+            Y: =0
+            Width: =Parent.Width
+            Height: =370
+            Image: |-
+              =&quot;&quot;
+            Fill: =RGBA(19,41,31,1)
+            BorderColor: =RGBA(42,74,58,1)
+            BorderThickness: =0
+      - lblHomeTitle:
+          Control: Label@2.5.1
+          Properties:
+            X: =20
+            Y: =14
+            Width: =Parent.Width-220
+            Height: =36
+            Text: |-
+              =&quot;แคตตาล็อกรถตามสภาพ&quot;
+            Size: =20
+            Color: =RGBA(238,245,240,1)
+            PaddingLeft: =0
+            PaddingRight: =0
+            PaddingTop: =0
+            PaddingBottom: =0
+            FontWeight: =FontWeight.Bold
+      - lblHomeSub:
+          Control: Label@2.5.1
+          Properties:
+            X: =20
+            Y: =50
+            Width: =Parent.Width-220
+            Height: =24
+            Text: |-
+              =&quot;Beyond Green · ข้อมูล ณ &quot; &amp; First(&#x27;แคตตาล็อกรถตามสภาพ – รุ่นรถ&#x27;).&#x27;ข้อมูล ณ วันที่&#x27;
+            Size: =11
+            Color: =RGBA(157,184,169,1)
+            PaddingLeft: =0
+            PaddingRight: =0
+            PaddingTop: =0
+            PaddingBottom: =0
+      - imgRsvBtnBg:
+          Control: Image@2.2.3
+          Properties:
+            X: =Parent.Width-196
+            Y: =14
+            Width: =176
+            Height: =36
+            Image: |-
+              =&quot;&quot;
+            Fill: =RGBA(201,165,74,1)
+            BorderColor: =RGBA(201,165,74,1)
+            BorderThickness: =1
+            RadiusTopLeft: =18
+            RadiusTopRight: =18
+            RadiusBottomLeft: =18
+            RadiusBottomRight: =18
+      - lblHomeRsvBtn:
+          Control: Label@2.5.1
+          Properties:
+            X: =Parent.Width-196
+            Y: =14
+            Width: =176
+            Height: =36
+            Text: |-
+              =&quot;🔒 การจอง&quot; &amp; With({p: CountRows(Filter(colRsv, &#x27;สถานะ&#x27;.Value = &quot;รออนุมัติ&quot;))}, If(varIsMgr &amp;&amp; p &gt; 0, &quot; (รออนุมัติ &quot; &amp; p &amp; &quot;)&quot;, &quot;&quot;))
+            Size: =12
+            Color: =RGBA(26,20,5,1)
+            PaddingLeft: =0
+            PaddingRight: =0
+            PaddingTop: =0
+            PaddingBottom: =0
+            FontWeight: =FontWeight.Bold
+            Align: =Align.Center
+            OnSelect: =Navigate(scrRsv, ScreenTransition.Cover)
+      - imgCMBtnBg:
+          Control: Image@2.2.3
+          Properties:
+            X: =Parent.Width-196
+            Y: =56
+            Width: =176
+            Height: =36
+            Image: |-
+              =&quot;&quot;
+            Fill: =RGBA(127,209,155,1)
+            BorderColor: =RGBA(127,209,155,1)
+            BorderThickness: =1
+            RadiusTopLeft: =18
+            RadiusTopRight: =18
+            RadiusBottomLeft: =18
+            RadiusBottomRight: =18
+            Visible: =varCanEdit
+      - lblHomeCMBtn:
+          Control: Label@2.5.1
+          Properties:
+            X: =Parent.Width-196
+            Y: =56
+            Width: =176
+            Height: =36
+            Text: |-
+              =&quot;📷 CM ลงข้อมูล&quot;
+            Size: =12
+            Color: =RGBA(13,31,23,1)
+            PaddingLeft: =0
+            PaddingRight: =0
+            PaddingTop: =0
+            PaddingBottom: =0
+            FontWeight: =FontWeight.Bold
+            Align: =Align.Center
+            Visible: =varCanEdit
+            OnSelect: =Set(varUnit, Blank()); NewForm(frmUnit); Navigate(scrCMUnit, ScreenTransition.Cover)
+      - imgKpiAvail:
+          Control: Image@2.2.3
+          Properties:
+            X: =20 + 0 * ((Parent.Width - 40 - 30) / 4 + 10)
+            Y: =100
+            Width: =(Parent.Width - 40 - 30) / 4
+            Height: =72
+            Image: |-
+              =&quot;&quot;
+            Fill: =RGBA(13,31,23,1)
+            BorderColor: =RGBA(42,74,58,1)
+            BorderThickness: =1
+            RadiusTopLeft: =12
+            RadiusTopRight: =12
+            RadiusBottomLeft: =12
+            RadiusBottomRight: =12
+      - lblKpiAvailN:
+          Control: Label@2.5.1
+          Properties:
+            X: =20 + 0 * ((Parent.Width - 40 - 30) / 4 + 10) + 12
+            Y: =108
+            Width: =(Parent.Width - 40 - 30) / 4 - 16
+            Height: =34
+            Text: |-
+              =Text(Sum(&#x27;แคตตาล็อกรถตามสภาพ – รุ่นรถ&#x27;, &#x27;คงเหลือขาย/เช่าได้&#x27;), &quot;#,##0&quot;)
+            Size: =18
+            Color: =RGBA(127,209,155,1)
+            PaddingLeft: =0
+            PaddingRight: =0
+            PaddingTop: =0
+            PaddingBottom: =0
+            FontWeight: =FontWeight.Bold
+      - lblKpiAvailT:
+          Control: Label@2.5.1
+          Properties:
+            X: =20 + 0 * ((Parent.Width - 40 - 30) / 4 + 10) + 12
+            Y: =142
+            Width: =(Parent.Width - 40 - 30) / 4 - 16
+            Height: =22
+            Text: |-
+              =&quot;คัน ขาย/เช่าได้&quot;
+            Size: =10
+            Color: =RGBA(157,184,169,1)
+            PaddingLeft: =0
+            PaddingRight: =0
+            PaddingTop: =0
+            PaddingBottom: =0
+      - imgKpiPO:
+          Control: Image@2.2.3
+          Properties:
+            X: =20 + 1 * ((Parent.Width - 40 - 30) / 4 + 10)
+            Y: =100
+            Width: =(Parent.Width - 40 - 30) / 4
+            Height: =72
+            Image: |-
+              =&quot;&quot;
+            Fill: =RGBA(13,31,23,1)
+            BorderColor: =RGBA(42,74,58,1)
+            BorderThickness: =1
+            RadiusTopLeft: =12
+            RadiusTopRight: =12
+            RadiusBottomLeft: =12
+            RadiusBottomRight: =12
+      - lblKpiPON:
+          Control: Label@2.5.1
+          Properties:
+            X: =20 + 1 * ((Parent.Width - 40 - 30) / 4 + 10) + 12
+            Y: =108
+            Width: =(Parent.Width - 40 - 30) / 4 - 16
+            Height: =34
+            Text: |-
+              =Text(Sum(&#x27;แคตตาล็อกรถตามสภาพ – รุ่นรถ&#x27;, &#x27;PO รวม&#x27;), &quot;#,##0&quot;)
+            Size: =18
+            Color: =RGBA(238,245,240,1)
+            PaddingLeft: =0
+            PaddingRight: =0
+            PaddingTop: =0
+            PaddingBottom: =0
+            FontWeight: =FontWeight.Bold
+      - lblKpiPOT:
+          Control: Label@2.5.1
+          Properties:
+            X: =20 + 1 * ((Parent.Width - 40 - 30) / 4 + 10) + 12
+            Y: =142
+            Width: =(Parent.Width - 40 - 30) / 4 - 16
+            Height: =22
+            Text: |-
+              =&quot;คัน มี PO แล้ว&quot;
+            Size: =10
+            Color: =RGBA(157,184,169,1)
+            PaddingLeft: =0
+            PaddingRight: =0
+            PaddingTop: =0
+            PaddingBottom: =0
+      - imgKpiAll:
+          Control: Image@2.2.3
+          Properties:
+            X: =20 + 2 * ((Parent.Width - 40 - 30) / 4 + 10)
+            Y: =100
+            Width: =(Parent.Width - 40 - 30) / 4
+            Height: =72
+            Image: |-
+              =&quot;&quot;
+            Fill: =RGBA(13,31,23,1)
+            BorderColor: =RGBA(42,74,58,1)
+            BorderThickness: =1
+            RadiusTopLeft: =12
+            RadiusTopRight: =12
+            RadiusBottomLeft: =12
+            RadiusBottomRight: =12
+      - lblKpiAllN:
+          Control: Label@2.5.1
+          Properties:
+            X: =20 + 2 * ((Parent.Width - 40 - 30) / 4 + 10) + 12
+            Y: =108
+            Width: =(Parent.Width - 40 - 30) / 4 - 16
+            Height: =34
+            Text: |-
+              =Text(Sum(&#x27;แคตตาล็อกรถตามสภาพ – รุ่นรถ&#x27;, &#x27;สต๊อกทั้งหมด&#x27;), &quot;#,##0&quot;)
+            Size: =18
+            Color: =RGBA(238,245,240,1)
+            PaddingLeft: =0
+            PaddingRight: =0
+            PaddingTop: =0
+            PaddingBottom: =0
+            FontWeight: =FontWeight.Bold
+      - lblKpiAllT:
+          Control: Label@2.5.1
+          Properties:
+            X: =20 + 2 * ((Parent.Width - 40 - 30) / 4 + 10) + 12
+            Y: =142
+            Width: =(Parent.Width - 40 - 30) / 4 - 16
+            Height: =22
+            Text: |-
+              =&quot;คัน สต๊อกทั้งหมด&quot;
+            Size: =10
+            Color: =RGBA(157,184,169,1)
+            PaddingLeft: =0
+            PaddingRight: =0
+            PaddingTop: =0
+            PaddingBottom: =0
+      - imgKpiRsv:
+          Control: Image@2.2.3
+          Properties:
+            X: =20 + 3 * ((Parent.Width - 40 - 30) / 4 + 10)
+            Y: =100
+            Width: =(Parent.Width - 40 - 30) / 4
+            Height: =72
+            Image: |-
+              =&quot;&quot;
+            Fill: =RGBA(13,31,23,1)
+            BorderColor: =RGBA(42,74,58,1)
+            BorderThickness: =1
+            RadiusTopLeft: =12
+            RadiusTopRight: =12
+            RadiusBottomLeft: =12
+            RadiusBottomRight: =12
+      - lblKpiRsvN:
+          Control: Label@2.5.1
+          Properties:
+            X: =20 + 3 * ((Parent.Width - 40 - 30) / 4 + 10) + 12
+            Y: =108
+            Width: =(Parent.Width - 40 - 30) / 4 - 16
+            Height: =34
+            Text: |-
+              =Text(Coalesce(Sum(Filter(colRsv, &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now()), &#x27;จำนวนคัน&#x27;), 0), &quot;#,##0&quot;)
+            Size: =18
+            Color: =RGBA(201,165,74,1)
+            PaddingLeft: =0
+            PaddingRight: =0
+            PaddingTop: =0
+            PaddingBottom: =0
+            FontWeight: =FontWeight.Bold
+      - lblKpiRsvT:
+          Control: Label@2.5.1
+          Properties:
+            X: =20 + 3 * ((Parent.Width - 40 - 30) / 4 + 10) + 12
+            Y: =142
+            Width: =(Parent.Width - 40 - 30) / 4 - 16
+            Height: =22
+            Text: |-
+              =&quot;คัน กำลังจอง&quot;
+            Size: =10
+            Color: =RGBA(157,184,169,1)
+            PaddingLeft: =0
+            PaddingRight: =0
+            PaddingTop: =0
+            PaddingBottom: =0
+      - txtSearch:
+          Control: Classic/TextInput@2.3.2
+          Properties:
+            X: =20
+            Y: =184
+            Width: =Parent.Width-40
+            Height: =44
+            Default: |-
+              =&quot;&quot;
+            HintText: |-
+              =&quot;🔎 ค้นหารุ่น เช่น Precedent&quot;
+            Size: =12
+            Color: =RGBA(238,245,240,1)
+            Fill: =RGBA(13,31,23,1)
+            BorderColor: =RGBA(42,74,58,1)
+            BorderThickness: =1
+            HoverFill: =RGBA(13,31,23,1)
+            PressedFill: =RGBA(13,31,23,1)
+            FocusedBorderColor: =RGBA(127,209,155,1)
+            RadiusTopLeft: =12
+            RadiusTopRight: =12
+            RadiusBottomLeft: =12
+            RadiusBottomRight: =12
+            PaddingLeft: =14
+      - galCats:
+          Control: Gallery@2.15.0
+          Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+          Properties:
+            X: =17
+            Y: =236
+            Width: =Parent.Width-34
+            Height: =84
+            Items: |-
+              =Table({t:&quot;ทั้งหมด&quot;},{t:&quot;2 ที่นั่ง&quot;},{t:&quot;4 ที่นั่ง&quot;},{t:&quot;6–8 ที่นั่ง&quot;},{t:&quot;อเนกประสงค์/บรรทุก&quot;},{t:&quot;อื่นๆ&quot;})
+            WrapCount: =3
+            TemplateSize: =42
+            TemplatePadding: =3
+            ShowScrollbar: =false
+          Children:
+            - imgCatBg:
+                Control: Image@2.2.3
+                Properties:
+                  X: =0
+                  Y: =0
+                  Width: =Parent.TemplateWidth
+                  Height: =Parent.TemplateHeight-6
+                  Image: |-
+                    =&quot;&quot;
+                  Fill: =If(varCat = ThisItem.t, RGBA(127,209,155,0.14), RGBA(13,31,23,1))
+                  BorderColor: =If(varCat = ThisItem.t, RGBA(127,209,155,1), RGBA(42,74,58,1))
+                  BorderThickness: =1
+                  RadiusTopLeft: =17
+                  RadiusTopRight: =17
+                  RadiusBottomLeft: =17
+                  RadiusBottomRight: =17
+            - lblCat:
+                Control: Label@2.5.1
+                Properties:
+                  X: =0
+                  Y: =0
+                  Width: =Parent.TemplateWidth
+                  Height: =Parent.TemplateHeight-6
+                  Text: =ThisItem.t
+                  Size: =11
+                  Color: =If(varCat = ThisItem.t, RGBA(127,209,155,1), RGBA(157,184,169,1))
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  PaddingBottom: =0
+                  Align: =Align.Center
+                  OnSelect: =Set(varCat, ThisItem.t)
+      - galOffer:
+          Control: Gallery@2.15.0
+          Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+          Properties:
+            X: =17
+            Y: =322
+            Width: =(Parent.Width-34)*0.58
+            Height: =42
+            Items: |-
+              =Table({t:&quot;ขาย+เช่า ทั้งหมด&quot;,k:&quot;all&quot;},{t:&quot;ขายได้&quot;,k:&quot;sale&quot;},{t:&quot;เช่าได้&quot;,k:&quot;rent&quot;})
+            WrapCount: =3
+            TemplateSize: =42
+            TemplatePadding: =3
+            ShowScrollbar: =false
+          Children:
+            - imgOfferBg:
+                Control: Image@2.2.3
+                Properties:
+                  X: =0
+                  Y: =0
+                  Width: =Parent.TemplateWidth
+                  Height: =Parent.TemplateHeight-6
+                  Image: |-
+                    =&quot;&quot;
+                  Fill: =If(varOffer = ThisItem.k, RGBA(127,209,155,0.14), RGBA(13,31,23,1))
+                  BorderColor: =If(varOffer = ThisItem.k, RGBA(127,209,155,1), RGBA(42,74,58,1))
+                  BorderThickness: =1
+                  RadiusTopLeft: =17
+                  RadiusTopRight: =17
+                  RadiusBottomLeft: =17
+                  RadiusBottomRight: =17
+            - lblOffer:
+                Control: Label@2.5.1
+                Properties:
+                  X: =0
+                  Y: =0
+                  Width: =Parent.TemplateWidth
+                  Height: =Parent.TemplateHeight-6
+                  Text: =ThisItem.t
+                  Size: =11
+                  Color: =If(varOffer = ThisItem.k, RGBA(127,209,155,1), RGBA(157,184,169,1))
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  PaddingBottom: =0
+                  Align: =Align.Center
+                  OnSelect: =Set(varOffer, ThisItem.k)
+      - galSort:
+          Control: Gallery@2.15.0
+          Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+          Properties:
+            X: =17+(Parent.Width-34)*0.6
+            Y: =322
+            Width: =(Parent.Width-34)*0.4
+            Height: =42
+            Items: |-
+              =Table({t:&quot;เรียงตามรายงาน&quot;,k:&quot;report&quot;},{t:&quot;คงเหลือมากสุด&quot;,k:&quot;avail&quot;})
+            WrapCount: =2
+            TemplateSize: =42
+            TemplatePadding: =3
+            ShowScrollbar: =false
+          Children:
+            - imgSortBg:
+                Control: Image@2.2.3
+                Properties:
+                  X: =0
+                  Y: =0
+                  Width: =Parent.TemplateWidth
+                  Height: =Parent.TemplateHeight-6
+                  Image: |-
+                    =&quot;&quot;
+                  Fill: =If(varSort = ThisItem.k, RGBA(127,209,155,0.14), RGBA(13,31,23,1))
+                  BorderColor: =If(varSort = ThisItem.k, RGBA(127,209,155,1), RGBA(42,74,58,1))
+                  BorderThickness: =1
+                  RadiusTopLeft: =17
+                  RadiusTopRight: =17
+                  RadiusBottomLeft: =17
+                  RadiusBottomRight: =17
+            - lblSort:
+                Control: Label@2.5.1
+                Properties:
+                  X: =0
+                  Y: =0
+                  Width: =Parent.TemplateWidth
+                  Height: =Parent.TemplateHeight-6
+                  Text: =ThisItem.t
+                  Size: =11
+                  Color: =If(varSort = ThisItem.k, RGBA(127,209,155,1), RGBA(157,184,169,1))
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  PaddingBottom: =0
+                  Align: =Align.Center
+                  OnSelect: =Set(varSort, ThisItem.k)
+      - galModels:
+          Control: Gallery@2.15.0
+          Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+          Properties:
+            X: =12
+            Y: =378
+            Width: =Parent.Width-24
+            Height: =Parent.Height-378
+            Items: |-
+              =With({src: Filter(&#x27;แคตตาล็อกรถตามสภาพ – รุ่นรถ&#x27;, &#x27;คงเหลือขาย/เช่าได้&#x27; &gt; 0 &amp;&amp; &#x27;เปิดให้&#x27;.Value &lt;&gt; &quot;ยังไม่เปิด&quot; &amp;&amp; (varCat = &quot;ทั้งหมด&quot; || &#x27;หมวด&#x27;.Value = varCat) &amp;&amp; (varOffer = &quot;all&quot; || (varOffer = &quot;sale&quot; &amp;&amp; &#x27;เปิดให้&#x27;.Value &lt;&gt; &quot;เช่าเท่านั้น&quot;) || (varOffer = &quot;rent&quot; &amp;&amp; &#x27;เปิดให้&#x27;.Value &lt;&gt; &quot;ขายเท่านั้น&quot;)) &amp;&amp; (IsBlank(txtSearch.Text) || txtSearch.Text in Title))}, If(varSort = &quot;avail&quot;, Sort(src, &#x27;คงเหลือขาย/เช่าได้&#x27;, SortOrder.Descending), src))
+            WrapCount: =2
+            TemplateSize: =428
+            TemplatePadding: =6
+            ShowScrollbar: =false
+          Children:
+            - lblCardBg:
+                Control: Image@2.2.3
+                Properties:
+                  X: =0
+                  Y: =0
+                  Width: =Parent.TemplateWidth
+                  Height: =Parent.TemplateHeight-4
+                  Image: |-
+                    =&quot;&quot;
+                  Fill: =RGBA(24,51,38,1)
+                  BorderColor: =RGBA(42,74,58,1)
+                  BorderThickness: =1
+                  RadiusTopLeft: =14
+                  RadiusTopRight: =14
+                  RadiusBottomLeft: =14
+                  RadiusBottomRight: =14
+                  OnSelect: =Set(varModel, ThisItem); Navigate(scrModel, ScreenTransition.Cover)
+            - imgCard:
+                Control: Image@2.2.3
+                Properties:
+                  X: =1
+                  Y: =1
+                  Width: =Parent.TemplateWidth-2
+                  Height: =200
+                  Image: =ThisItem.&#x27;รูปรุ่น&#x27;.Large
+                  ImagePosition: =ImagePosition.Fill
+                  Fill: =RGBA(15,36,25,1)
+                  RadiusTopLeft: =14
+                  RadiusTopRight: =14
+                  OnSelect: =Set(varModel, ThisItem); Navigate(scrModel, ScreenTransition.Cover)
+            - lblNoImg:
+                Control: Label@2.5.1
+                Properties:
+                  X: =0
+                  Y: =80
+                  Width: =Parent.TemplateWidth
+                  Height: =44
+                  Text: |-
+                    =&quot;🛒&quot; &amp; Char(10) &amp; &quot;ยังไม่มีรูป&quot;
+                  Size: =12
+                  Color: =RGBA(157,184,169,1)
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  PaddingBottom: =0
+                  Align: =Align.Center
+                  Visible: =IsBlank(ThisItem.&#x27;รูปรุ่น&#x27;.Large)
+                  OnSelect: =Set(varModel, ThisItem); Navigate(scrModel, ScreenTransition.Cover)
+            - lblCardName:
+                Control: Label@2.5.1
+                Properties:
+                  X: =16
+                  Y: =214
+                  Width: =Parent.TemplateWidth-32
+                  Height: =26
+                  Text: =Upper(ThisItem.Title)
+                  Size: =14
+                  Color: =RGBA(238,245,240,1)
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  PaddingBottom: =0
+                  FontWeight: =FontWeight.Bold
+                  OnSelect: =Set(varModel, ThisItem); Navigate(scrModel, ScreenTransition.Cover)
+            - lblCardCat:
+                Control: Label@2.5.1
+                Properties:
+                  X: =16
+                  Y: =242
+                  Width: =Parent.TemplateWidth-32
+                  Height: =22
+                  Text: |-
+                    =ThisItem.&#x27;หมวด&#x27;.Value &amp; With({r: Coalesce(Sum(Filter(colRsv, &#x27;รุ่น&#x27;.Id = ThisItem.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now()), &#x27;จำนวนคัน&#x27;), 0)}, If(r &gt; 0, &quot; · 🔒 จอง &quot; &amp; r &amp; &quot; คัน&quot;, &quot;&quot;))
+                  Size: =10
+                  Color: =RGBA(157,184,169,1)
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  PaddingBottom: =0
+            - lblCardAvail:
+                Control: Label@2.5.1
+                Properties:
+                  X: =16
+                  Y: =266
+                  Width: =90
+                  Height: =40
+                  Text: |-
+                    =Text(ThisItem.&#x27;คงเหลือขาย/เช่าได้&#x27; - Coalesce(Sum(Filter(colRsv, &#x27;รุ่น&#x27;.Id = ThisItem.ID &amp;&amp; &#x27;สถานะ&#x27;.Value = &quot;จองอยู่&quot; &amp;&amp; &#x27;หมดอายุ&#x27; &gt; Now()), &#x27;จำนวนคัน&#x27;), 0), &quot;#,##0&quot;)
+                  Size: =24
+                  Color: =RGBA(127,209,155,1)
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  PaddingBottom: =0
+                  FontWeight: =FontWeight.Bold
+            - lblCardAvailT:
+                Control: Label@2.5.1
+                Properties:
+                  X: =16 + Len(lblCardAvail.Text) * 17 + 6
+                  Y: =280
+                  Width: =Parent.TemplateWidth-120
+                  Height: =24
+                  Text: |-
+                    =&quot;คันพร้อมขาย/เช่า&quot;
+                  Size: =11
+                  Color: =RGBA(238,245,240,1)
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  PaddingBottom: =0
+            - lblTagSale:
+                Control: Label@2.5.1
+                Properties:
+                  X: =16
+                  Y: =314
+                  Width: =62
+                  Height: =26
+                  Text: |-
+                    =&quot;ขายได้&quot;
+                  Size: =10
+                  Color: =RGBA(201,165,74,1)
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  PaddingBottom: =0
+                  FontWeight: =FontWeight.Bold
+                  Align: =Align.Center
+                  Fill: =RGBA(201,165,74,0.16)
+                  Visible: |-
+                    =ThisItem.&#x27;เปิดให้&#x27;.Value &lt;&gt; &quot;เช่าเท่านั้น&quot;
+            - lblTagRent:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =If(ThisItem.&#x27;เปิดให้&#x27;.Value &lt;&gt; &quot;เช่าเท่านั้น&quot;, 84, 16)
+                  Y: =314
+                  Width: =62
+                  Height: =26
+                  Text: |-
+                    =&quot;เช่าได้&quot;
+                  Size: =10
+                  Color: =RGBA(108,182,232,1)
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  PaddingBottom: =0
+                  FontWeight: =FontWeight.Bold
+                  Align: =Align.Center
+                  Fill: =RGBA(108,182,232,0.16)
+                  Visible: |-
+                    =ThisItem.&#x27;เปิดให้&#x27;.Value &lt;&gt; &quot;ขายเท่านั้น&quot;
+            - lblTagPark:
+                Control: Label@2.5.1
+                Properties:
+                  X: |-
+                    =16 + If(ThisItem.&#x27;เปิดให้&#x27;.Value &lt;&gt; &quot;เช่าเท่านั้น&quot;, 68, 0) + If(ThisItem.&#x27;เปิดให้&#x27;.Value &lt;&gt; &quot;ขายเท่านั้น&quot;, 68, 0)
+                  Y: =314
+                  Width: =96
+                  Height: =26
+                  Text: |-
+                    =&quot;ฝากจอด &quot; &amp; Text(ThisItem.&#x27;รถฝากจอด&#x27;, &quot;#,##0&quot;)
+                  Size: =10
+                  Color: =RGBA(157,184,169,1)
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  PaddingBottom: =0
+                  Align: =Align.Center
+                  Fill: =RGBA(255,255,255,0.06)
+                  Visible: =ThisItem.&#x27;รถฝากจอด&#x27; &gt; 0
+            - imgCardLine:
+                Control: Image@2.2.3
+                Properties:
+                  X: =16
+                  Y: =352
+                  Width: =Parent.TemplateWidth-32
+                  Height: =1
+                  Image: |-
+                    =&quot;&quot;
+                  Fill: =RGBA(42,74,58,1)
+                  BorderThickness: =0
+            - lblPriceK:
+                Control: Label@2.5.1
+                Properties:
+                  X: =16
+                  Y: =362
+                  Width: =100
+                  Height: =24
+                  Text: |-
+                    =&quot;ราคาขาย&quot;
+                  Size: =11
+                  Color: =RGBA(157,184,169,1)
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  PaddingBottom: =0
+            - lblCardPrice:
+                Control: Label@2.5.1
+                Properties:
+                  X: =110
+                  Y: =362
+                  Width: =Parent.TemplateWidth-126
+                  Height: =24
+                  Text: |-
+                    =If(ThisItem.&#x27;เปิดให้&#x27;.Value = &quot;เช่าเท่านั้น&quot;, &quot;–&quot;, If(IsBlank(ThisItem.&#x27;ราคาขายต่ำสุด (บาท)&#x27;), &quot;สอบถามราคา&quot;, &quot;฿&quot; &amp; Text(ThisItem.&#x27;ราคาขายต่ำสุด (บาท)&#x27;, &quot;#,##0&quot;) &amp; If(ThisItem.&#x27;ราคาขายสูงสุด (บาท)&#x27; &gt; ThisItem.&#x27;ราคาขายต่ำสุด (บาท)&#x27;, &quot; – ฿&quot; &amp; Text(ThisItem.&#x27;ราคาขายสูงสุด (บาท)&#x27;, &quot;#,##0&quot;), &quot;&quot;)))
+                  Size: =12
+                  Color: =RGBA(238,245,240,1)
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  PaddingBottom: =0
+                  FontWeight: =FontWeight.Bold
+                  Align: =Align.Right
+            - lblRentK:
+                Control: Label@2.5.1
+                Properties:
+                  X: =16
+                  Y: =388
+                  Width: =100
+                  Height: =24
+                  Text: |-
+                    =&quot;ค่าเช่า&quot;
+                  Size: =11
+                  Color: =RGBA(157,184,169,1)
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  PaddingBottom: =0
+            - lblRentV:
+                Control: Label@2.5.1
+                Properties:
+                  X: =110
+                  Y: =388
+                  Width: =Parent.TemplateWidth-126
+                  Height: =24
+                  Text: |-
+                    =If(ThisItem.&#x27;เปิดให้&#x27;.Value &lt;&gt; &quot;ขายเท่านั้น&quot;, &quot;เซลล์เสนอตามเรตเช่า&quot;, &quot;–&quot;)
+                  Size: =11
+                  Color: =RGBA(157,184,169,1)
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  PaddingBottom: =0
+                  Align: =Align.Right
+                  Italic: =true
+</textarea>
+<script>document.getElementById('b').onclick=()=>{const t=document.getElementById('t');t.select();const ok=document.execCommand('copy');document.getElementById('m').textContent=ok?'copied '+t.value.length:'failed';};</script></body></html>
