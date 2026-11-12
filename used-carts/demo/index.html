@@ -148,7 +148,23 @@ textarea.paste{min-height:140px;font-family:ui-monospace,monospace;font-size:12p
 .tools input[type=search]{font-size:16px;padding:11px 14px}
 .chip{font-size:15px;padding:7px 15px}
 .chip.rv.on{border-color:#d6b25e;color:#e6c77a;background:rgba(214,178,94,.14)}
-@media(max-width:560px){.brand{font-size:20px}.kpi{flex:1;min-width:30%;padding:8px 10px;font-size:13px}.kpi b{font-size:22px}.chip{font-size:14px;padding:7px 12px}}
+@media(max-width:640px){
+header{position:static}
+.hwrap{padding:10px 12px 8px}
+.top{gap:8px}.brand{font-size:19px}.brand small{font-size:12.5px}
+.roles{width:100%;margin-left:0}.roles button{flex:1;font-size:13px;padding:7px 6px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+.kpi{padding:6px 4px;font-size:10.5px;text-align:center;line-height:1.25;border-radius:10px;min-width:0}.kpi b{font-size:19px}
+.tools{margin-top:8px;gap:6px}.tools input[type=search]{font-size:15px;padding:9px 12px;min-width:0}
+.chips{flex-wrap:nowrap;overflow-x:auto;width:100%;scrollbar-width:none;-webkit-overflow-scrolling:touch}.chips::-webkit-scrollbar{display:none}
+.chip{font-size:13.5px;padding:6px 12px;white-space:nowrap;flex:none}
+#sorts{margin-left:0!important}
+main{padding:12px}
+.grid{grid-template-columns:1fr!important;gap:12px}
+.cn{font-size:17px!important}.avail b{font-size:26px!important}.cb{padding:12px!important}
+.price{font-size:15px}.price div{flex-wrap:nowrap}.price .v{text-align:right}
+#cmb{font-size:13px!important;padding:8px 10px!important}
+}
 </style>
 </head>
 <body>
