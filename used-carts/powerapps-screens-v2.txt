@@ -166,7 +166,7 @@ Screens:
                   FontWeight: =FontWeight.Bold
                   Color: =Color.White
                   VerticalAlign: =VerticalAlign.Top
-                  Text: =ThisItem.'รุ่นรถ'
+                  Text: =ThisItem.Title
                   OnSelect: =Set(varModel, ThisItem); Navigate(scrModel, ScreenTransition.Cover)
             - lblCardCat:
                 Control: Label@2.5.1
@@ -319,7 +319,7 @@ Screens:
                   Color: =RGBA(230,199,122,1)
                   VerticalAlign: =VerticalAlign.Top
                   Text: |-
-                    =Concat(Filter(colRsv, 'รุ่น'.Id = varModel.ID && 'ประเภทการจอง'.Value = "หลายคัน" && ('สถานะ'.Value = "รออนุมัติ" || 'หมดอายุ' > Now())), "📦 " & 'จำนวนคัน' & " คัน · " & 'ลูกค้า / หน่วยงาน' & " · " & 'เซลล์ผู้จอง' & If('สถานะ'.Value = "รออนุมัติ", " · ⏳ รออนุมัติ", " · ถึง " & Text('หมดอายุ', "d/m/yy")), Char(10))
+                    =Concat(Filter(colRsv, 'รุ่น'.Id = varModel.ID && 'ประเภทการจอง'.Value = "หลายคัน" && ('สถานะ'.Value = "รออนุมัติ" || 'หมดอายุ' > Now())), "📦 " & 'จำนวนคัน' & " คัน · " & Title & " · " & 'เซลล์ผู้จอง' & If('สถานะ'.Value = "รออนุมัติ", " · ⏳ รออนุมัติ", " · ถึง " & Text('หมดอายุ', "d/m/yy")), Char(10))
             - lblLotBtn:
                 Control: Label@2.5.1
                 Properties:
@@ -388,7 +388,7 @@ Screens:
                   Width: =170
                   Height: =Parent.TemplateHeight-20
                   Image: |-
-                    =ThisItem.'รูป: ด้านหน้า (รูปหลัก)'.Large
+                    =ThisItem.'รูปหลัก'.Large
                   ImagePosition: =ImagePosition.Fill
                   Fill: =RGBA(15,36,25,1)
                   RadiusTopLeft: =8
@@ -407,7 +407,7 @@ Screens:
                   FontWeight: =FontWeight.Bold
                   Color: =Color.White
                   Text: |-
-                    =If(IsBlank(ThisItem.'เกรดสภาพ'.Value), "", "[" & Left(ThisItem.'เกรดสภาพ'.Value, 1) & "] ") & ThisItem.'เลขรถ / Serial' & "  ›"
+                    =If(IsBlank(ThisItem.'เกรดสภาพ'.Value), "", "[" & Left(ThisItem.'เกรดสภาพ'.Value, 1) & "] ") & ThisItem.Title & "  ›"
                   OnSelect: =Set(varUnit, ThisItem); Navigate(scrUnit, ScreenTransition.Cover)
             - lblUnitInfo:
                 Control: Label@2.5.1
@@ -465,7 +465,7 @@ Screens:
             Size: =15
             FontWeight: =FontWeight.Bold
             Color: =Color.White
-            Text: =varModel.'รุ่นรถ'
+            Text: =varModel.Title
       - lblModelPresent:
           Control: Label@2.5.1
           Properties:
@@ -481,7 +481,7 @@ Screens:
             Text: |-
               ="เปิดให้ลูกค้าดู"
             OnSelect: |-
-              =ClearCollect(colPresent, Table({img: varModel.'รูปรุ่น'.Full, t: ""})); Collect(colPresent, ForAll(Filter('แคตตาล็อกรถตามสภาพ – รถรายคัน', 'รุ่น'.Id = varModel.ID && 'สถานะ'.Value <> "ขาย/ปล่อยเช่าแล้ว"), {img: ThisRecord.'รูป: ด้านหน้า (รูปหลัก)'.Full, t: ThisRecord.'เลขรถ / Serial'})); RemoveIf(colPresent, IsBlank(img)); Set(varPI, 1); Set(varPresentTitle, varModel.'รุ่นรถ'); Set(varPresentInfo, "พร้อมส่งมอบ " & Text(varModel.'คงเหลือขาย/เช่าได้', "#,##0") & " คัน" & If(varModel.'เปิดให้'.Value <> "เช่าเท่านั้น" && !IsBlank(varModel.'ราคาขายต่ำสุด (บาท)'), "   ·   ราคาขาย ฿" & Text(varModel.'ราคาขายต่ำสุด (บาท)', "#,##0") & If(varModel.'ราคาขายสูงสุด (บาท)' > varModel.'ราคาขายต่ำสุด (บาท)', " – ฿" & Text(varModel.'ราคาขายสูงสุด (บาท)', "#,##0"), ""), "") & If(varModel.'เปิดให้'.Value <> "ขายเท่านั้น", "   ·   เช่าได้", "")); Navigate(scrPresent, ScreenTransition.Fade)
+              =ClearCollect(colPresent, Table({img: varModel.'รูปรุ่น'.Full, t: ""})); Collect(colPresent, ForAll(Filter('แคตตาล็อกรถตามสภาพ – รถรายคัน', 'รุ่น'.Id = varModel.ID && 'สถานะ'.Value <> "ขาย/ปล่อยเช่าแล้ว"), {img: ThisRecord.'รูปหลัก'.Full, t: ThisRecord.Title})); RemoveIf(colPresent, IsBlank(img)); Set(varPI, 1); Set(varPresentTitle, varModel.Title); Set(varPresentInfo, "พร้อมส่งมอบ " & Text(varModel.'คงเหลือขาย/เช่าได้', "#,##0") & " คัน" & If(varModel.'เปิดให้'.Value <> "เช่าเท่านั้น" && !IsBlank(varModel.'ราคาขายต่ำสุด (บาท)'), "   ·   ราคาขาย ฿" & Text(varModel.'ราคาขายต่ำสุด (บาท)', "#,##0") & If(varModel.'ราคาขายสูงสุด (บาท)' > varModel.'ราคาขายต่ำสุด (บาท)', " – ฿" & Text(varModel.'ราคาขายสูงสุด (บาท)', "#,##0"), ""), "") & If(varModel.'เปิดให้'.Value <> "ขายเท่านั้น", "   ·   เช่าได้", "")); Navigate(scrPresent, ScreenTransition.Fade)
       - lblModelAdd:
           Control: Label@2.5.1
           Properties:
@@ -534,7 +534,7 @@ Screens:
             Color: =Color.White
             Visible: =varShowLot
             Text: |-
-              ="📦 จองหลายคัน — " & varModel.'รุ่นรถ' & Char(10) & "ว่างให้จองได้ " & Text(varModel.'คงเหลือขาย/เช่าได้' - Sum(Filter(colRsv, 'รุ่น'.Id = varModel.ID && 'สถานะ'.Value = "จองอยู่" && 'หมดอายุ' > Now()), 'จำนวนคัน'), "#,##0") & " คัน"
+              ="📦 จองหลายคัน — " & varModel.Title & Char(10) & "ว่างให้จองได้ " & Text(varModel.'คงเหลือขาย/เช่าได้' - Sum(Filter(colRsv, 'รุ่น'.Id = varModel.ID && 'สถานะ'.Value = "จองอยู่" && 'หมดอายุ' > Now()), 'จำนวนคัน'), "#,##0") & " คัน"
       - lblLotQtyL:
           Control: Label@2.5.1
           Properties:
@@ -643,12 +643,12 @@ Screens:
             Text: |-
               ="ยืนยันจอง"
             OnSelect: |-
-              =With({q: Value(txtLotQty.Text), av: varModel.'คงเหลือขาย/เช่าได้' - Sum(Filter(colRsv, 'รุ่น'.Id = varModel.ID && 'สถานะ'.Value = "จองอยู่" && 'หมดอายุ' > Now()), 'จำนวนคัน')}, If(IsBlank(txtLotCust.Text) || IsBlank(q) || q < 1, Notify("กรอกจำนวนคันและชื่อลูกค้า", NotificationType.Error), q > av, Notify("จองได้สูงสุด " & av & " คัน", NotificationType.Error), Patch('แคตตาล็อกรถตามสภาพ – การจอง', Defaults('แคตตาล็อกรถตามสภาพ – การจอง'), {'ลูกค้า / หน่วยงาน': txtLotCust.Text, 'รุ่น': {Id: varModel.ID, Value: varModel.'รุ่นรถ'}, 'จำนวนคัน': q, 'ประเภทการจอง': {Value: "หลายคัน"}, 'สถานะ': {Value: If(q > 10, "รออนุมัติ", "จองอยู่")}, 'เซลล์ผู้จอง': User().FullName, 'อีเมลเซลล์': User().Email, 'หมดอายุ': DateAdd(Now(), 14, TimeUnit.Days)}); ClearCollect(colRsv, Filter('แคตตาล็อกรถตามสภาพ – การจอง', 'สถานะ'.Value = "จองอยู่" || 'สถานะ'.Value = "รออนุมัติ")); Set(varShowLot, false); Notify(If(q > 10, "ส่งขออนุมัติแล้ว — รอผู้จัดการอนุมัติ", "จองแล้ว " & q & " คัน (14 วัน)"), NotificationType.Success)))
+              =With({q: Value(txtLotQty.Text), av: varModel.'คงเหลือขาย/เช่าได้' - Sum(Filter(colRsv, 'รุ่น'.Id = varModel.ID && 'สถานะ'.Value = "จองอยู่" && 'หมดอายุ' > Now()), 'จำนวนคัน')}, If(IsBlank(txtLotCust.Text) || IsBlank(q) || q < 1, Notify("กรอกจำนวนคันและชื่อลูกค้า", NotificationType.Error), q > av, Notify("จองได้สูงสุด " & av & " คัน", NotificationType.Error), Patch('แคตตาล็อกรถตามสภาพ – การจอง', Defaults('แคตตาล็อกรถตามสภาพ – การจอง'), {Title: txtLotCust.Text, 'รุ่น': {Id: varModel.ID, Value: varModel.Title}, 'จำนวนคัน': q, 'ประเภทการจอง': {Value: "หลายคัน"}, 'สถานะ': {Value: If(q > 10, "รออนุมัติ", "จองอยู่")}, 'เซลล์ผู้จอง': User().FullName, 'อีเมลเซลล์': User().Email, 'หมดอายุ': DateAdd(Now(), 14, TimeUnit.Days)}); ClearCollect(colRsv, Filter('แคตตาล็อกรถตามสภาพ – การจอง', 'สถานะ'.Value = "จองอยู่" || 'สถานะ'.Value = "รออนุมัติ")); Set(varShowLot, false); Notify(If(q > 10, "ส่งขออนุมัติแล้ว — รอผู้จัดการอนุมัติ", "จองแล้ว " & q & " คัน (14 วัน)"), NotificationType.Success)))
   scrUnit:
     Properties:
       Fill: =RGBA(13,31,23,1)
       OnVisible: |-
-        =ClearCollect(colPhotos, Filter(Table({t: "ด้านหน้า", img: varUnit.'รูป: ด้านหน้า (รูปหลัก)'.Full}, {t: "ด้านหลัง", img: varUnit.'รูป: ด้านหลัง'.Full}, {t: "ด้านซ้าย", img: varUnit.'รูป: ด้านซ้าย'.Full}, {t: "ด้านขวา", img: varUnit.'รูป: ด้านขวา'.Full}, {t: "เบาะ/ห้องโดยสาร", img: varUnit.'รูป: เบาะ/ห้องโดยสาร'.Full}, {t: "หน้าปัด/พวงมาลัย", img: varUnit.'รูป: หน้าปัด/พวงมาลัย'.Full}, {t: "แบตเตอรี่", img: varUnit.'รูป: แบตเตอรี่'.Full}, {t: "ชาร์จเจอร์", img: varUnit.'รูป: ชาร์จเจอร์'.Full}, {t: "ยาง/ล้อ", img: varUnit.'รูป: ยาง/ล้อ'.Full}, {t: "อื่นๆ", img: varUnit.'รูป: อื่นๆ 1'.Full}, {t: "อื่นๆ", img: varUnit.'รูป: อื่นๆ 2'.Full}), !IsBlank(img))); Set(varIdx, 1)
+        =ClearCollect(colPhotos, Filter(Table({t: "ด้านหน้า", img: varUnit.'รูปหลัก'.Full}, {t: "ด้านหลัง", img: varUnit.'รูป: ด้านหลัง'.Full}, {t: "ด้านซ้าย", img: varUnit.'รูป: ด้านซ้าย'.Full}, {t: "ด้านขวา", img: varUnit.'รูป: ด้านขวา'.Full}, {t: "เบาะ/ห้องโดยสาร", img: varUnit.'รูป: เบาะ/ห้องโดยสาร'.Full}, {t: "หน้าปัด/พวงมาลัย", img: varUnit.'รูป: หน้าปัด/พวงมาลัย'.Full}, {t: "แบตเตอรี่", img: varUnit.'รูป: แบตเตอรี่'.Full}, {t: "ชาร์จเจอร์", img: varUnit.'รูป: ชาร์จเจอร์'.Full}, {t: "ยาง/ล้อ", img: varUnit.'รูป: ยาง/ล้อ'.Full}, {t: "อื่นๆ", img: varUnit.'รูป: อื่นๆ 1'.Full}, {t: "อื่นๆ", img: varUnit.'รูป: อื่นๆ 2'.Full}), !IsBlank(img))); Set(varIdx, 1)
     Children:
       - galUnitBody:
           Control: Gallery@2.15.0
@@ -771,7 +771,7 @@ Screens:
                   Color: =Color.White
                   VerticalAlign: =VerticalAlign.Top
                   Text: |-
-                    =Concat(Filter(Table({k: "รุ่น", v: varModel.'รุ่นรถ'}, {k: "เลขรถ / Serial", v: varUnit.'เลขรถ / Serial'}, {k: "ปีผลิต", v: varUnit.'ปีผลิต'}, {k: "สี", v: varUnit.'สี'}, {k: "ระบบขับเคลื่อน", v: varUnit.'ระบบขับเคลื่อน'.Value}, {k: "มอเตอร์", v: varUnit.'มอเตอร์'.Value}, {k: "ชั่วโมงใช้งาน/ไมล์", v: varUnit.'ชั่วโมงใช้งาน/ไมล์'}, {k: "สภาพยาง", v: varUnit.'สภาพยาง'}, {k: "อุปกรณ์ติดรถ", v: varUnit.'อุปกรณ์ติดรถ'}, {k: "จัดเก็บที่", v: varUnit.'จัดเก็บที่'.Value}, {k: "เกรดสภาพ", v: varUnit.'เกรดสภาพ'.Value}, {k: "สภาพโดยรวม", v: varUnit.'สภาพโดยรวม'}), !IsBlank(v)), k & ":  " & v, Char(10))
+                    =Concat(Filter(Table({k: "รุ่น", v: varModel.Title}, {k: "เลขรถ / Serial", v: varUnit.Title}, {k: "ปีผลิต", v: varUnit.'ปีผลิต'}, {k: "สี", v: varUnit.'สี'}, {k: "ระบบขับเคลื่อน", v: varUnit.'ระบบขับเคลื่อน'.Value}, {k: "มอเตอร์", v: varUnit.'มอเตอร์'.Value}, {k: "ชั่วโมงใช้งาน/ไมล์", v: varUnit.'ชั่วโมงใช้งาน/ไมล์'}, {k: "สภาพยาง", v: varUnit.'สภาพยาง'}, {k: "อุปกรณ์ติดรถ", v: varUnit.'อุปกรณ์ติดรถ'}, {k: "จัดเก็บที่", v: varUnit.'จัดเก็บที่'.Value}, {k: "เกรดสภาพ", v: varUnit.'เกรดสภาพ'.Value}, {k: "สภาพโดยรวม", v: varUnit.'สภาพโดยรวม'}), !IsBlank(v)), k & ":  " & v, Char(10))
             - lblBatHead:
                 Control: Label@2.5.1
                 Properties:
@@ -825,7 +825,7 @@ Screens:
                   Color: =Color.White
                   VerticalAlign: =VerticalAlign.Top
                   Text: |-
-                    =With({d: Filter('แคตตาล็อกรถตามสภาพ – ตำหนิรถ', 'รถ (เลขรถ)'.Id = varUnit.ID)}, If(CountRows(d) = 0, "ไม่มีตำหนิที่บันทึกไว้", Concat(d, "[" & 'ระดับ'.Value & "] " & 'จุด/ชิ้นส่วน' & If('ซ่อมแล้ว', "  ✓ ซ่อมแล้ว", "") & Char(10) & "    " & 'รายละเอียด', Char(10) & Char(10))))
+                    =With({d: Filter('แคตตาล็อกรถตามสภาพ – ตำหนิรถ', 'รถ (เลขรถ)'.Id = varUnit.ID)}, If(CountRows(d) = 0, "ไม่มีตำหนิที่บันทึกไว้", Concat(d, "[" & 'ระดับ'.Value & "] " & Title & If('ซ่อมแล้ว', "  ✓ ซ่อมแล้ว", "") & Char(10) & "    " & 'รายละเอียด', Char(10) & Char(10))))
       - lblUnitTopBar:
           Control: Label@2.5.1
           Properties:
@@ -859,7 +859,7 @@ Screens:
             FontWeight: =FontWeight.Bold
             Color: =Color.White
             Text: |-
-              =If(IsBlank(varUnit.'เกรดสภาพ'.Value), "", "[" & Left(varUnit.'เกรดสภาพ'.Value, 1) & "] ") & varUnit.'เลขรถ / Serial'
+              =If(IsBlank(varUnit.'เกรดสภาพ'.Value), "", "[" & Left(varUnit.'เกรดสภาพ'.Value, 1) & "] ") & varUnit.Title
       - lblUnitPresent:
           Control: Label@2.5.1
           Properties:
@@ -875,7 +875,7 @@ Screens:
             Text: |-
               ="เปิดให้ลูกค้าดู"
             OnSelect: |-
-              =ClearCollect(colPresent, colPhotos); Set(varPI, 1); Set(varPresentTitle, varModel.'รุ่นรถ' & If(IsBlank(varUnit.'เกรดสภาพ'.Value), "", "  ·  เกรด " & Left(varUnit.'เกรดสภาพ'.Value, 1))); Set(varPresentInfo, Concat(Filter(Table({v: If(!IsBlank(varUnit.'ราคาขาย (บาท)'), "ราคาขาย ฿" & Text(varUnit.'ราคาขาย (บาท)', "#,##0"), If(IsBlank(varModel.'ราคาขายต่ำสุด (บาท)'), "", "ราคาขาย ฿" & Text(varModel.'ราคาขายต่ำสุด (บาท)', "#,##0")))}, {v: "เช่าได้"}, {v: If(IsBlank(varUnit.'ปีผลิต'), "", "ปี " & varUnit.'ปีผลิต')}, {v: If(IsBlank(varUnit.'ชนิดแบต'.Value), "", "แบต " & varUnit.'ชนิดแบต'.Value & " " & varUnit.'แรงดันระบบ'.Value)}, {v: If(IsBlank(varUnit.'สุขภาพแบต (%)'), "", "สุขภาพแบต " & varUnit.'สุขภาพแบต (%)' & "%")}, {v: If(IsBlank(varUnit.'วิ่งได้ต่อชาร์จ (กม.)'), "", "วิ่งได้ ~" & varUnit.'วิ่งได้ต่อชาร์จ (กม.)' & " กม./ชาร์จ")}), !IsBlank(v)), v, "   ·   ") & With({d: Filter('แคตตาล็อกรถตามสภาพ – ตำหนิรถ', 'รถ (เลขรถ)'.Id = varUnit.ID && !'ซ่อมแล้ว')}, If(CountRows(d) > 0, Char(10) & "ตำหนิที่แจ้ง: " & Concat(d, 'จุด/ชิ้นส่วน' & " (" & 'ระดับ'.Value & ")", ", "), ""))); Navigate(scrPresent, ScreenTransition.Fade)
+              =ClearCollect(colPresent, colPhotos); Set(varPI, 1); Set(varPresentTitle, varModel.Title & If(IsBlank(varUnit.'เกรดสภาพ'.Value), "", "  ·  เกรด " & Left(varUnit.'เกรดสภาพ'.Value, 1))); Set(varPresentInfo, Concat(Filter(Table({v: If(!IsBlank(varUnit.'ราคาขาย (บาท)'), "ราคาขาย ฿" & Text(varUnit.'ราคาขาย (บาท)', "#,##0"), If(IsBlank(varModel.'ราคาขายต่ำสุด (บาท)'), "", "ราคาขาย ฿" & Text(varModel.'ราคาขายต่ำสุด (บาท)', "#,##0")))}, {v: "เช่าได้"}, {v: If(IsBlank(varUnit.'ปีผลิต'), "", "ปี " & varUnit.'ปีผลิต')}, {v: If(IsBlank(varUnit.'ชนิดแบต'.Value), "", "แบต " & varUnit.'ชนิดแบต'.Value & " " & varUnit.'แรงดันระบบ'.Value)}, {v: If(IsBlank(varUnit.'สุขภาพแบต (%)'), "", "สุขภาพแบต " & varUnit.'สุขภาพแบต (%)' & "%")}, {v: If(IsBlank(varUnit.'วิ่งได้ต่อชาร์จ (กม.)'), "", "วิ่งได้ ~" & varUnit.'วิ่งได้ต่อชาร์จ (กม.)' & " กม./ชาร์จ")}), !IsBlank(v)), v, "   ·   ") & With({d: Filter('แคตตาล็อกรถตามสภาพ – ตำหนิรถ', 'รถ (เลขรถ)'.Id = varUnit.ID && !'ซ่อมแล้ว')}, If(CountRows(d) > 0, Char(10) & "ตำหนิที่แจ้ง: " & Concat(d, Title & " (" & 'ระดับ'.Value & ")", ", "), ""))); Navigate(scrPresent, ScreenTransition.Fade)
       - lblUnitEdit:
           Control: Label@2.5.1
           Properties:
@@ -914,7 +914,7 @@ Screens:
             Size: =12
             Color: =RGBA(230,199,122,1)
             Text: |-
-              =With({rv: LookUp(colRsv, 'รถ (เลขรถ)'.Id = varUnit.ID && 'สถานะ'.Value = "จองอยู่" && 'หมดอายุ' > Now())}, If(IsBlank(rv), "ว่าง — จองได้ 7 วัน ครบกำหนดยังไม่ปิดการขาย ระบบปลดอัตโนมัติ", "🔒 จองโดย " & rv.'เซลล์ผู้จอง' & " · ลูกค้า " & rv.'ลูกค้า / หน่วยงาน' & Char(10) & "หมดอายุ " & Text(rv.'หมดอายุ', "d/m/yy hh:mm") & " (เหลือ " & RoundUp(DateDiff(Now(), rv.'หมดอายุ', TimeUnit.Hours) / 24, 0) & " วัน)"))
+              =With({rv: LookUp(colRsv, 'รถ (เลขรถ)'.Id = varUnit.ID && 'สถานะ'.Value = "จองอยู่" && 'หมดอายุ' > Now())}, If(IsBlank(rv), "ว่าง — จองได้ 7 วัน ครบกำหนดยังไม่ปิดการขาย ระบบปลดอัตโนมัติ", "🔒 จองโดย " & rv.'เซลล์ผู้จอง' & " · ลูกค้า " & rv.Title & Char(10) & "หมดอายุ " & Text(rv.'หมดอายุ', "d/m/yy hh:mm") & " (เหลือ " & RoundUp(DateDiff(Now(), rv.'หมดอายุ', TimeUnit.Hours) / 24, 0) & " วัน)"))
       - txtRsvCust:
           Control: Classic/TextInput@2.3.2
           Properties:
@@ -952,7 +952,7 @@ Screens:
             Text: |-
               ="🔒 จองคันนี้ 7 วัน"
             OnSelect: |-
-              =If(IsBlank(txtRsvCust.Text), Notify("กรอกชื่อลูกค้าก่อนจอง", NotificationType.Error), If(!IsBlank(LookUp('แคตตาล็อกรถตามสภาพ – การจอง', 'รถ (เลขรถ)'.Id = varUnit.ID && 'สถานะ'.Value = "จองอยู่" && 'หมดอายุ' > Now())), Notify("รถคันนี้เพิ่งถูกเซลล์คนอื่นจองไปแล้ว", NotificationType.Error), Patch('แคตตาล็อกรถตามสภาพ – การจอง', Defaults('แคตตาล็อกรถตามสภาพ – การจอง'), {'ลูกค้า / หน่วยงาน': txtRsvCust.Text, 'รถ (เลขรถ)': {Id: varUnit.ID, Value: varUnit.'เลขรถ / Serial'}, 'รุ่น': {Id: varModel.ID, Value: varModel.'รุ่นรถ'}, 'จำนวนคัน': 1, 'ประเภทการจอง': {Value: "รายคัน"}, 'สถานะ': {Value: "จองอยู่"}, 'เซลล์ผู้จอง': User().FullName, 'อีเมลเซลล์': User().Email, 'หมดอายุ': DateAdd(Now(), 7, TimeUnit.Days)}); Notify("จองแล้ว — ทุกคนเห็นทันที", NotificationType.Success)); ClearCollect(colRsv, Filter('แคตตาล็อกรถตามสภาพ – การจอง', 'สถานะ'.Value = "จองอยู่" || 'สถานะ'.Value = "รออนุมัติ")); Reset(txtRsvCust))
+              =If(IsBlank(txtRsvCust.Text), Notify("กรอกชื่อลูกค้าก่อนจอง", NotificationType.Error), If(!IsBlank(LookUp('แคตตาล็อกรถตามสภาพ – การจอง', 'รถ (เลขรถ)'.Id = varUnit.ID && 'สถานะ'.Value = "จองอยู่" && 'หมดอายุ' > Now())), Notify("รถคันนี้เพิ่งถูกเซลล์คนอื่นจองไปแล้ว", NotificationType.Error), Patch('แคตตาล็อกรถตามสภาพ – การจอง', Defaults('แคตตาล็อกรถตามสภาพ – การจอง'), {Title: txtRsvCust.Text, 'รถ (เลขรถ)': {Id: varUnit.ID, Value: varUnit.Title}, 'รุ่น': {Id: varModel.ID, Value: varModel.Title}, 'จำนวนคัน': 1, 'ประเภทการจอง': {Value: "รายคัน"}, 'สถานะ': {Value: "จองอยู่"}, 'เซลล์ผู้จอง': User().FullName, 'อีเมลเซลล์': User().Email, 'หมดอายุ': DateAdd(Now(), 7, TimeUnit.Days)}); Notify("จองแล้ว — ทุกคนเห็นทันที", NotificationType.Success)); ClearCollect(colRsv, Filter('แคตตาล็อกรถตามสภาพ – การจอง', 'สถานะ'.Value = "จองอยู่" || 'สถานะ'.Value = "รออนุมัติ")); Reset(txtRsvCust))
       - lblRsvClose:
           Control: Label@2.5.1
           Properties:
@@ -990,121 +990,6 @@ Screens:
               ="ยกเลิกการจอง"
             OnSelect: |-
               =Patch('แคตตาล็อกรถตามสภาพ – การจอง', LookUp(colRsv, 'รถ (เลขรถ)'.Id = varUnit.ID && 'สถานะ'.Value = "จองอยู่" && 'หมดอายุ' > Now()), {'สถานะ': {Value: "ยกเลิก"}}); ClearCollect(colRsv, Filter('แคตตาล็อกรถตามสภาพ – การจอง', 'สถานะ'.Value = "จองอยู่" || 'สถานะ'.Value = "รออนุมัติ")); Notify("ยกเลิกการจองแล้ว", NotificationType.Success)
-  scrPresent:
-    Properties:
-      Fill: =RGBA(6,16,11,1)
-    Children:
-      - imgPresent:
-          Control: Image@2.2.3
-          Properties:
-            X: =0
-            Y: =0
-            Width: =Parent.Width
-            Height: =Parent.Height-260
-            Image: =Index(colPresent, varPI).img
-            ImagePosition: =ImagePosition.Fit
-            OnSelect: =Set(varPI, If(varPI >= CountRows(colPresent), 1, varPI + 1))
-      - lblPresentNoImg:
-          Control: Label@2.5.1
-          Properties:
-            X: =0
-            Y: =(Parent.Height-260)/2-20
-            Width: =Parent.Width
-            Height: =40
-            Align: =Align.Center
-            Color: =RGBA(157,184,169,1)
-            Text: |-
-              ="📷 ยังไม่มีรูป"
-            Visible: =CountRows(colPresent) = 0
-      - lblPPrev:
-          Control: Label@2.5.1
-          Properties:
-            X: =12
-            Y: =(Parent.Height-260)/2-35
-            Width: =70
-            Height: =70
-            Align: =Align.Center
-            Size: =32
-            Color: =Color.White
-            Fill: =RGBA(255,255,255,0.14)
-            Text: |-
-              ="‹"
-            Visible: =CountRows(colPresent) > 1
-            OnSelect: =Set(varPI, If(varPI <= 1, CountRows(colPresent), varPI - 1))
-      - lblPNext:
-          Control: Label@2.5.1
-          Properties:
-            X: =Parent.Width-82
-            Y: =(Parent.Height-260)/2-35
-            Width: =70
-            Height: =70
-            Align: =Align.Center
-            Size: =32
-            Color: =Color.White
-            Fill: =RGBA(255,255,255,0.14)
-            Text: |-
-              ="›"
-            Visible: =CountRows(colPresent) > 1
-            OnSelect: =Set(varPI, If(varPI >= CountRows(colPresent), 1, varPI + 1))
-      - lblPCount:
-          Control: Label@2.5.1
-          Properties:
-            X: =0
-            Y: =Parent.Height-300
-            Width: =Parent.Width
-            Height: =36
-            Align: =Align.Center
-            Size: =12
-            Color: =RGBA(204,238,221,1)
-            Text: |-
-              =If(CountRows(colPresent) = 0, "", Coalesce(Index(colPresent, varPI).t, "") & "  " & varPI & " / " & CountRows(colPresent))
-      - lblPInfoBg:
-          Control: Label@2.5.1
-          Properties:
-            X: =0
-            Y: =Parent.Height-260
-            Width: =Parent.Width
-            Height: =260
-            Fill: =RGBA(13,31,23,1)
-            BorderColor: =RGBA(42,74,58,1)
-            Text: |-
-              =""
-      - lblPTitle:
-          Control: Label@2.5.1
-          Properties:
-            X: =24
-            Y: =Parent.Height-250
-            Width: =Parent.Width-48
-            Height: =56
-            Size: =22
-            FontWeight: =FontWeight.Bold
-            Color: =Color.White
-            Text: =varPresentTitle
-      - lblPInfo:
-          Control: Label@2.5.1
-          Properties:
-            X: =24
-            Y: =Parent.Height-192
-            Width: =Parent.Width-48
-            Height: =180
-            Size: =15
-            Color: =RGBA(224,192,112,1)
-            VerticalAlign: =VerticalAlign.Top
-            Text: =varPresentInfo
-      - lblPClose:
-          Control: Label@2.5.1
-          Properties:
-            X: =Parent.Width-130
-            Y: =16
-            Width: =114
-            Height: =50
-            Align: =Align.Center
-            Size: =14
-            Color: =Color.White
-            Fill: =RGBA(0,0,0,0.5)
-            Text: |-
-              ="✕ ปิด"
-            OnSelect: =Back()
   scrRsv:
     Properties:
       Fill: =RGBA(13,31,23,1)
@@ -1227,7 +1112,7 @@ Screens:
                   Color: =RGBA(157,184,169,1)
                   VerticalAlign: =VerticalAlign.Top
                   Text: |-
-                    ="ลูกค้า " & ThisItem.'ลูกค้า / หน่วยงาน' & " · เซลล์ " & ThisItem.'เซลล์ผู้จอง' & Char(10) & If(ThisItem.'สถานะ'.Value = "รออนุมัติ", "⏳ รอผู้จัดการอนุมัติ", If(ThisItem.'หมดอายุ' > Now(), "หมดอายุ " & Text(ThisItem.'หมดอายุ', "d/m/yy") & " (เหลือ " & RoundUp(DateDiff(Now(), ThisItem.'หมดอายุ', TimeUnit.Hours) / 24, 0) & " วัน)", "⏰ หมดอายุแล้ว — ปลดการจองอัตโนมัติ"))
+                    ="ลูกค้า " & ThisItem.Title & " · เซลล์ " & ThisItem.'เซลล์ผู้จอง' & Char(10) & If(ThisItem.'สถานะ'.Value = "รออนุมัติ", "⏳ รอผู้จัดการอนุมัติ", If(ThisItem.'หมดอายุ' > Now(), "หมดอายุ " & Text(ThisItem.'หมดอายุ', "d/m/yy") & " (เหลือ " & RoundUp(DateDiff(Now(), ThisItem.'หมดอายุ', TimeUnit.Hours) / 24, 0) & " วัน)", "⏰ หมดอายุแล้ว — ปลดการจองอัตโนมัติ"))
             - lblRsvApprove:
                 Control: Label@2.5.1
                 Properties:
